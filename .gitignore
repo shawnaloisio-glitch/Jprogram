@@ -1,0 +1,51 @@
+# ============================================================
+# Japanese Corpus Pipeline — Git repository boundary (.gitignore)
+# Protects the repository from committing secrets, customer data,
+# runtime artifacts, logs, user preferences, and developer residue.
+# Product source (Python, tests, docs, prompts, templates, product
+# Config JSON) is intentionally NOT ignored.
+# ============================================================
+
+# ---- Secrets --------------------------------------------------
+api_key.txt
+*.env
+.env
+
+# ---- Customer workspace / runtime data -------------------------
+Sources/
+Source Registry/
+Cleaning Jobs/
+Cleaning Results/
+Cleaned Archive/
+Processing Results/
+Data Processor/jobs/
+Data Processor/requests/
+Data Processor/responses/
+Data Processor/jsonl/
+Data Processor/processing/
+Data Processor/completed/
+Data Processor/failed/
+Data Processor/indexes/
+Data Processor/Job Results/
+Data Processor/Request Results/
+Data Processor/Corpus Results/
+Analysis/outputs/
+Diagnostics/
+Raw Subtitles/
+Raw Transcripts/
+Intake/
+
+# ---- Runtime logs (preserve the README only) -------------------
+Logs/*
+!Logs/README.md
+
+# ---- User preference / runtime files ---------------------------
+Source Builder/gui_settings.json
+Source Builder/quick_presets.json
+
+# ---- Developer artifacts ---------------------------------------
+Config/*.bak
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo

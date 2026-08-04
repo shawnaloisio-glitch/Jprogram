@@ -1,0 +1,12 @@
+{
+  "origins": [
+    {
+      "origin_id": "user_transcription",
+      "display_name": "user_transcription"
+    },
+    {
+      "origin_id": "subtitle",
+      "display_name": "subtitle"
+    }
+  ]
+}
