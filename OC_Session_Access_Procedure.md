@@ -65,53 +65,22 @@ Relevant tables:
     `git status`/`git diff` remain the primary evidence per the evidence
     hierarchy).
 
-## Example: dump a full session transcript
+## Use `oc_session_dump.py`, not a hand-rolled script
 
-```python
-import sqlite3, json
+A real, reusable, tested script lives at `oc_session_dump.py` (repo root).
+Built 2026-08-05 after hand-writing this same query inline for TASKs 1-3 —
+don't do that again; use the script.
 
-DB = r"C:\Users\Shawn\.local\share\opencode\opencode.db"
-
-con = sqlite3.connect(DB)  # read-only in practice: only SELECT below
-cur = con.cursor()
-
-# 1. Find the Jprogram project id
-cur.execute("SELECT id FROM project WHERE worktree = 'C:/Jprogram'")
-project_id = cur.fetchone()[0]
-
-# 2. Find the session (adjust title match / ordering as needed)
-cur.execute(
-    "SELECT id, title FROM session WHERE project_id = ? "
-    "ORDER BY time_updated DESC LIMIT 10",
-    (project_id,),
-)
-for row in cur.fetchall():
-    print(row)  # eyeball this to pick the right session id
-
-session_id = "ses_..."  # paste the chosen id
-
-# 3. Walk every part in time order — this is the full raw transcript
-cur.execute(
-    "SELECT message_id, data FROM part WHERE session_id = ? "
-    "ORDER BY time_created",
-    (session_id,),
-)
-for message_id, data in cur.fetchall():
-    d = json.loads(data)
-    t = d.get("type")
-    if t == "text":
-        print(f"[TEXT {message_id}] {d.get('text')}")
-    elif t == "tool":
-        st = d.get("state", {})
-        print(f"[TOOL {message_id}] {d.get('tool')} "
-              f"status={st.get('status')} input={st.get('input')}")
-        # st.get('output') has the full result if you need it
-
-con.close()
+```bash
+python oc_session_dump.py                                    # list recent sessions
+python oc_session_dump.py <session_id>                       # full transcript
+python oc_session_dump.py <session_id> --since <epoch_ms>    # just one task within a reused session
+python oc_session_dump.py <session_id> --full <message_id>   # complete text of one part (e.g. a final report)
 ```
 
-Run this with the project's own Python (no extra install — `sqlite3` and
-`json` are both standard library).
+Get a `--since` timestamp by first dumping without it and reading the
+`time_created` of the message where the task you care about begins (each
+line is printed as `[TYPE message_id @timestamp] ...`).
 
 ## Caveats
 

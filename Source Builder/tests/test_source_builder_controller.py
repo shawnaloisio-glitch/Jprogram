@@ -344,6 +344,61 @@ def _():
     check("no episode leak", state["episode"] == "")
 
 
+@test("next_auto_sequence: empty collection returns 1")
+def _():
+    root, sources, saved = setup()
+    try:
+        check("empty", controller.next_auto_sequence("teppei_beginner") == 1)
+    finally:
+        restore(saved)
+
+
+@test("next_auto_sequence: existing episodes 1-3 returns 4")
+def _():
+    root, sources, saved = setup()
+    try:
+        for ep in (1, 2, 3):
+            controller.create_collection_source(
+                "teppei_beginner", ep, "podcast_transcript",
+                "con_teppei_podcast", f"text {ep}\n")
+        check("max plus one",
+              controller.next_auto_sequence("teppei_beginner") == 4)
+    finally:
+        restore(saved)
+
+
+@test("next_auto_sequence: gap is never filled (1,2,5 -> 6)")
+def _():
+    root, sources, saved = setup()
+    try:
+        for ep in (1, 2, 5):
+            controller.create_collection_source(
+                "teppei_beginner", ep, "podcast_transcript",
+                "con_teppei_podcast", f"text {ep}\n")
+        check("max plus one, gap ignored",
+              controller.next_auto_sequence("teppei_beginner") == 6)
+    finally:
+        restore(saved)
+
+
+@test("next_auto_sequence: ignores non-episode files")
+def _():
+    root, sources, saved = setup()
+    try:
+        controller.create_collection_source(
+            "teppei_beginner", 7, "podcast_transcript",
+            "con_teppei_podcast", "text\n")
+        directory = controller.collection_dir("teppei_beginner")
+        (directory / "notes.txt").write_text("not an episode\n",
+                                             encoding="utf-8")
+        (directory / "other_collection_ep9999.txt").write_text(
+            "x\n", encoding="utf-8")
+        check("only matching episodes counted",
+              controller.next_auto_sequence("teppei_beginner") == 8)
+    finally:
+        restore(saved)
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

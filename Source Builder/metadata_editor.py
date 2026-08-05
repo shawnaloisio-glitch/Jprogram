@@ -16,9 +16,11 @@ before modification.
 Canonical on-disk forms (preserving the existing top-level structure):
 
 - Config\\collections.json:
-    {"collections": [{"collection_id": str, "name": str, "source_type": str}]}
+    {"collections": [{"collection_id": str, "name": str, "source_type": str,
+                      "sequencing": str}]}
   "name" is the display name; "source_type" is the optional default source
-  type for the collection.
+  type for the collection; "sequencing" is "episodic" or "auto" (default
+  "episodic" when absent).
 - Config\\source_types.json:
     {"source_types": [{"source_type_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
@@ -49,6 +51,8 @@ FILES = {
 }
 
 MACHINE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+SEQUENCING_VALUES = ("episodic", "auto")
 
 
 class MetadataError(Exception):
@@ -143,6 +147,7 @@ def load_collections(path=None):
             "display_name": display_name if isinstance(display_name, str)
             else collection_id,
             "default_source_type": item.get("source_type"),
+            "sequencing": item.get("sequencing", "episodic"),
         })
     return result
 
@@ -240,7 +245,8 @@ def _check_unique(value, existing, original=None):
 
 
 def validate_collection(collection_id, display_name, default_source_type,
-                        existing_ids, original_id=None, source_type_ids=None):
+                        existing_ids, original_id=None, source_type_ids=None,
+                        sequencing=None):
     """Validate a collection entry; return list of errors."""
     errors = validate_id(collection_id, "collection_id")
     errors += _check_unique(collection_id, existing_ids, original_id)
@@ -250,6 +256,9 @@ def validate_collection(collection_id, display_name, default_source_type,
             errors.append(
                 f"default source type {default_source_type} is not a known "
                 f"source type")
+    if sequencing is not None and sequencing not in SEQUENCING_VALUES:
+        errors.append(
+            f"sequencing must be 'episodic' or 'auto' (got {sequencing!r})")
     return errors
 
 
@@ -280,6 +289,7 @@ def _raw_collection(item):
         "collection_id": item["collection_id"],
         "name": item["display_name"],
         "source_type": item.get("default_source_type") or "",
+        "sequencing": item.get("sequencing", "episodic"),
     }
 
 
@@ -322,30 +332,32 @@ def save_origins(items, path=None):
 # ============================================================
 
 def add_collection(collection_id, display_name, default_source_type=None,
-                   path=None, source_type_ids=None):
+                   path=None, source_type_ids=None, sequencing=None):
     """Add a collection; raises MetadataError on invalid input."""
     items = load_collections(path)
     existing = [c["collection_id"] for c in items]
     errors = validate_collection(
         collection_id, display_name, default_source_type, existing,
-        source_type_ids=source_type_ids)
+        source_type_ids=source_type_ids, sequencing=sequencing)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({
         "collection_id": collection_id,
         "display_name": display_name.strip(),
         "default_source_type": default_source_type or None,
+        "sequencing": sequencing if sequencing is not None else "episodic",
     })
     save_collections(items, path)
     return items
 
 
 def edit_collection(original_id, display_name, default_source_type=None,
-                    path=None, source_type_ids=None):
+                    path=None, source_type_ids=None, sequencing=None):
     """
     Edit a collection's editable fields by original_id.
 
     The collection_id is immutable after creation and cannot be changed.
+    sequencing=None preserves the collection's existing value.
     """
     items = load_collections(path)
     for item in items:
@@ -356,10 +368,16 @@ def edit_collection(original_id, display_name, default_source_type=None,
                     errors.append(
                         f"default source type {default_source_type} is not "
                         f"a known source type")
+            if sequencing is not None and sequencing not in SEQUENCING_VALUES:
+                errors.append(
+                    f"sequencing must be 'episodic' or 'auto' "
+                    f"(got {sequencing!r})")
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
             item["default_source_type"] = default_source_type or None
+            if sequencing is not None:
+                item["sequencing"] = sequencing
             break
     else:
         raise MetadataError(f"collection not found: {original_id}")
@@ -539,6 +557,7 @@ def preset_references(presets=None):
 __all__ = [
     "CONFIG_DIR",
     "FILES",
+    "SEQUENCING_VALUES",
     "MetadataError",
     "is_valid_machine_id",
     "load_collections",

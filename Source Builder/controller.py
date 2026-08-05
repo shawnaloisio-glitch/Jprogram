@@ -343,6 +343,41 @@ def next_source_state(identity_type, collection_id, episode,
 
 
 # ============================================================
+# Auto sequence
+# ============================================================
+
+def next_auto_sequence(collection_id):
+    """
+    Return the next automatic sequence number for an "auto" collection.
+
+    Scans the collection's folder on every call and returns the maximum
+    episode number already present (files matching the generate_filename
+    pattern "<collection_id>_ep<digits>.txt") plus one. Returns 1 when the
+    collection has no matching source files yet. Gaps are never filled;
+    the result is always max + 1.
+
+    This is a live filesystem scan on every call, not a persisted counter.
+
+    Input: collection_id (str).
+    Output: int (the next sequence number, always >= 1).
+    """
+    directory = collection_dir(collection_id)
+    prefix = f"{collection_id}_ep"
+    highest = 0
+    if directory.is_dir():
+        for path in directory.iterdir():
+            if not path.is_file():
+                continue
+            name = path.name
+            if not name.startswith(prefix) or not name.endswith(".txt"):
+                continue
+            digits = name[len(prefix):-len(".txt")]
+            if digits.isdigit():
+                highest = max(highest, int(digits))
+    return highest + 1
+
+
+# ============================================================
 # Ready State Engine
 # ============================================================
 
@@ -526,6 +561,7 @@ __all__ = [
     "create_collection_source",
     "create_standalone_source",
     "next_source_state",
+    "next_auto_sequence",
     "source_id_for",
     "ReadyStateEngine",
 ]

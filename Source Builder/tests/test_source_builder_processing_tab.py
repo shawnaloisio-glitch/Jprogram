@@ -110,6 +110,78 @@ def _():
         restore(saved)
 
 
+@test("discover_packages orders collection episodes numerically")
+def _():
+    root = pathlib.Path(tempfile.mkdtemp())
+    sources_root = root / "Sources"
+    config_dir = root / "Config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "collections.json").write_text(json.dumps({
+        "collections": [
+            {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
+             "source_type": "podcast_transcript"},
+        ]
+    }), encoding="utf-8")
+    (config_dir / "source_types.json").write_text(json.dumps(
+        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+    (config_dir / "origins.json").write_text(json.dumps(
+        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+
+    saved = patch_root(sources_root, config_dir)
+    try:
+        # Mixed multi-digit episodes: a lexicographic ("Episode N" string)
+        # sort would put 10 before 2 and 1000 before 999.
+        for ep in (2, 10, 999, 1000):
+            controller.create_collection_source(
+                "teppei_beginner", ep, "podcast_transcript",
+                "con_teppei_podcast", f"episode {ep}\n")
+        packages = processing_tab.discover_packages(sources_root)
+        episodes = [p.get("episode") for p in packages]
+        check("numeric episode order", episodes == [2, 10, 999, 1000])
+    finally:
+        restore(saved)
+
+
+@test("discover_packages tolerates missing and non-numeric episodes")
+def _():
+    root = pathlib.Path(tempfile.mkdtemp())
+    sources_root = root / "Sources"
+    config_dir = root / "Config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "collections.json").write_text(json.dumps({
+        "collections": [
+            {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
+             "source_type": "podcast_transcript"},
+        ]
+    }), encoding="utf-8")
+    (config_dir / "source_types.json").write_text(json.dumps(
+        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+    (config_dir / "origins.json").write_text(json.dumps(
+        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+
+    saved = patch_root(sources_root, config_dir)
+    try:
+        controller.create_collection_source(
+            "teppei_beginner", 3, "podcast_transcript",
+            "con_teppei_podcast", "ok\n")
+        # A hand-written sidecar with a non-numeric episode must not crash
+        # the sort.
+        bad_dir = sources_root / "collections" / "teppei_beginner"
+        bad_dir.mkdir(parents=True, exist_ok=True)
+        (bad_dir / "teppei_beginner_bad.source.json").write_text(json.dumps({
+            "source_id": "podcast_transcript_teppei-beginner_bad",
+            "collection_id": "teppei_beginner",
+            "episode": "abc",
+        }), encoding="utf-8")
+        packages = processing_tab.discover_packages(sources_root)
+        check("no crash, both discovered", len(packages) == 2)
+        episodes = sorted(p.get("episode") for p in packages
+                          if isinstance(p.get("episode"), int))
+        check("valid episode present", episodes == [3])
+    finally:
+        restore(saved)
+
+
 @test("human_label never exposes source_id")
 def _():
     package = {

@@ -13,16 +13,21 @@ You implement. Advisor evaluates your work and reports to Owner (Shawn), who mak
 - Files not changed
 - Tests performed
 - Boundary confirmation
+- **If the task has multiple enumerated parts, the status of each part individually** (done / not done / blocked) — never report only on the parts you completed as if they were the whole task. Describe the report against the original assignment, not a redefinition of it to match what you did.
 
 End with:
 ```
 STOPPED.
 ```
+Only when every part of the task is actually done.
 
-If work remains, ask:
+If any part remains — including a part you decided to skip, defer, or couldn't complete — ask:
 ```
 Continue to next section?
 ```
+Do not end with STOPPED. while silently leaving part of the assignment
+undone. If you're unsure whether something counts as "done," treat it as
+not done and ask.
 
 ## Core rules (see `README.md` for full rationale)
 

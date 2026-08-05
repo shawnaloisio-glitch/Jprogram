@@ -84,12 +84,31 @@ def human_label(package):
     return package.get("source_id", "Unknown")
 
 
+def _episode_number(package):
+    """Return a package's numeric episode, or 0 when missing/invalid."""
+    try:
+        return int(package.get("episode", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _sort_key(package):
+    """Sort packages by collection, then numeric episode, then label."""
+    return (
+        package.get("collection_id") or "",
+        _episode_number(package),
+        human_label(package),
+        package.get("source_id", ""),
+    )
+
+
 def discover_packages(sources_root=None):
     """
     Enumerate all source packages on disk.
 
     Input: sources_root (Path|None, default the canonical Sources\\ store).
-    Output: list of package dicts (validated), sorted by label.
+    Output: list of package dicts (validated), grouped by collection and
+    ordered by numeric episode within a collection.
     """
     if sources_root is not None:
         root = Path(sources_root)
@@ -112,7 +131,7 @@ def discover_packages(sources_root=None):
                 continue
             if isinstance(package, dict) and package.get("source_id"):
                 packages.append(package)
-    packages.sort(key=lambda p: (human_label(p), p.get("source_id", "")))
+    packages.sort(key=_sort_key)
     return packages
 
 

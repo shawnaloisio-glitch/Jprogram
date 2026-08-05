@@ -191,3 +191,67 @@ breaks the clean streak. Reinforces the standing rule (never relax
 verification based on a prior clean track record) rather than
 undermining it — this is exactly the kind of thing that verification is
 for.
+
+**Confirmed independently by Owner (2026-08-05), not just inferred from
+the transcript:** Owner directly observed OC's actual session/chat window
+and confirmed it only ran a small number of processes before stopping —
+matching, not contradicting, the transcript-based finding above. Ruled
+out as a false alarm from Advisor reading a mid-task snapshot (checked:
+no message exists after the final report; session `time_updated` is only
+~7 seconds later, consistent with normal finalization, not interrupted
+work). This is genuine OC behavior, not a pull-timing artifact.
+
+**Follow-up fix:** `AGENTS.md` strengthened same-day to require explicit
+per-part status reporting on multi-part tasks and to forbid ending with
+`STOPPED.` while any part remains undone.
+
+### TASK 4 — Complete TASK 3's remaining parts (`next_auto_sequence()` + sort-key fix) — 2026-08-05
+
+**Scope given:** The two parts TASK 3 didn't do — (1) `next_auto_sequence()`
+in `controller.py` (live max+1 scan, no persisted counter), (2) fix
+`processing_tab.py`'s sort key to use numeric episode instead of the label
+string. Backend only. Explicitly required per-part status in the report,
+per the just-updated `AGENTS.md`.
+
+**OC's self-reported result:** Both parts marked done individually under
+an explicit "Per-part status" section. Files changed: `controller.py`,
+`processing_tab.py`, and their two test files. 30/30 and 16/16 tests
+claimed. Correctly identified the other files showing in `git status`
+(`AGENTS.md`, `OC_Reliability_Log.md`, `metadata_editor.py`) as external
+to this task, not its own. Proactively flagged a side effect: the fix
+changes list ordering to group by `collection_id` first, then numeric
+episode, rather than interleaving by label text across collections —
+flagged for Advisor awareness rather than silently decided.
+
+**Independent verification method:** raw session dump via the new
+`oc_session_dump.py` (first real use of it); `git status`/`git diff --stat`
+against the claimed file list; independently re-ran both test files;
+read `next_auto_sequence()` and `_sort_key()`/`_episode_number()` directly.
+
+**Verification result:** MATCH, exactly. Both test counts confirmed by
+direct run (30/30, 16/16). Exactly the 4 claimed files show real diffs;
+the other 3 modified files in the working tree are correctly attributed
+to TASK 3 and to Advisor's own AGENTS.md edit, not claimed as this task's
+work. Implementation read directly and confirmed correct: live scan, gap
+never filled, graceful `int()` fallback to 0 for missing/non-numeric
+episode values.
+
+**Scope compliance:** MATCH. Backend only, no GUI files touched, no
+persisted counter/state introduced.
+
+**Notable behavior — direct contrast with TASK 3, same task family:**
+this is the corrected version of the same kind of multi-part task TASK 3
+under-delivered on. Explicit per-part status (now required by AGENTS.md)
+appears to have worked as the intended fix. Also notable: OC surfaced an
+un-asked-for design consequence (the grouping side effect) as a flag
+rather than a silent decision — the same good instinct TASK 1 showed with
+its `question`-tool escalation, applied here without needing a tool call
+since it's informational, not a fork requiring a decision before
+continuing.
+
+**Verdict:** CLEAN. Fourth data point. Immediately following a
+DISCREPANCY with a CLEAN result on the same task family, after a direct
+process fix (AGENTS.md), is itself informative — suggests the TASK 3 gap
+was a reporting-discipline problem that responded to an explicit rule
+change, not a deeper reliability issue. Continue verifying every task
+regardless.
