@@ -200,14 +200,15 @@ def _():
         pass
 
 
-@test("save: standalone preset requires source_name")
+@test("save: standalone preset does not require source_name")
 def _():
     path = temp_path()
-    try:
-        quick_presets.save_slot(2, "B", "standalone", path=path)
-        check("missing source name rejected", False)
-    except quick_presets.PresetError:
-        pass
+    quick_presets.save_slot(2, "B", "standalone", path=path)
+    presets = quick_presets.load_presets(path)
+    preset = presets[2]
+    check("saved", preset is not None)
+    check("identity standalone", preset["identity_type"] == "standalone")
+    check("no source name stored", preset["source_name"] == "")
 
 
 # ============================================================
@@ -237,7 +238,7 @@ def _():
     check("no language", "language" not in updates)
 
 
-@test("population: standalone preset populates source_name")
+@test("population: standalone preset never populates source_name")
 def _():
     preset = {
         "slot": 2, "display_name": "NHK", "identity_type": "standalone",
@@ -246,8 +247,9 @@ def _():
     }
     updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity", updates["identity_type"] == "standalone")
-    check("source name", updates["source_name"] == "nhk_news_article")
+    check("no source name", "source_name" not in updates)
     check("source type", updates["source_type"] == "article")
+    check("origin", updates["origin"] == "nhk_news")
 
 
 @test("population: unknown config values are dropped")

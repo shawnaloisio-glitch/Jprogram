@@ -123,8 +123,6 @@ def save_slot(slot, display_name, identity_type, collection_id="",
         raise PresetError("identity type must be collection or standalone")
     if identity_type == "collection" and not collection_id:
         raise PresetError("collection is required for a collection preset")
-    if identity_type == "standalone" and not source_name:
-        raise PresetError("source name is required for a standalone preset")
 
     presets = load_presets(path)
     presets[slot] = {
@@ -175,9 +173,10 @@ def preset_population(preset, collection_ids, source_types, origins,
         origins (list of str),
         collection_default_source_type (callable(str)->str|None, optional).
 
-    Output: dict with any of identity_type, collection_id, source_name,
-    source_type, origin keys that should be populated. Empty dict when
-    nothing applies.
+    Output: dict with any of identity_type, collection_id, source_type,
+    origin keys that should be populated. Empty dict when nothing applies.
+    A standalone preset never populates source_name: presets are reusable
+    templates (source_type/origin), not pinned to one specific source name.
     """
     if not isinstance(preset, dict):
         return {}
@@ -190,9 +189,6 @@ def preset_population(preset, collection_ids, source_types, origins,
     if identity_type == "collection":
         if preset.get("collection_id") in collection_ids:
             updates["collection_id"] = preset["collection_id"]
-    else:
-        if preset.get("source_name"):
-            updates["source_name"] = preset["source_name"]
 
     source_type = preset.get("source_type")
     if source_type not in source_types and identity_type == "collection":

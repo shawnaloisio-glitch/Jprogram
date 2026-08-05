@@ -125,17 +125,18 @@ def _():
         restore()
 
 
-@test("unsupported source types are hidden from the origin dropdown")
+@test("all configured origins are shown, no format-id filtering")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            # "subtitle" is a source format id, not a provenance origin; it
-            # must not be presented as an origin.
+            # origins.json is authoritative curated config. A value that
+            # coincidentally matches an import format id ("subtitle") is a
+            # legitimate provenance origin and must still be shown.
             values = app.origin_combo.cget("values")
             check("user_transcription shown", "user_transcription" in values)
-            check("format id hidden", "subtitle" not in values)
+            check("subtitle shown", "subtitle" in values)
         finally:
             root.destroy()
     finally:

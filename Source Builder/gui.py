@@ -54,16 +54,6 @@ def _processable_source_types(source_types):
     return [st for st in source_types
             if source_package.is_processable_source_type(st)]
 
-
-def _valid_origins(origins):
-    """Return origins that are real provenance values, not format ids.
-
-    Origins are not coupled to processing; this only avoids presenting
-    misleading values (e.g. a source format id used as an origin).
-    """
-    format_ids = set(import_material.SOURCE_FORMATS)
-    return [o for o in origins if o not in format_ids]
-
 # Solid filled button colours.
 COLOR_GREY = "#9e9e9e"       # disabled / unavailable
 COLOR_GREEN = "#2e7d32"      # action available
@@ -250,7 +240,7 @@ class SourceBuilderApp:
             self.collections = config_loader.load_collections()
             self.source_types = _processable_source_types(
                 config_loader.load_source_types())
-            self.origins = _valid_origins(config_loader.load_origins())
+            self.origins = config_loader.load_origins()
             self.config_error = None
         except config_loader.ConfigError as exc:
             self.config_error = str(exc)
@@ -1055,7 +1045,6 @@ class SourceBuilderApp:
         name_var = tk.StringVar()
         identity_var = tk.StringVar(value="collection")
         collection_var = tk.StringVar()
-        source_name_var = tk.StringVar()
         source_type_var = tk.StringVar()
         origin_var = tk.StringVar()
         feedback_var = tk.StringVar()
@@ -1088,7 +1077,7 @@ class SourceBuilderApp:
             side="left", padx=(8, 0))
         row += 1
 
-        # Editor-local identity + collection / source name fields.
+        # Editor-local identity + collection field.
         self._preset_editor_identity_var = identity_var
         collection_label = ttk.Label(body, text="Collection:")
         collection_label.grid(row=row, column=0, sticky="w")
@@ -1097,14 +1086,6 @@ class SourceBuilderApp:
             state="readonly", width=30)
         collection_combo.grid(row=row, column=1, sticky="w")
         self._preset_editor_collection = (collection_label, collection_combo)
-        row += 1
-
-        source_name_label = ttk.Label(body, text="Source Name:")
-        source_name_label.grid(row=row, column=0, sticky="w")
-        source_name_entry = ttk.Entry(body, textvariable=source_name_var,
-                                      width=30)
-        source_name_entry.grid(row=row, column=1, sticky="w")
-        self._preset_editor_source_name = (source_name_label, source_name_entry)
         row += 1
 
         ttk.Label(body, text="Source Type:").grid(row=row, column=0, sticky="w")
@@ -1133,8 +1114,8 @@ class SourceBuilderApp:
         ttk.Button(buttons, text="Save Preset",
                    command=lambda: self._save_preset_from_editor(
                        editor, slot_var, name_var, identity_var,
-                       collection_var, source_name_var, source_type_var,
-                       origin_var, feedback_var)).pack(
+                       collection_var, source_type_var, origin_var,
+                       feedback_var)).pack(
             side="left", padx=4)
 
         def load_current():
@@ -1148,14 +1129,12 @@ class SourceBuilderApp:
                 name_var.set("")
                 identity_var.set("collection")
                 collection_var.set("")
-                source_name_var.set("")
                 source_type_var.set("")
                 origin_var.set("")
             else:
                 name_var.set(preset.get("display_name", ""))
                 identity_var.set(preset.get("identity_type", "collection"))
                 collection_var.set(preset.get("collection_id", ""))
-                source_name_var.set(preset.get("source_name", ""))
                 source_type_var.set(preset.get("source_type", ""))
                 origin_var.set(preset.get("origin", ""))
             self._apply_preset_editor_mode()
@@ -1168,7 +1147,12 @@ class SourceBuilderApp:
         self._center_child_over_parent(editor)
 
     def _apply_preset_editor_mode(self):
-        """Show collection or standalone fields in the preset editor."""
+        """Show or hide the collection field in the preset editor.
+
+        The collection field is shown only for collection presets. There is
+        no source_name field in this editor: presets are reusable templates
+        (source_type/origin), never pinned to a specific source name.
+        """
         if not hasattr(self, "_preset_editor_collection"):
             return
         identity_var = getattr(self, "_preset_editor_identity_var", None)
@@ -1176,21 +1160,16 @@ class SourceBuilderApp:
         if identity_var is not None and identity_var.get() == "standalone":
             is_collection = False
         collection_label, collection_combo = self._preset_editor_collection
-        source_name_label, source_name_entry = self._preset_editor_source_name
         if is_collection:
             collection_label.grid()
             collection_combo.grid()
-            source_name_label.grid_remove()
-            source_name_entry.grid_remove()
         else:
             collection_label.grid_remove()
             collection_combo.grid_remove()
-            source_name_label.grid()
-            source_name_entry.grid()
 
     def _save_preset_from_editor(self, editor, slot_var, name_var,
-                                 identity_var, collection_var, source_name_var,
-                                 source_type_var, origin_var, feedback_var):
+                                 identity_var, collection_var, source_type_var,
+                                 origin_var, feedback_var):
         """Validate and save the preset; refresh the panel on success."""
         try:
             slot = int(slot_var.get())
@@ -1201,7 +1180,6 @@ class SourceBuilderApp:
             quick_presets.save_slot(
                 slot, name_var.get(), identity_var.get(),
                 collection_id=collection_var.get(),
-                source_name=source_name_var.get(),
                 source_type=source_type_var.get(),
                 origin=origin_var.get())
         except quick_presets.PresetError as exc:

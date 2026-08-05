@@ -201,7 +201,7 @@ def _():
         root, app = make_app(restore)
         try:
             quick_presets.save_slot(
-                3, "My Preset", "standalone", source_name="sample",
+                3, "My Preset", "standalone",
                 source_type="article", origin="nhk_news")
             app._refresh_presets()
             check("slot 3 relabelled",
@@ -212,20 +212,23 @@ def _():
         restore()
 
 
-@test("standalone preset populates identity and source name")
+@test("standalone preset populates identity and metadata, never source_name")
 def _():
     restore = sandbox()
     try:
         quick_presets.save_slot(
-            4, "NHK Article", "standalone", source_name="nhk_weather",
-            source_type="article", origin="nhk_news")
+            4, "NHK Article", "standalone",
+            source_type="podcast_transcript", origin="nhk_news")
         root, app = make_app(restore)
         try:
             app._on_preset_click(4)
             check("identity standalone",
                   app.identity_var.get() == "standalone")
-            check("source name", app.source_name_var.get() == "nhk_weather")
-            check("source type", app.source_type_var.get() == "article")
+            check("source name not populated",
+                  app.source_name_var.get() == "")
+            check("source type",
+                  app.source_type_var.get() == "podcast_transcript")
+            check("origin", app.origin_var.get() == "nhk_news")
         finally:
             root.destroy()
     finally:
