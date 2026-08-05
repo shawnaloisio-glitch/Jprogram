@@ -261,17 +261,103 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-Current checkpoint (updated 2026-08-05): Pipeline, Source Package, Handoff,
-Application Shell (Sources / Processing / Analysis), and Analysis surface
-complete and tested. Full repo-wide test audit done (§10 step 6) — git
-migration introduced no damage. Chain-of-custody traced end-to-end
-(§10/WORKING_LIST.md) — identity checks solid throughout, hash verification
-computed but not yet enforced downstream (queued). **Real-data validation is
-no longer just "next" — done once, successfully**: `QC Test Harness/` ran a
+## 14. Session Wrap-Up (2026-08-05) — First Advisor-CC Session, Complete
+
+The §10 checklist above is **fully complete** — all 6 steps done, verified
+against raw evidence throughout, not self-report. This session went well
+beyond the checklist into real feature work; this section is the actual
+"start here" for whoever picks this up next.
+
+### Current phase
+
+Past initial setup/audit, now doing real implementation work through the
+Advisor→Coder loop with active verification. 4 Coder tasks completed and
+independently verified (raw `git status`/`git diff`, direct test re-runs,
+not self-report) — see `Audits/OC_Reliability_Log.md` for the full,
+evidence-based history: TASK 1 (test-isolation fix) clean, TASK 2
+(read-only audit) clean, TASK 3 (sequencing field, part of a 3-part
+assignment) **a genuine discrepancy** — only 1 of 3 parts delivered, not
+flagged — TASK 4 (the remaining 2 parts, after `AGENTS.md` was
+strengthened to require explicit per-part reporting) clean again. Don't
+read the TASK 3 discrepancy as "OC is unreliable" — read the TASK
+1→2→3→4 sequence as the actual evidence: verification caught a real gap,
+a process fix was made, and the very next task in the same family came
+back clean. Keep verifying every task regardless — that pattern is early,
+not proven.
+
+### Last several decisions and why
+
+- **Non-episodic collection sequencing backend is fully implemented**
+  (`sequencing` field, `next_auto_sequence()`, the `processing_tab.py`
+  sort-key fix) — because Owner has real ~800-item non-episodic
+  collections (CI Japanese) that the original episode=0 proposal would
+  have collided on (confirmed via code before any fix was designed).
+  GUI wiring is the explicit next step, not yet started.
+- **Section markers confirmed as legacy, not a gap** — because the old
+  batch-acquisition workflow that motivated them (paste ~20 episodes into
+  one file for cheaper bulk chatbot processing) no longer exists under
+  the current one-source-per-file model. Avoided building real
+  marker-to-boundary logic for something that will never receive input
+  again.
+- **Qwen Code authentication is on indefinite hold** — Owner's explicit
+  call, not a technical blocker; do not propose revisiting unprompted
+  (see §10 step 3, and memory).
+- **A recurring architectural pattern was named**: identity/config
+  getting coupled to raw file structure instead of the token/source_id
+  abstraction (3 known instances — the historical "con_teppei" ghost tag,
+  the episode=0 collision risk, and the Metadata Editor's still-live
+  `PROCESSING_PROFILES` validation gap that let `cij_transcript` get
+  configured with no working cleaner behind it). Worth checking for this
+  shape of mistake whenever raw file content/structure seems like it
+  should inform identity going forward.
+
+### Open risks / unresolved questions
+
+All granular detail lives in `WORKING_LIST.md` (kept continuously updated
+and committed throughout this session, not saved for one big handoff) —
+this is a pointer, not a duplicate. Headline items:
+
+- **GUI wiring for the sequencing feature** — Metadata Editor combobox,
+  `gui.py` conditional field visibility, save-flow branch. Next natural
+  Coder task for this thread.
+- **GUI terminology fix** — the standalone/series/site-collection
+  three-way split doesn't exist anywhere yet (today's radio buttons are
+  only a two-way collection/standalone split); scoped but not built.
+- **Metadata Editor validation gap** — `validate_collection()`/
+  `validate_source_type()` never cross-check against `PROCESSING_PROFILES`,
+  confirmed still live (real data: `cijapanese` collection is currently
+  configured with the non-processable `cij_transcript`). Related to but
+  separate from the sequencing field work.
+- **Hash verification computed but never enforced downstream** — a real
+  chain-of-custody gap (sha256/output_hash recorded but never read back
+  and checked), scoped as two small deterministic fixes, not yet actioned.
+- **Live-testing GUI bug backlog** — cancel button, status indicator,
+  redundant Analysis button, embedded-tabs restructure, import defaults,
+  and others — see `WORKING_LIST.md`'s "Live testing issues" section.
+- **`sentence_index` "no gaps" not validated** — small, deterministic,
+  scoped, not yet actioned.
+- **API key structure/utility design** — not started.
+
+### Next immediate task
+
+Owner's call on sequencing — either continue that thread (GUI wiring,
+now that the backend is fully done and verified) or pick something else
+from `WORKING_LIST.md`. No hard dependency forcing one over the other.
+
+### Real-data validation status
+
+No longer just "next" — done once, successfully. `QC Test Harness/` ran a
 hand-authored source through the full real pipeline including a real
 DeepSeek API call, and every ground-truth check passed (see
-WORKING_LIST.md's Resolved section). This confirms the pipeline works
-end-to-end in practice, not just in code review, though it's one synthetic
-test, not broad real-world coverage yet. Next: address the live-testing GUI
-bug backlog (WORKING_LIST.md), the birth-certificate collision fix for
-non-episodic collections, packaging, external QC review.
+`WORKING_LIST.md`'s Resolved section, and `QC Test Harness/README.md` for
+reuse instructions). Confirms the pipeline works end-to-end in practice,
+not just in code review — though it's one synthetic test, not broad
+real-world coverage yet.
+
+### Tooling built this session, available going forward
+
+- `QC Test Harness/` — reusable known-ground-truth pipeline test.
+- `oc_session_dump.py` — reads OC's raw session data directly; use this,
+  don't hand-roll the query again (see `OC_Session_Access_Procedure.md`).
+- `Audits/OC_Reliability_Log.md` — the evidence-based OC track record.
+- `WORKING_LIST.md` — the living queue; check here first every session.
