@@ -1,0 +1,316 @@
+Full repo test run - Wed Aug  5 19:39:39 SEAST 2026
+
+=== /c/Jprogram/Analysis/tests/test_chunk_analyzer.py ===
+  PASS  corpus records unchanged
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_comparison_analyzer.py ===
+  PASS  at least two sources required
+
+Tests: 11  Passed: 11  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_corpus_loader.py ===
+  PASS  records are not modified
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_distribution_analyzer.py ===
+  PASS  corpus records unchanged
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_exposure_analyzer.py ===
+  PASS  corpus records unchanged
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_expression_analyzer.py ===
+  PASS  corpus records unchanged
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_frequency_analyzer.py ===
+  PASS  no corpus records modified
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_output_writer.py ===
+  PASS  invalid serialization raises clear error
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Analysis/tests/test_sentence_metrics.py ===
+  PASS  corpus records unchanged
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Common/tests/test_cleaning_utils.py ===
+  PASS  only standard library imports
+
+Tests: 26  Passed: 26  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_corpus_builder.py ===
+  PASS  25. job_text_from_user_content strips the metadata header
+
+Tests: 28  Passed: 28  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_deepseek_client.py ===
+  PASS  15c. api key: error when env absent and key file missing
+
+Tests: 28  Passed: 28  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_job_builder.py ===
+  PASS  13. run fails closed when cleaned artifact does not match output_hash
+
+Tests: 18  Passed: 18  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_parser_contract.py ===
+  PASS  response_validator tests remain unchanged
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_parser_normalizer.py ===
+  PASS  canonicalize is a new dict (does not mutate input)
+
+Tests: 12  Passed: 12  Failed: 0
+
+=== /c/Jprogram/Data Processor/tests/test_request_builder.py ===
+  PASS  16. request top-level metadata fields unchanged
+
+Tests: 21  Passed: 21  Failed: 0
+
+=== /c/Jprogram/Integration/tests/test_intake_cleaner_boundary.py ===
+  PASS  7b. transcript cleaner CLI invocation
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager.py ===
+  PASS  CLI: missing --source rejected
+
+Tests: 15  Passed: 15  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_api.py ===
+  PASS  9. structured results are JSON-serializable (GUI-friendly)
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_api_docs.py ===
+  PASS  documented stages match STAGE_NAMES
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_controls.py ===
+  PASS  6. dry-run CLI produces no writes
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_integration.py ===
+  PASS  9. manager writes only its own logs
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_launcher.py ===
+  PASS  10c. manager log written only to manager folder
+
+Tests: 15  Passed: 15  Failed: 0
+
+=== /c/Jprogram/Production Manager/tests/test_production_manager_pipeline.py ===
+  PASS  12. corrupted artifacts do not crash the pipeline
+
+Tests: 13  Passed: 13  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_config_loader.py ===
+  PASS  load_collection_ids reflects collections in order
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_controller.py ===
+  PASS  next_auto_sequence: ignores non-episode files
+
+Tests: 30  Passed: 30  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_analysis.py ===
+  PASS  open reports action exists and opens the outputs folder
+
+Tests: 5  Passed: 5  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_auto_sequencing.py ===
+  PASS  episodic collection keeps a manual episode through save
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_handoff.py ===
+  PASS  existing save/create-next behavior unchanged
+
+Tests: 3  Passed: 3  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_import.py ===
+  PASS  import does not start processing
+
+Tests: 6  Passed: 6  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_load_file.py ===
+  PASS  picker: cancel unchanged (no load, no last-file change)
+
+Tests: 23  Passed: 23  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_metadata_editor.py ===
+  PASS  edit dialog pre-fills and saves a legacy non-processable default
+
+Tests: 21  Passed: 21  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_presets.py ===
+  PASS  centred position uses the parent's on-screen location
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_processable.py ===
+  PASS  import material still works
+
+Tests: 5  Passed: 5  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_processing.py ===
+  PASS  cancel click sets the event while busy and is a no-op when idle
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_recent_sources.py ===
+  PASS  recent list enforces max 10 (helper level)
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_settings.py ===
+  PASS  persisted keys constant matches documented scope
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_gui_visuals.py ===
+  PASS  transition: INCOMPLETE -> READY -> SAVED -> INCOMPLETE
+
+Tests: 15  Passed: 15  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_handoff.py ===
+  PASS  source type with no processing profile is rejected cleanly
+
+Tests: 11  Passed: 11  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_import_material.py ===
+  PASS  SOURCE_FORMATS contains the five required formats
+
+Tests: 11  Passed: 11  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_metadata_editor.py ===
+  PASS  preset_references handles None
+
+Tests: 49  Passed: 49  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_processing_tab.py ===
+  PASS  completed_corpora lists only packages with a corpus JSONL
+
+Tests: 19  Passed: 19  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_quick_presets.py ===
+  PASS  default_source_type_for_collection resolves via config
+
+Tests: 21  Passed: 21  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_ready_state.py ===
+  PASS  open folder path: standalone
+
+Tests: 26  Passed: 26  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_recent_sources.py ===
+  PASS  packages without created_at sort after dated ones
+
+Tests: 5  Passed: 5  Failed: 0
+
+=== /c/Jprogram/Source Builder/tests/test_source_builder_source_package.py ===
+  PASS  derive_source_id uses frozen rules
+
+Tests: 11  Passed: 11  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_cleaning_job.py ===
+  PASS  registry and cleaning_job are independent
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_cleaning_result.py ===
+  PASS  cleaning_result writer is independent of other writers
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_duplicate_check.py ===
+  PASS  module boundary (no forbidden imports)
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_hashing.py ===
+  PASS  missing file raises
+
+Tests: 5  Passed: 5  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_paths.py ===
+  PASS  product constants remain under PROJECT_ROOT
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_project_config.py ===
+  PASS  expression extraction capability per model
+
+Tests: 24  Passed: 24  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_registry.py ===
+  PASS  registry module boundary (no forbidden imports)
+
+Tests: 6  Passed: 6  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_resolver.py ===
+  PASS  resolver module boundary (no forbidden imports)
+
+Tests: 14  Passed: 14  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_schemas.py ===
+  PASS  deterministic validation result
+
+Tests: 10  Passed: 10  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_source_id.py ===
+  PASS  deterministic output
+
+Tests: 6  Passed: 6  Failed: 0
+
+=== /c/Jprogram/Source Intake/tests/test_source_intake.py ===
+  PASS  boundary imports: no downstream modules imported
+
+Tests: 7  Passed: 7  Failed: 0
+
+=== /c/Jprogram/Subtitle Cleaner/tests/test_clean_subtitles.py ===
+  PASS  19. raw content changed after registry hash fails closed
+
+Tests: 19  Passed: 19  Failed: 0
+
+=== /c/Jprogram/Subtitle Importer/tests/test_subtitle_importer_cleaner.py ===
+  PASS  clean_file: missing file raises CleanError
+
+Tests: 16  Passed: 16  Failed: 0
+
+=== /c/Jprogram/Templates/tests/test_source_template.py ===
+  PASS  spec lists the template files
+
+Tests: 8  Passed: 8  Failed: 0
+
+=== /c/Jprogram/Transcript Cleaner/tests/test_clean_transcript.py ===
+  PASS  20. raw content changed after registry hash fails closed
+
+Tests: 21  Passed: 21  Failed: 0
+
+=== /c/Jprogram/tests/test_app_shell.py ===
+  PASS  shell does not move or delete any existing launch path
+
+Tests: 9  Passed: 9  Failed: 0
+
+=== TOTALS ===
+Files run: 62, files with failures/crashes: 0
+Total tests passed: 800, total failed: 0
+Done.

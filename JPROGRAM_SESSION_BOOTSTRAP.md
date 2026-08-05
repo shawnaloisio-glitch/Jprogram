@@ -128,7 +128,7 @@ Phase 3 (coordinator + duplicate detection):
 - `resolver.py`
 - configuration integration
 
-**Tests:** Source Intake suite — **106 tests passing**.
+**Tests:** Source Intake suite — **109 tests passing** (corrected 2026-08-05; see §10 step 6 and the 2026-08-05 deep audit in `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` — the "106" figure was stale and never propagated here even after the correction was first found).
 
 **Current GUI path note:** The Application Shell / Source Builder creates the
 Source Registry entry and Cleaning Job through `Source Builder\handoff.py`,
