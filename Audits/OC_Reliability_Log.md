@@ -89,3 +89,49 @@ over an open question instead of surfacing it).
 mismatch is tracked there as a known, non-blocking issue, not as an OC
 reliability concern — OC correctly identified and surfaced it rather than
 causing it).
+
+### TASK 2 — Read-only audit: source_id/episode and section-field assumptions — 2026-08-05
+
+**Scope given:** Pure investigation, zero implementation. Map every place
+in the codebase (a) source_id/episode-sequence structure is
+parsed/assumed/predicted, and (b) the canonical corpus `section` field is
+read, written, or asserted. Explicit boundary: no files modified, no
+design recommendations, no fixes proposed — findings only, with
+ambiguous cases flagged rather than silently excluded. Continued in the
+same OpenCode session as TASK 1, not a fresh session.
+
+**OC's self-reported result:** Files changed: none. Detailed findings
+report covering both parts (see `WORKING_LIST.md`'s "Recurring pattern"
+section for the substantive content), each finding cited with file:line.
+
+**Independent verification method:** read the raw session transcript
+directly from the OpenCode desktop SQLite database (same method as TASK
+1), reviewed the actual tool-call sequence (35 messages, entirely
+grep/read/bash — no edit or write tool calls anywhere in the
+transcript), then checked `git status --short` against the "zero files
+changed" claim.
+
+**Verification result:** MATCH. `git status --short` showed only
+`WORKING_LIST.md` modified — from Advisor's own prior edits earlier in
+the session, not from OC. No edit/write tool call appears anywhere in
+OC's raw transcript. Spot-checked several cited findings directly
+(e.g. `format_sequence`'s zero-padding behavior, `next_source_state`'s
+`+1` logic) — all confirmed accurate against the actual code.
+
+**Scope compliance:** MATCH. Zero files touched, no design
+recommendations included, ambiguous items (e.g. the `job_number`
+filename-parsing case in Part A) correctly flagged as ambiguous rather
+than silently omitted or overstated.
+
+**Notable behavior:** thorough, methodical investigation — over 30 tool
+calls across grep, targeted reads, and both bash and PowerShell search
+commands, explicitly excluding tests/Audits/Archive directories where
+appropriate to focus on production code, then separately re-including
+tests for the parts of the task that explicitly asked about test
+coverage (the `section` field's hardcoded test fixtures). Correctly
+distinguished lookalike findings from real ones (e.g. `corpus_builder.py`
+parsing a job_number from a request filename vs. parsing an episode from
+a source_id — same mechanism, different and unrelated payload).
+
+**Verdict:** CLEAN. Second data point, same as the first — self-report
+matched raw evidence exactly, boundary held, no scope creep.
