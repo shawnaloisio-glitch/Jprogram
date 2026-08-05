@@ -36,6 +36,7 @@ sys.path.append(str(PROJECT_ROOT / "Data Processor"))
 
 import schemas
 import job_builder_result
+import hashing
 from paths import CLEANING_RESULTS, JOBS, JOB_RESULTS, LOG_JOB_BUILDER
 from project_config import (
     JOB_NUMBER_DIGITS,
@@ -82,8 +83,9 @@ def cleaning_result_errors(result):
     """
     Confirm the Cleaning Result is complete and usable.
 
-    Checks: success is true, cleaned_artifact is present, and the
-    cleaned artifact exists on disk.
+    Checks: success is true, cleaned_artifact is present, the cleaned
+    artifact exists on disk, and the artifact's sha256 matches the
+    recorded output_hash.
 
     Input: result (dict).
     Output: list of error strings (empty when usable).
@@ -98,6 +100,21 @@ def cleaning_result_errors(result):
         artifact = Path(cleaned_artifact)
         if not artifact.is_file():
             errors.append(f"cleaned artifact not found: {artifact}")
+        else:
+            output_hash = result.get("output_hash")
+            if not isinstance(output_hash, str) or not output_hash:
+                errors.append("Cleaning Result has no output_hash")
+            else:
+                try:
+                    fresh_hash = hashing.sha256_file(artifact)
+                except OSError as exc:
+                    errors.append(f"cannot hash cleaned artifact: {exc}")
+                else:
+                    if fresh_hash != output_hash:
+                        errors.append(
+                            f"cleaned artifact sha256 does not match "
+                            f"output_hash: {fresh_hash} != {output_hash}"
+                        )
     return errors
 
 

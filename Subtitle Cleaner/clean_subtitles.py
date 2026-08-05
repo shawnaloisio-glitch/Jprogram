@@ -41,13 +41,14 @@ sys.path.append(str(PROJECT_ROOT / "Common"))
 
 import schemas
 import cleaning_result
+import hashing
 from cleaning_utils import (
     strip_bom,
     trim_lines,
     collapse_blank_lines,
     join_clean_lines,
 )
-from paths import CLEANING_RESULTS, LOG_SUBTITLE_CLEANER
+from paths import CLEANING_RESULTS, LOG_SUBTITLE_CLEANER, SOURCE_REGISTRY
 from project_config import (
     CLEANER_VERSIONS,
     LOG_DATE_FORMAT,
@@ -285,6 +286,34 @@ def run(job_path):
     if not raw_path.is_file():
         return fail(job_path, source_id,
                     [f"raw file not found: {raw_path}"])
+
+    registry_path = SOURCE_REGISTRY / f"{source_id}.json"
+    if not registry_path.is_file():
+        return fail(job_path, source_id,
+                    [f"Source Registry entry not found: {registry_path}"])
+    try:
+        registry_entry = json.loads(
+            registry_path.read_text(encoding="utf-8-sig")
+        )
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+        return fail(job_path, source_id,
+                    [f"cannot read Source Registry entry: {exc}"])
+    if not isinstance(registry_entry, dict):
+        return fail(job_path, source_id,
+                    ["Source Registry entry must be a JSON object"])
+    registered_sha256 = registry_entry.get("sha256")
+    if not isinstance(registered_sha256, str) or not registered_sha256:
+        return fail(job_path, source_id,
+                    ["Source Registry entry missing sha256"])
+    try:
+        fresh_sha256 = hashing.sha256_file(raw_path)
+    except OSError as exc:
+        return fail(job_path, source_id,
+                    [f"cannot hash raw file: {exc}"])
+    if fresh_sha256 != registered_sha256:
+        return fail(job_path, source_id,
+                    ["raw file sha256 does not match Source Registry: "
+                     f"{fresh_sha256} != {registered_sha256}"])
 
     try:
         text = raw_path.read_text(encoding="utf-8")

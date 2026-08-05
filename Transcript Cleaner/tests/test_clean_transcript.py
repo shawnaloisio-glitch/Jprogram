@@ -21,6 +21,7 @@ sys.path.insert(0, str(SOURCE_INTAKE))
 
 import clean_transcript as ct
 import schemas
+import hashing
 
 
 # ============================================================
@@ -57,9 +58,43 @@ def write_job(tmp, job):
     return job_file
 
 
+def write_registry_entry(registry_dir, job, raw_path):
+    """
+    Write a matching Source Registry fixture entry for a job.
+
+    Computes the sha256 of the raw file the test already wrote, so the
+    registry hash always matches the raw content unless a test tampers
+    with one of them afterwards.
+    """
+    registry_dir = pathlib.Path(registry_dir)
+    registry_dir.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "schema_version": "1",
+        "source_id": job["source_id"],
+        "original_filename": pathlib.Path(raw_path).name,
+        "sha256": hashing.sha256_file(raw_path),
+        "source_type": job.get("source_type", "podcast_transcript"),
+        "format": pathlib.Path(raw_path).suffix.lstrip("."),
+        "language": "ja",
+        "cleaning_profile": job.get("cleaning_profile", "transcript_standard_v1"),
+        "cleaner_version": job.get("cleaner_version", ct.PROGRAM_VERSION),
+    }
+    registry_file = registry_dir / f"{job['source_id']}.json"
+    registry_file.write_text(
+        json.dumps(entry, ensure_ascii=False), encoding="utf-8"
+    )
+    return registry_file
+
+
 def run_cleaner(job_file, results_dir, logs_dir):
     ct.CLEANING_RESULTS = results_dir
     ct.LOG_TRANSCRIPT_CLEANER = logs_dir
+    job = json.loads(job_file.read_text(encoding="utf-8"))
+    registry_dir = job_file.parent / "Source Registry"
+    ct.SOURCE_REGISTRY = registry_dir
+    raw_path = pathlib.Path(job["raw_path"])
+    if raw_path.is_file():
+        write_registry_entry(registry_dir, job, raw_path)
     return ct.run(job_file)
 
 
@@ -396,6 +431,135 @@ def _():
                       "import corpus", "import analysis",
                       "clean_subtitles"):
         check(f"no {forbidden!r}", forbidden not in source)
+
+
+@test("17. missing Source Registry entry fails closed")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    results = tmp / "results"
+    logs = tmp / "logs"
+    raw = tmp / "raw.txt"
+    out = tmp / "out" / "pod_conteppei_ep051.clean.txt"
+    raw.write_text(TRANSCRIPT, encoding="utf-8")
+
+    job = valid_job(raw, out)
+    job_file = write_job(tmp, job)
+
+    ct.CLEANING_RESULTS = results
+    ct.LOG_TRANSCRIPT_CLEANER = logs
+    ct.SOURCE_REGISTRY = tmp / "Source Registry"
+
+    code = ct.run(job_file)
+    check("exit code non-zero", code != 0)
+    check("no artifact", not out.exists())
+
+    result_file = results / "pod_conteppei_ep051.cleaning_result.json"
+    check("failure result exists", result_file.is_file())
+    result = json.loads(result_file.read_text(encoding="utf-8"))
+    check("success false", result["success"] is False)
+    check("registry error reported",
+          any("Source Registry" in e for e in result["errors"]))
+
+
+@test("18. invalid Source Registry JSON fails closed")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    results = tmp / "results"
+    logs = tmp / "logs"
+    raw = tmp / "raw.txt"
+    out = tmp / "out" / "pod_conteppei_ep051.clean.txt"
+    raw.write_text(TRANSCRIPT, encoding="utf-8")
+
+    job = valid_job(raw, out)
+    job_file = write_job(tmp, job)
+
+    ct.CLEANING_RESULTS = results
+    ct.LOG_TRANSCRIPT_CLEANER = logs
+    registry_dir = tmp / "Source Registry"
+    registry_dir.mkdir(parents=True, exist_ok=True)
+    ct.SOURCE_REGISTRY = registry_dir
+    (registry_dir / "pod_conteppei_ep051.json").write_text(
+        "not json", encoding="utf-8"
+    )
+
+    code = ct.run(job_file)
+    check("exit code non-zero", code != 0)
+    check("no artifact", not out.exists())
+
+    result = json.loads(
+        (results / "pod_conteppei_ep051.cleaning_result.json")
+        .read_text(encoding="utf-8")
+    )
+    check("success false", result["success"] is False)
+    check("registry error reported",
+          any("Source Registry" in e for e in result["errors"]))
+
+
+@test("19. Source Registry entry missing sha256 fails closed")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    results = tmp / "results"
+    logs = tmp / "logs"
+    raw = tmp / "raw.txt"
+    out = tmp / "out" / "pod_conteppei_ep051.clean.txt"
+    raw.write_text(TRANSCRIPT, encoding="utf-8")
+
+    job = valid_job(raw, out)
+    job_file = write_job(tmp, job)
+
+    ct.CLEANING_RESULTS = results
+    ct.LOG_TRANSCRIPT_CLEANER = logs
+    registry_dir = tmp / "Source Registry"
+    registry_dir.mkdir(parents=True, exist_ok=True)
+    ct.SOURCE_REGISTRY = registry_dir
+    (registry_dir / "pod_conteppei_ep051.json").write_text(
+        json.dumps({"source_id": "pod_conteppei_ep051"}),
+        encoding="utf-8",
+    )
+
+    code = ct.run(job_file)
+    check("exit code non-zero", code != 0)
+    check("no artifact", not out.exists())
+
+    result = json.loads(
+        (results / "pod_conteppei_ep051.cleaning_result.json")
+        .read_text(encoding="utf-8")
+    )
+    check("success false", result["success"] is False)
+    check("sha256 missing reported",
+          any("sha256" in e for e in result["errors"]))
+
+
+@test("20. raw content changed after registry hash fails closed")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    results = tmp / "results"
+    logs = tmp / "logs"
+    raw = tmp / "raw.txt"
+    out = tmp / "out" / "pod_conteppei_ep051.clean.txt"
+    raw.write_text(TRANSCRIPT, encoding="utf-8")
+
+    job = valid_job(raw, out)
+    job_file = write_job(tmp, job)
+
+    ct.CLEANING_RESULTS = results
+    ct.LOG_TRANSCRIPT_CLEANER = logs
+    registry_dir = tmp / "Source Registry"
+    ct.SOURCE_REGISTRY = registry_dir
+    write_registry_entry(registry_dir, job, raw)
+    raw.write_text(TRANSCRIPT + "tampered\n", encoding="utf-8")
+
+    code = ct.run(job_file)
+    check("exit code non-zero", code != 0)
+    check("no artifact", not out.exists())
+
+    result = json.loads(
+        (results / "pod_conteppei_ep051.cleaning_result.json")
+        .read_text(encoding="utf-8")
+    )
+    check("success false", result["success"] is False)
+    check("hash mismatch reported",
+          any("sha256" in e and "match" in e for e in result["errors"]))
 
 
 def main():

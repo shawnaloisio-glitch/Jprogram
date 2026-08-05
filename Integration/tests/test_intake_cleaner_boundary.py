@@ -82,8 +82,10 @@ def fixture():
         resolver.CLEANED_ARCHIVE,
         cs.CLEANING_RESULTS,
         cs.LOG_SUBTITLE_CLEANER,
+        cs.SOURCE_REGISTRY,
         ct.CLEANING_RESULTS,
         ct.LOG_TRANSCRIPT_CLEANER,
+        ct.SOURCE_REGISTRY,
     )
 
     si.SOURCE_REGISTRY = registry_dir
@@ -97,8 +99,10 @@ def fixture():
     resolver.CLEANED_ARCHIVE = archive
     cs.CLEANING_RESULTS = results_dir
     cs.LOG_SUBTITLE_CLEANER = logs_sub
+    cs.SOURCE_REGISTRY = registry_dir
     ct.CLEANING_RESULTS = results_dir
     ct.LOG_TRANSCRIPT_CLEANER = logs_trans
+    ct.SOURCE_REGISTRY = registry_dir
 
     return root, saved
 
@@ -107,8 +111,8 @@ def restore(saved):
     (si.SOURCE_REGISTRY, si.CLEANING_JOBS,
      si.LOG_SOURCE_INTAKE, resolver.SOURCE_TYPE_RAW_DIR,
      resolver.CLEANED_ARCHIVE, cs.CLEANING_RESULTS,
-     cs.LOG_SUBTITLE_CLEANER, ct.CLEANING_RESULTS,
-     ct.LOG_TRANSCRIPT_CLEANER) = saved
+     cs.LOG_SUBTITLE_CLEANER, cs.SOURCE_REGISTRY, ct.CLEANING_RESULTS,
+     ct.LOG_TRANSCRIPT_CLEANER, ct.SOURCE_REGISTRY) = saved
 
 
 TESTS = []
@@ -159,16 +163,16 @@ def load_json(path):
 
 
 def cli_command(cleaner_dir, module_name, results_dir, log_attr, logs_dir,
-                job_path):
+                registry_dir, job_path):
     """
     Build a subprocess command that runs the cleaner's real main() CLI
     entry point with --job while keeping output directories isolated.
 
-    The cleaner module reads CLEANING_RESULTS and its log folder from
-    paths at import time; a thin wrapper patches those module globals to
-    the sandbox before calling the real main(argv). This is a genuine
-    CLI invocation of the program's entry point with real argument
-    parsing and exit codes.
+    The cleaner module reads CLEANING_RESULTS, its log folder, and the
+    Source Registry from paths at import time; a thin wrapper patches
+    those module globals to the sandbox before calling the real
+    main(argv). This is a genuine CLI invocation of the program's entry
+    point with real argument parsing and exit codes.
     """
     wrapper = pathlib.Path(tempfile.mkdtemp()) / "cli_runner.py"
     wrapper.write_text(
@@ -178,6 +182,7 @@ def cli_command(cleaner_dir, module_name, results_dir, log_attr, logs_dir,
         f"import {module_name} as cleaner\n"
         f"cleaner.CLEANING_RESULTS = pathlib.Path({str(results_dir)!r})\n"
         f"cleaner.{log_attr} = pathlib.Path({str(logs_dir)!r})\n"
+        f"cleaner.SOURCE_REGISTRY = pathlib.Path({str(registry_dir)!r})\n"
         "sys.exit(cleaner.main(sys.argv[1:]))\n",
         encoding="utf-8",
     )
@@ -552,7 +557,8 @@ def _():
         cmd = cli_command(
             SUBTITLE_CLEANER, "clean_subtitles",
             root / "Cleaning Results", "LOG_SUBTITLE_CLEANER",
-            root / "Logs" / "Subtitle Cleaner", job_path,
+            root / "Logs" / "Subtitle Cleaner",
+            root / "Source Registry", job_path,
         )
         completed = subprocess.run(
             cmd, capture_output=True, text=True,
@@ -588,7 +594,8 @@ def _():
         cmd = cli_command(
             TRANSCRIPT_CLEANER, "clean_transcript",
             root / "Cleaning Results", "LOG_TRANSCRIPT_CLEANER",
-            root / "Logs" / "Transcript Cleaner", job_path,
+            root / "Logs" / "Transcript Cleaner",
+            root / "Source Registry", job_path,
         )
         completed = subprocess.run(
             cmd, capture_output=True, text=True,

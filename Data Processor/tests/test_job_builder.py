@@ -30,6 +30,8 @@ jb = job_builder
 
 import schemas
 
+import hashing
+
 
 # ============================================================
 # Fixtures
@@ -39,7 +41,7 @@ CLEAN_TEXT = "こんにちは　世界\n\nこれはテストです。\n"
 
 
 def valid_result(source_id, cleaned_path, **overrides):
-    return {
+    result = {
         "schema_version": "1",
         "source_id": source_id,
         "success": True,
@@ -47,6 +49,10 @@ def valid_result(source_id, cleaned_path, **overrides):
         "statistics": {},
         "errors": [],
     }
+    if pathlib.Path(cleaned_path).is_file():
+        result["output_hash"] = hashing.sha256_file(cleaned_path)
+    result.update(overrides)
+    return result
 
 
 def write_cleaning_result(results_dir, result):
@@ -430,6 +436,77 @@ def _():
         errors=[],
     )
     check("invalid rejected", jbr.validate_result(bad) != [])
+
+
+@test("10. cleaning_result_errors catches output_hash mismatch")
+def _():
+    root, results, jobs, jb_results, archive, saved = setup()
+    try:
+        cleaned = archive / "pod_conteppei_ep051.clean.txt"
+        cleaned.write_text(CLEAN_TEXT, encoding="utf-8")
+        result = valid_result("pod_conteppei_ep051", cleaned)
+        cleaned.write_text(CLEAN_TEXT + "tampered\n", encoding="utf-8")
+
+        errors = jb.cleaning_result_errors(result)
+        check("hash mismatch error returned",
+              any("output_hash" in e and "match" in e for e in errors))
+    finally:
+        restore(saved)
+
+
+@test("11. cleaning_result_errors passes when output_hash matches")
+def _():
+    root, results, jobs, jb_results, archive, saved = setup()
+    try:
+        cleaned = archive / "pod_conteppei_ep051.clean.txt"
+        cleaned.write_text(CLEAN_TEXT, encoding="utf-8")
+        result = valid_result("pod_conteppei_ep051", cleaned)
+
+        errors = jb.cleaning_result_errors(result)
+        check("no errors", errors == [])
+    finally:
+        restore(saved)
+
+
+@test("12. cleaning_result_errors catches missing output_hash")
+def _():
+    root, results, jobs, jb_results, archive, saved = setup()
+    try:
+        cleaned = archive / "pod_conteppei_ep051.clean.txt"
+        cleaned.write_text(CLEAN_TEXT, encoding="utf-8")
+        result = valid_result("pod_conteppei_ep051", cleaned)
+        del result["output_hash"]
+
+        errors = jb.cleaning_result_errors(result)
+        check("missing output_hash error",
+              any("output_hash" in e for e in errors))
+    finally:
+        restore(saved)
+
+
+@test("13. run fails closed when cleaned artifact does not match output_hash")
+def _():
+    root, results, jobs, jb_results, archive, saved = setup()
+    try:
+        cleaned = archive / "pod_conteppei_ep051.clean.txt"
+        cleaned.write_text(CLEAN_TEXT, encoding="utf-8")
+        result = valid_result("pod_conteppei_ep051", cleaned)
+        write_cleaning_result(results, result)
+        cleaned.write_text(CLEAN_TEXT + "tampered\n", encoding="utf-8")
+
+        code = jb.run("pod_conteppei_ep051")
+        check("exit non-zero", code != 0)
+        check("no job folder",
+              not (jobs / "pod_conteppei_ep051").exists())
+
+        result_file = jb_results / "pod_conteppei_ep051.job_builder_result.json"
+        check("failure result exists", result_file.is_file())
+        result = json.loads(result_file.read_text(encoding="utf-8"))
+        check("success false", result["success"] is False)
+        check("hash mismatch reported",
+              any("output_hash" in e for e in result["errors"]))
+    finally:
+        restore(saved)
 
 
 def main():
