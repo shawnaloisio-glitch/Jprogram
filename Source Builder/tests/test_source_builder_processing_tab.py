@@ -21,6 +21,7 @@ import json
 import pathlib
 import sys
 import tempfile
+import threading
 from unittest import mock
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -266,6 +267,99 @@ def _():
     check("three results", len(results) == 3)
     check("all success", all(r["success"] for r in results))
     check("state", results[0]["state"] == "corpus_available")
+
+
+@test("process_sources stops at the next package once cancel is set")
+def _():
+    captured = []
+    packages = [{"source_id": "a"}, {"source_id": "b"}, {"source_id": "c"}]
+    cancel = threading.Event()
+
+    def fake_pipeline(source_id, **kwargs):
+        captured.append(source_id)
+        if source_id == "a":
+            cancel.set()
+        return {"success": True, "state": "corpus_available",
+                "failed_stage": None, "exit_code": 0}
+
+    def fake_state_for(source_id):
+        return {"state": "corpus_available"}
+
+    with mock.patch.object(processing_tab.pm, "pipeline",
+                           side_effect=fake_pipeline), \
+         mock.patch.object(processing_tab.pm, "state_for",
+                           side_effect=fake_state_for), \
+         mock.patch.object(processing_tab, "_ensure_registered",
+                           return_value=None):
+        results = processing_tab.process_sources(
+            packages, cancel_event=cancel)
+    check("only the in-flight package ran", captured == ["a"])
+    check("partial results only", len(results) == 1)
+    check("result is a", results[0]["source_id"] == "a")
+    check("full run not reported", results[0]["success"])
+
+
+@test("process_sources runs nothing when cancel is already set")
+def _():
+    captured = []
+    packages = [{"source_id": "a"}, {"source_id": "b"}]
+    cancel = threading.Event()
+    cancel.set()
+
+    def fake_pipeline(source_id, **kwargs):
+        captured.append(source_id)
+        return {"success": True, "state": "corpus_available",
+                "failed_stage": None, "exit_code": 0}
+
+    def fake_state_for(source_id):
+        return {"state": "corpus_available"}
+
+    with mock.patch.object(processing_tab.pm, "pipeline",
+                           side_effect=fake_pipeline), \
+         mock.patch.object(processing_tab.pm, "state_for",
+                           side_effect=fake_state_for), \
+         mock.patch.object(processing_tab, "_ensure_registered",
+                           return_value=None):
+        results = processing_tab.process_sources(
+            packages, cancel_event=cancel)
+    check("no package started", captured == [])
+    check("no results", len(results) == 0)
+
+
+@test("process_sources reports progress per package in order")
+def _():
+    progress = []
+    packages = [
+        {"source_id": "a", "collection_id": "teppei_beginner", "episode": 1},
+        {"source_id": "b", "source_name": "nhk_weather"},
+    ]
+
+    def fake_pipeline(source_id, **kwargs):
+        return {"success": True, "state": "corpus_available",
+                "failed_stage": None, "exit_code": 0}
+
+    def fake_state_for(source_id):
+        return {"state": "corpus_available"}
+
+    def record(index, total, label):
+        progress.append((index, total, label))
+
+    with mock.patch.object(processing_tab.pm, "pipeline",
+                           side_effect=fake_pipeline), \
+         mock.patch.object(processing_tab.pm, "state_for",
+                           side_effect=fake_state_for), \
+         mock.patch.object(processing_tab, "_ensure_registered",
+                           return_value=None):
+        processing_tab.process_sources(
+            packages, on_progress=record)
+    check("two progress calls", len(progress) == 2)
+    check("first index", progress[0][0] == 1)
+    check("second index", progress[1][0] == 2)
+    check("total constant", progress[0][1] == 2 and progress[1][1] == 2)
+    check("first label",
+          progress[0][2] == processing_tab.human_label(packages[0]))
+    check("second label",
+          progress[1][2] == processing_tab.human_label(packages[1]))
 
 
 @test("failed_sources returns only failed packages")

@@ -223,7 +223,8 @@ def friendly_failure_message(state_info):
     return "Failed during processing"
 
 
-def process_sources(packages, timeout=None):
+def process_sources(packages, timeout=None, cancel_event=None,
+                    on_progress=None):
     """
     Run the existing pipeline sequentially for each source package.
 
@@ -232,13 +233,25 @@ def process_sources(packages, timeout=None):
     Job), then the Production Manager pipeline runs clean -> jobs -> requests
     -> api -> corpus. Sequential only; no parallelism.
 
-    Input: packages (list of dicts - source packages), timeout (int|None).
+    Before each package, if cancel_event (a threading.Event) is set, the run
+    stops and returns only the results accumulated so far - no further package
+    is started. When on_progress is given, it is called as
+    on_progress(index, total, human_label(package)) immediately before that
+    package is processed (1-based index).
+
+    Input: packages (list of dicts - source packages), timeout (int|None),
+        cancel_event (threading.Event|None), on_progress (callable|None).
     Output: list of dicts:
         [{"source_id": str, "success": bool, "state": str,
           "failed_stage": str|None, "message": str}, ...]
     """
     results = []
-    for package in packages:
+    total = len(packages)
+    for index, package in enumerate(packages, start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            break
+        if on_progress is not None:
+            on_progress(index, total, human_label(package))
         source_id = package.get("source_id", "")
         _ensure_registered(package)
         result = pm.pipeline(

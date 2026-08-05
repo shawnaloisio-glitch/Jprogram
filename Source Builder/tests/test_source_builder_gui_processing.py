@@ -6,8 +6,9 @@ GUI-level tests for the Processing tab window:
 
 - window opens from the app,
 - source list populated with human labels (no source_id),
-- action buttons present (Process Selected / Retry Failed /
+- action buttons present (Process Selected / Retry Failed / Cancel /
   Export Diagnostics),
+- cancel button state tracking and click behaviour,
 - checkbox toggling selects rows.
 
 Config, Sources, settings, presets, and diagnostics output are redirected to
@@ -131,13 +132,15 @@ def _():
             buttons = {
                 window.process_button.cget("text"),
                 window.retry_button.cget("text"),
-                window.analysis_button.cget("text"),
+                window.cancel_button.cget("text"),
                 window.dump_button.cget("text"),
             }
             check("has process", "Process Selected" in buttons)
             check("has retry", "Retry Failed" in buttons)
-            check("has analysis", "Run Analysis" in buttons)
+            check("has cancel", "Cancel" in buttons)
             check("has dump", "Export Diagnostics" in buttons)
+            check("cancel disabled by default",
+                  str(window.cancel_button.cget("state")) == "disabled")
             check("no legacy dump label",
                   "Dump Troubleshooting Data" not in buttons)
             check("no help-file label",
@@ -232,37 +235,6 @@ def _():
         restore()
 
 
-@test("run analysis receives the selected source(s)")
-def _():
-    restore = sandbox()
-    try:
-        make_source(("collection", "teppei_beginner", 58))
-        make_source(("standalone", "nhk_weather", None))
-        root = tk.Tk()
-        root.withdraw()
-        app = gui.SourceBuilderApp(root)
-        try:
-            window = processing_tab_gui.ProcessingTabWindow(app)
-            ids = [row["source_id"] for row in window.rows]
-            window.tree.selection_set(ids)
-            window.tree.event_generate("<<TreeviewSelect>>")
-            calls = []
-            with mock.patch.object(
-                    gui.messagebox, "showinfo",
-                    side_effect=lambda *a, **k: calls.append(a)), \
-                 mock.patch.object(
-                     processing_tab, "run_analysis",
-                     return_value={"output_path": "/tmp/a.json"}) as ra:
-                window._on_run_analysis()
-            check("analysis ran per selection",
-                  ra.call_count == len(ids))
-            window.window.destroy()
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
 @test("dump button writes a gzipped bundle")
 def _():
     restore = sandbox()
@@ -284,6 +256,69 @@ def _():
             check("info shown", len(infos) == 1)
             dumps = list(diagnostics.DIAGNOSTICS_DIR.glob("*.json.gz"))
             check("dump created", len(dumps) == 1)
+            window.window.destroy()
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("busy state toggles cancel button enablement")
+def _():
+    restore = sandbox()
+    try:
+        make_source(("collection", "teppei_beginner", 58))
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            window = processing_tab_gui.ProcessingTabWindow(app)
+            window._set_busy(True)
+            check("cancel enabled while busy",
+                  str(window.cancel_button.cget("state")) == "normal")
+            check("process disabled while busy",
+                  str(window.process_button.cget("state")) == "disabled")
+            check("retry disabled while busy",
+                  str(window.retry_button.cget("state")) == "disabled")
+            window._reset_busy()
+            check("cancel disabled when idle",
+                  str(window.cancel_button.cget("state")) == "disabled")
+            check("process restored",
+                  str(window.process_button.cget("state")) == "normal")
+            check("retry restored",
+                  str(window.retry_button.cget("state")) == "normal")
+            window.window.destroy()
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("cancel click sets the event while busy and is a no-op when idle")
+def _():
+    restore = sandbox()
+    try:
+        make_source(("collection", "teppei_beginner", 58))
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            window = processing_tab_gui.ProcessingTabWindow(app)
+            window._cancel_event.clear()
+            window._on_cancel()
+            check("idle cancel is a no-op",
+                  not window._cancel_event.is_set())
+            check("idle status not overwritten",
+                  window.progress_var.get() == "")
+            window._set_busy(True)
+            window._on_cancel()
+            check("busy cancel sets the event",
+                  window._cancel_event.is_set())
+            check("cancellation status shown",
+                  "Cancellation requested" in window.progress_var.get())
+            check("status does not imply an instant stop",
+                  "finishes" in window.progress_var.get())
+            window._reset_busy()
             window.window.destroy()
         finally:
             root.destroy()

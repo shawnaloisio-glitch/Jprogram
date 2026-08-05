@@ -12,7 +12,8 @@ paths, JSON files, folders, or individual pipeline stages to the user.
 Actions:
 - [ Process Selected ] - run the pipeline for the selected sources.
 - [ Retry Failed ] - run sources whose status is Failed.
-- [ Export Diagnostics ] - write a diagnostic bundle to Diagnostics\\.
+- [ Cancel ] - request a stop at the next per-source boundary while running.
+- [ Export Diagnostics ] - write a diagnostic bundle to Diagnostics\.
 
 The window opens centred over the Source Builder window using the same
 child-window placement helper as other dialogs.
@@ -43,6 +44,7 @@ class ProcessingTabWindow:
 
         self.rows = []  # list of dicts {label, source_id, package, var, status_var}
         self._busy = False
+        self._cancel_event = threading.Event()
 
         self._build_widgets()
         parent_app._center_child_over_parent(self.window)
@@ -97,9 +99,10 @@ class ProcessingTabWindow:
         self.retry_button = ttk.Button(
             actions, text="Retry Failed", command=self._on_retry_failed)
         self.retry_button.pack(side="left", padx=(8, 0))
-        self.analysis_button = ttk.Button(
-            actions, text="Run Analysis", command=self._on_run_analysis)
-        self.analysis_button.pack(side="left", padx=(8, 0))
+        self.cancel_button = ttk.Button(
+            actions, text="Cancel", command=self._on_cancel)
+        self.cancel_button.configure(state="disabled")
+        self.cancel_button.pack(side="left", padx=(8, 0))
         self.dump_button = ttk.Button(
             actions, text="Export Diagnostics",
             command=self._on_dump)
@@ -213,12 +216,16 @@ class ProcessingTabWindow:
 
     def _run_sources(self, rows):
         """Run the pipeline sequentially for the given rows."""
+        self._cancel_event.clear()
         self._set_busy(True)
         packages = [row["package"] for row in rows]
 
         def worker():
             try:
-                results = processing_tab.process_sources(packages)
+                results = processing_tab.process_sources(
+                    packages,
+                    cancel_event=self._cancel_event,
+                    on_progress=self._on_progress)
                 self.window.after(0, lambda: self._apply_results(results))
             except Exception as exc:
                 self.window.after(
@@ -228,36 +235,39 @@ class ProcessingTabWindow:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _on_progress(self, index, total, label):
+        """Show which source is currently running (worker thread; marshalled)."""
+        self.window.after(0, lambda: self.progress_var.set(
+            f"Processing ({index}/{total}) {label}…"))
+
+    def _on_cancel(self):
+        """Request cancellation at the next per-source boundary."""
+        if not self._busy:
+            return
+        self._cancel_event.set()
+        self.progress_var.set(
+            "Cancellation requested… stopping once the current "
+            "source finishes.")
+
     def _apply_results(self, results):
         for result in results:
             state_info = {"state": result.get("state")}
             label, failed_message = processing_tab.simple_status(
                 {}, state_info)
             self._set_row_status(result["source_id"], label, failed_message)
+        if self._cancel_event.is_set():
+            self.progress_var.set(
+                "Stopped. "
+                f"{len(results)} source(s) processed before cancellation.")
+        else:
+            self.progress_var.set(
+                f"Finished. {len(results)} source(s) processed.")
         self._reset_busy()
 
     def _show_run_error(self, message):
         self.error_label.configure(text=message)
+        self.progress_var.set("Finished with an error.")
         self._reset_busy()
-
-    def _on_run_analysis(self):
-        if self._busy:
-            return
-        rows = self._selected_rows()
-        if not rows:
-            messagebox.showinfo("No selection",
-                                "Select one or more sources first.",
-                                parent=self.window)
-            return
-        results = []
-        for row in rows:
-            try:
-                analysis = processing_tab.run_analysis(row["package"])
-                results.append(f"{row['label']}:\n  {analysis['output_path']}")
-            except processing_tab.ProcessingTabError as exc:
-                results.append(f"{row['label']}:\n  {exc}")
-        messagebox.showinfo("Analysis",
-                            "\n\n".join(results), parent=self.window)
 
     def _on_dump(self):
         if self._busy:
@@ -285,6 +295,8 @@ class ProcessingTabWindow:
         state = "disabled" if busy else "normal"
         self.process_button.configure(state=state)
         self.retry_button.configure(state=state)
+        self.cancel_button.configure(
+            state="normal" if busy else "disabled")
         self.dump_button.configure(state=state)
         self.refresh_button.configure(state=state)
         self.progress_var.set("Processing selected sources…" if busy else "")
@@ -293,5 +305,6 @@ class ProcessingTabWindow:
         self._busy = False
         self.process_button.configure(state="normal")
         self.retry_button.configure(state="normal")
+        self.cancel_button.configure(state="disabled")
         self.dump_button.configure(state="normal")
         self.refresh_button.configure(state="normal")
