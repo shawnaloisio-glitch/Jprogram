@@ -515,3 +515,59 @@ noteworthy — proportionate diligence scaled to the actual size of the
 change, not a fixed checklist.
 
 **Verdict:** CLEAN. Eighth data point; fifth clean result in a row.
+
+### TASK 9 — Processing tab: remove Run Analysis, add Cancel — 2026-08-05
+
+**Scope given:** Two independent live-testing GUI fixes in
+`Source Builder/processing_tab.py` and `processing_tab_gui.py`. Part 1:
+delete the Processing tab's redundant "Run Analysis" button/handler —
+confirmed exact duplicate of the dedicated Analysis tab's own button,
+which calls the identical `processing_tab.run_analysis()`. Part 2: add a
+Cancel button and real per-source progress status — `process_sources()`
+gains optional `cancel_event`/`on_progress` params (backward-compatible,
+only 2 existing callers), checked/called before each package in the loop;
+GUI wires a Cancel button (disabled by default, enabled while busy),
+marshals worker-thread progress updates through `window.after(0, ...)`,
+and fixes the pre-existing stale-status bug (progress text used to stay
+stuck on "Processing…" after a run actually finished).
+
+**OC's self-reported result:** Both parts done. Files changed: exactly
+the 4 named files. Tests: `test_source_builder_processing_tab.py` 19/19
+(3 new), `test_source_builder_gui_processing.py` 7/7 (button-set
+assertion updated, one obsolete test deleted, 2 new Cancel tests added),
+plus a proactive neighbor-suite check (`test_source_builder_gui_analysis.py`
+5/5, confirming the Analysis tab's own button/logic is untouched). Two
+things flagged rather than silently touched: a pre-existing
+`SyntaxWarning` in the module docstring (predates this task), and
+`SOURCE_PACKAGE_HANDOFF.md` now being slightly stale on
+`process_sources()`'s signature (left alone — optional params, outside
+the stated boundary).
+
+**Independent verification method:** raw `git status --short` against the
+claimed file list; independently re-ran all 3 claimed test suites myself;
+read the full `git diff` for both production files directly.
+
+**Verification result:** MATCH, exactly. All test counts confirmed by
+direct run (19/19, 7/7, 5/5). Diff read directly confirms both parts
+implemented exactly as scoped: the redundant button/handler fully
+removed while `run_analysis()` correctly stays in the backend (still used
+by `analysis_tab_gui.py`); the cancel/progress wiring correctly marshals
+through `window.after(0, ...)`, correctly toggles the Cancel button
+alongside the other action buttons, and correctly replaces the stale
+"Processing…" text with distinct terminal messages for completion,
+cancellation, and error. The cancel test is a genuine behavioral proof,
+not a trivial pre-set check — it triggers cancellation from inside the
+fake pipeline after the first package and confirms the second package
+was never started, proving the boundary-check actually works mid-run.
+
+**Scope compliance:** MATCH. Exactly the 4 named files touched;
+`analysis_tab_gui.py` and `production_manager.py` confirmed untouched via
+diff, not just claim.
+
+**Notable behavior:** Same good instinct as prior tasks — flagged two
+adjacent findings (pre-existing warning, stale doc) rather than fixing
+them silently or ignoring them, and ran a neighbor test suite
+proactively to confirm the Analysis tab's own logic wasn't disturbed by
+removing its Processing-tab duplicate.
+
+**Verdict:** CLEAN. Ninth data point; sixth clean result in a row.
