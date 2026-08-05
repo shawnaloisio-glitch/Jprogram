@@ -61,11 +61,7 @@ When evaluating OC's work, primary evidence is:
 
 An agent's own narrative summary of its work (including OC's) is secondary — useful for orientation, but treated as a claim to verify against the above, never accepted as evidence on its own.
 
-**Capture OC's output from its raw storage, not from terminal display text** — the terminal view is a formatted subset, not the complete record. Owner runs the OpenCode *desktop app* (not the bare CLI), which stores sessions in a SQLite database, not the flat `msg_{id}.json` files some OpenCode docs describe. Verified 2026-08-05:
-
-- DB path: `C:\Users\Shawn\.local\share\opencode\opencode.db` (WAL mode — safe to read while the app is open; connect read-only, never write).
-- Key tables: `project` (id/worktree — find the Jprogram row by `worktree = 'C:/Jprogram'`), `session` (id/project_id/title/time_updated — find the right session by title and recency), `message` (id/session_id/data — one row per turn, `data` is JSON with a `role` field), `part` (id/message_id/session_id/data — one row per content block within a message; `data.type` is `text`, `tool`, `reasoning`, `step-start`/`step-finish`, or `patch`; tool calls carry `tool`, `state.status`, `state.input`, `state.output`).
-- Re-verify this path/schema periodically — it's tied to the installed OpenCode desktop version and may change on update.
+**Capture OC's output from its raw storage, not from terminal display text** — the terminal view is a formatted subset, not the complete record. Owner runs the OpenCode *desktop app*, which stores sessions in a SQLite database, not the flat-file structure some OpenCode docs describe. Full access procedure (DB path, schema, example query): `OC_Session_Access_Procedure.md`. Re-verify that procedure periodically — it's tied to the installed OpenCode desktop version and may change on update.
 
 ## Mandatory report format (Advisor only — Auditor does not produce this field)
 
