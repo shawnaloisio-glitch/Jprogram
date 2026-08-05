@@ -10,12 +10,14 @@ GUI-level tests for Source Builder quick presets (one-shot behaviour):
 - empty preset slots show "Empty Slot" and clicking them reports empty.
 
 These tests build the actual Tk window (withdrawn). They require a display
-(Tk 8.6 on this machine). Config files are read from the real Config\\.
+(Tk 8.6 on this machine). Sources, settings, presets, and Config files are
+redirected to a sandboxed temp directory.
 
 Run:
     python "Source Builder/tests/test_source_builder_gui_presets.py"
 """
 
+import json
 import pathlib
 import sys
 import tempfile
@@ -26,27 +28,49 @@ sys.path.insert(0, str(SOURCE_BUILDER))
 
 import tkinter as tk
 
+import config_loader
 import controller
 import gui
 import gui_settings
+import paths
 import quick_presets
 
 
 def sandbox():
-    """Redirect Sources, settings, and presets into temp dirs."""
+    """Redirect Sources, settings, presets, and Config into temp dirs."""
     saved_sources = controller.SOURCES_ROOT
     saved_settings = gui_settings.SETTINGS_PATH
     saved_presets = quick_presets.PRESETS_PATH
+    saved_config_dir = config_loader.CONFIG_DIR
+    saved_collections_config = paths.COLLECTIONS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
+    config_dir = tmp / "Config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "collections.json").write_text(json.dumps({
+        "collections": [
+            {"collection_id": "teppei_beginner",
+             "name": "Con Teppei for Beginner",
+             "source_type": "podcast_transcript"},
+        ]
+    }), encoding="utf-8")
+    (config_dir / "source_types.json").write_text(json.dumps(
+        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+    (config_dir / "origins.json").write_text(json.dumps(
+        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+
     controller.SOURCES_ROOT = tmp / "Sources"
     gui_settings.SETTINGS_PATH = tmp / "gui_settings.json"
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
+    config_loader.CONFIG_DIR = config_dir
+    paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
         gui_settings.SETTINGS_PATH = saved_settings
         quick_presets.PRESETS_PATH = saved_presets
+        config_loader.CONFIG_DIR = saved_config_dir
+        paths.COLLECTIONS_CONFIG = saved_collections_config
 
     return restore
 

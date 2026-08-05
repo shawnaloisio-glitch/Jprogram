@@ -25,6 +25,7 @@ SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
 sys.path.insert(0, str(SOURCE_BUILDER))
 
 import config_loader
+import paths
 import quick_presets
 
 SAMPLE_CONFIG = {
@@ -37,6 +38,32 @@ SAMPLE_CONFIG = {
 def temp_path():
     root = pathlib.Path(tempfile.mkdtemp())
     return root / "quick_presets.json"
+
+
+def sandbox():
+    """Redirect Config into a temp dir with a seeded collections.json."""
+    saved_config_dir = config_loader.CONFIG_DIR
+    saved_collections_config = paths.COLLECTIONS_CONFIG
+
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    config_dir = tmp / "Config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "collections.json").write_text(json.dumps({
+        "collections": [
+            {"collection_id": "teppei_beginner",
+             "name": "Con Teppei for Beginner",
+             "source_type": "podcast_transcript"},
+        ]
+    }), encoding="utf-8")
+
+    config_loader.CONFIG_DIR = config_dir
+    paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+
+    def restore():
+        config_loader.CONFIG_DIR = saved_config_dir
+        paths.COLLECTIONS_CONFIG = saved_collections_config
+
+    return restore
 
 
 TESTS = []
@@ -315,8 +342,12 @@ def _():
 
 @test("default_source_type_for_collection resolves via config")
 def _():
-    st = config_loader.default_source_type_for_collection("teppei_beginner")
-    check("resolved", st == "podcast_transcript")
+    restore = sandbox()
+    try:
+        st = config_loader.default_source_type_for_collection("teppei_beginner")
+        check("resolved", st == "podcast_transcript")
+    finally:
+        restore()
 
 
 def main():
