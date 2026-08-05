@@ -361,3 +361,34 @@ real-world coverage yet.
   don't hand-roll the query again (see `OC_Session_Access_Procedure.md`).
 - `Audits/OC_Reliability_Log.md` — the evidence-based OC track record.
 - `WORKING_LIST.md` — the living queue; check here first every session.
+
+---
+
+## 15. Live Artifact Contract Trace (read-only grounding practice)
+
+Established 2026-08-05. Reading schema code (§8) and prior sessions' self-
+reported findings gives an *abstract* picture of the pipeline's artifact
+contracts — it doesn't confirm what a real instance of each artifact
+actually looks like right now. This practice closes that gap without
+spending anything: a full real artifact chain (Source Registry → Source
+Package → Cleaning Job → Cleaning Result → parser response → canonical
+JSONL) is already sitting on disk in the Workspace folder for both the QC
+Test Harness fixture and real production sources (e.g. `cijapanese`).
+Advisor can read straight through this chain end to end as a pure Read
+action — zero new writes, zero new API cost, no conflict with any
+concurrent OC session (different directory tree entirely).
+
+**The living reference file:** `ARTIFACT_CONTRACT_TRACE.md` (repo root).
+Holds one concrete, currently-verified example of each artifact stage,
+captured directly from disk — not reconstructed from schema docs — each
+entry dated and citing which real `source_id` it was pulled from.
+
+**Update trigger:** refresh this file whenever a pipeline-stage program
+changes in a way that could alter an artifact's actual shape (Source
+Intake writers, a cleaner, Job Builder, Request Builder, the parser
+prompt, `response_validator.py`, `corpus_builder.py`). Re-pull a fresh
+real example after the change lands and is verified, and replace the
+relevant section. Since this is read-only, it doesn't require the
+write-access ask that other Advisor actions would — but the *file* being
+updated (`ARTIFACT_CONTRACT_TRACE.md` itself) is a normal write and still
+follows Advisor's usual rules for that.
