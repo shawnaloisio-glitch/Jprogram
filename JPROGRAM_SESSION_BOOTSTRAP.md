@@ -261,106 +261,155 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-05) — First Advisor-CC Session, Complete
+## 14. Session Wrap-Up (2026-08-05) — Updated after Session 2
 
-The §10 checklist above is **fully complete** — all 6 steps done, verified
-against raw evidence throughout, not self-report. This session went well
-beyond the checklist into real feature work; this section is the actual
-"start here" for whoever picks this up next.
+**Read this section first, always — it's kept current at every wrap-up,
+not appended to indefinitely.** This update supersedes the "First
+Advisor-CC Session" version: that session covered TASK 1-4 and initial
+setup; this second same-day session added TASK 5-9 (all independently
+verified clean) plus two full audits. If anything below conflicts with
+an older section elsewhere in this file, this section wins — it was
+last refreshed 2026-08-05, end of session 2.
+
+### Read the two audit reports before assuming anything about project state
+
+- **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md`** — behavioral/documentation
+  audit. Headline: 800/800 tests pass repo-wide (verified by running
+  every one directly, not trusted from a prior claim); Frozen Components
+  confirmed untouched across the *entire* git history, not just this
+  session's tasks; found `JPROGRAM_SESSION_BOOTSTRAP.md` §14 (the old
+  version) and two other root docs (`PROJECT_STATUS.md`,
+  `ARCHITECTURE_CURRENT.md`) had drifted from reality.
+- **`Audits/2026-08-05/CODE_QUALITY_AUDIT.md`** — read-only code-level
+  review of every Frozen Component, all 9 Analysis modules, the full
+  Production Manager, and remaining unread subsystems, checked against
+  the project's own stated principles rather than generic style
+  nitpicks. Headline finding: `parser_normalizer.py` contains the actual
+  Frozen-architecture canonicalization logic but isn't itself on
+  `CLAUDE.md`'s Frozen Components list — only `corpus_builder.py` is
+  named, and it now just re-exports that logic. A handful of smaller
+  real findings (a confirmed dead duplicate branch in
+  `production_manager.py`'s state machine, a punctuation-set gap in
+  `response_validator.py` with direct textual evidence it's a real risk,
+  two fully-built-but-unused write helpers) are prioritized in that
+  report's summary section. Nothing found requires emergency action.
 
 ### Current phase
 
-Past initial setup/audit, now doing real implementation work through the
-Advisor→Coder loop with active verification. 4 Coder tasks completed and
-independently verified (raw `git status`/`git diff`, direct test re-runs,
-not self-report) — see `Audits/OC_Reliability_Log.md` for the full,
-evidence-based history: TASK 1 (test-isolation fix) clean, TASK 2
-(read-only audit) clean, TASK 3 (sequencing field, part of a 3-part
-assignment) **a genuine discrepancy** — only 1 of 3 parts delivered, not
-flagged — TASK 4 (the remaining 2 parts, after `AGENTS.md` was
-strengthened to require explicit per-part reporting) clean again. Don't
-read the TASK 3 discrepancy as "OC is unreliable" — read the TASK
-1→2→3→4 sequence as the actual evidence: verification caught a real gap,
-a process fix was made, and the very next task in the same family came
-back clean. Keep verifying every task regardless — that pattern is early,
-not proven.
+Past initial setup/audit, doing real implementation work through the
+Advisor→Coder loop with active verification, now 9 Coder tasks deep, all
+independently verified against raw evidence — see
+`Audits/OC_Reliability_Log.md` for the full history. TASK 1-4 recap: TASK
+1/2 clean, TASK 3 a genuine discrepancy (1 of 3 parts delivered, not
+flagged), TASK 4 (the fix, after `AGENTS.md` was strengthened) clean
+again. **TASK 5-9, all clean, no further discrepancies**: TASK 5
+(sequencing GUI wiring — Metadata Editor combobox, `gui.py` conditional
+field visibility, save-flow branch), TASK 6 (origin-dropdown filter bug +
+standalone quick-preset `source_name` bug, both confirmed live via
+Owner's own testing), TASK 7 (Metadata Editor `PROCESSING_PROFILES`
+validation gap — GUI-side filter only, deliberately not a data-layer
+block, to avoid breaking the already-saved `cijapanese` collection),
+TASK 8 (hash verification enforcement at both cleaners' entry points and
+Job Builder — the largest task this session, including one
+Owner-authorized mid-task boundary extension that OC surfaced via its
+own `question` tool rather than deciding silently), TASK 9 (Processing
+tab: removed the redundant Run Analysis button, added a Cancel button
+and real per-source progress status). Six clean results in a row since
+the TASK 3 discrepancy.
 
 ### Last several decisions and why
 
-- **Non-episodic collection sequencing backend is fully implemented**
-  (`sequencing` field, `next_auto_sequence()`, the `processing_tab.py`
-  sort-key fix) — because Owner has real ~800-item non-episodic
-  collections (CI Japanese) that the original episode=0 proposal would
-  have collided on (confirmed via code before any fix was designed).
-  GUI wiring is the explicit next step, not yet started.
-- **Section markers confirmed as legacy, not a gap** — because the old
-  batch-acquisition workflow that motivated them (paste ~20 episodes into
-  one file for cheaper bulk chatbot processing) no longer exists under
-  the current one-source-per-file model. Avoided building real
-  marker-to-boundary logic for something that will never receive input
-  again.
-- **Qwen Code authentication is on indefinite hold** — Owner's explicit
-  call, not a technical blocker; do not propose revisiting unprompted
-  (see §10 step 3, and memory).
-- **A recurring architectural pattern was named**: identity/config
-  getting coupled to raw file structure instead of the token/source_id
-  abstraction (3 known instances — the historical "con_teppei" ghost tag,
-  the episode=0 collision risk, and the Metadata Editor's still-live
-  `PROCESSING_PROFILES` validation gap that let `cij_transcript` get
-  configured with no working cleaner behind it). Worth checking for this
-  shape of mistake whenever raw file content/structure seems like it
-  should inform identity going forward.
+- **Non-episodic collection sequencing is now fully done, backend and
+  GUI** (TASK 3/4/5) — Owner has real ~800-item non-episodic collections
+  (CI Japanese) that the original episode=0 proposal would have collided
+  on. No longer an open item.
+- **Metadata Editor's validation fix is GUI-side only, not a data-layer
+  block** — a hard block in `validate_collection()` would have made the
+  already-saved real `cijapanese` collection (defaulted to the
+  non-processable `cij_transcript`) un-editable for any field until its
+  legacy value was fixed first, a regression the fix itself would have
+  caused. This "don't retroactively break existing data" reasoning is
+  worth reapplying to any future validation-tightening task.
+- **Hash enforcement reuses the existing `hashing.sha256_file()` utility
+  everywhere, no new hashing helper, no schema changes** — and the
+  Integration test fixture that broke as a side effect got fixed only
+  after OC stopped and asked, confirming the boundary-extension protocol
+  works as intended under real pressure (largest task of the session).
+- **Ran both audits this session, not deferred** — Owner explicitly
+  granted multi-session token budget and asked for a deep-understanding
+  report; both are read-only investigation, no code changes, and the
+  findings are prioritized for whoever picks this up next rather than
+  acted on unilaterally.
+- **Standing process changes made this session**: OC now gets a fresh
+  OpenCode session per Coder command by default (see memory
+  `feedback_oc_session_per_task` and `CLAUDE.md`'s Coder command format
+  section) — Owner explicitly confirmed continuing one OC session is
+  the exception, only for a tight immediate follow-up on the same work,
+  not the default. Coder commands are now presented as a colored widget
+  (blue = new session, red = continue existing session) instead of a
+  plain code fence, same section of `CLAUDE.md`. A project-level
+  `.claude/settings.json` permission allowlist now exists, reducing
+  repeat prompts for git add/commit and known test-file invocations — a
+  deliberate, informed exception to the `fewer-permission-prompts`
+  skill's conservative default, explicitly authorized by Owner.
+- **Qwen Code authentication remains on indefinite hold** — unchanged,
+  do not propose revisiting unprompted.
+- **The recurring identity/file-coupling pattern** (memory
+  `project_identity_file_coupling_pattern`) — still worth checking for
+  whenever raw file content/structure seems like it should inform
+  identity going forward; no new instances found this session.
 
 ### Open risks / unresolved questions
 
 All granular detail lives in `WORKING_LIST.md` (kept continuously updated
-and committed throughout this session, not saved for one big handoff) —
-this is a pointer, not a duplicate. Headline items:
+and committed throughout both sessions) and the two audit reports linked
+above — this is a pointer, not a duplicate. Headline items:
 
-- **GUI wiring for the sequencing feature** — Metadata Editor combobox,
-  `gui.py` conditional field visibility, save-flow branch. Next natural
-  Coder task for this thread.
+- **From the code quality audit** (see that report's summary for full
+  detail and priority order): `parser_normalizer.py` missing from
+  `CLAUDE.md`'s Frozen Components list (highest priority — a one-line
+  standing-instructions fix); `response_validator.py`'s punctuation-set
+  gap; the dead duplicate branch in `production_manager.py`; the
+  duplicated silent-fallback-to-zero pattern in two files; two unused
+  write helpers (`write_jsonl_record`, `output_writer.py`).
 - **GUI terminology fix** — the standalone/series/site-collection
-  three-way split doesn't exist anywhere yet (today's radio buttons are
-  only a two-way collection/standalone split); scoped but not built.
-- **Metadata Editor validation gap** — `validate_collection()`/
-  `validate_source_type()` never cross-check against `PROCESSING_PROFILES`,
-  confirmed still live (real data: `cijapanese` collection is currently
-  configured with the non-processable `cij_transcript`). Related to but
-  separate from the sequencing field work.
-- **Hash verification computed but never enforced downstream** — a real
-  chain-of-custody gap (sha256/output_hash recorded but never read back
-  and checked), scoped as two small deterministic fixes, not yet actioned.
-- **Live-testing GUI bug backlog** — cancel button, status indicator,
-  redundant Analysis button, embedded-tabs restructure, import defaults,
-  and others — see `WORKING_LIST.md`'s "Live testing issues" section.
+  three-way split doesn't exist anywhere yet; scoped but not built.
 - **`sentence_index` "no gaps" not validated** — small, deterministic,
-  scoped, not yet actioned.
+  but lives in `response_validator.py`, a Frozen Component, so fixing it
+  auto-triggers an audit regardless of how simple the change is.
 - **API key structure/utility design** — not started.
+- **Remaining live-testing GUI backlog** — embedded-tabs restructure,
+  import defaults, Analysis multi-file, Template Editor pass, the
+  Tkinter-error report still blocked on Owner pasting a traceback — see
+  `WORKING_LIST.md`.
 
 ### Next immediate task
 
-Owner's call on sequencing — either continue that thread (GUI wiring,
-now that the backend is fully done and verified) or pick something else
-from `WORKING_LIST.md`. No hard dependency forcing one over the other.
+No hard dependency forces one choice. Reasonable candidates in rough
+priority order: the `parser_normalizer.py` Frozen Components list fix
+(trivial, high-value, a `CLAUDE.md` edit not a Coder task); the
+production_manager.py dead-branch fix; the GUI terminology fix; or
+anything else from `WORKING_LIST.md`. Owner's call.
 
 ### Real-data validation status
 
-No longer just "next" — done once, successfully. `QC Test Harness/` ran a
-hand-authored source through the full real pipeline including a real
-DeepSeek API call, and every ground-truth check passed (see
-`WORKING_LIST.md`'s Resolved section, and `QC Test Harness/README.md` for
-reuse instructions). Confirms the pipeline works end-to-end in practice,
-not just in code review — though it's one synthetic test, not broad
-real-world coverage yet.
+Unchanged from last wrap-up: done once, successfully, via
+`QC Test Harness/`. See that section's original note below (§ "Tooling
+built") and `QC Test Harness/README.md` for reuse instructions.
 
-### Tooling built this session, available going forward
+### Tooling and standing docs available going forward
 
 - `QC Test Harness/` — reusable known-ground-truth pipeline test.
-- `oc_session_dump.py` — reads OC's raw session data directly; use this,
-  don't hand-roll the query again (see `OC_Session_Access_Procedure.md`).
-- `Audits/OC_Reliability_Log.md` — the evidence-based OC track record.
+- `oc_session_dump.py` — reads OC's raw session data directly (see
+  `OC_Session_Access_Procedure.md`).
+- `Audits/OC_Reliability_Log.md` — the evidence-based OC track record,
+  now 9 tasks deep.
 - `WORKING_LIST.md` — the living queue; check here first every session.
+- `ARTIFACT_CONTRACT_TRACE.md` (see §15 below) — real, on-disk artifact
+  examples for every pipeline stage.
+- **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and `CODE_QUALITY_AUDIT.md`**
+  — this session's two audits; read both before assuming project state,
+  per the top of this section.
 
 ---
 
