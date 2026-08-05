@@ -383,3 +383,66 @@ concurrent-file investigation, now specifically pointed at catching an
 error from the instruction-giver rather than only the codebase.
 
 **Verdict:** CLEAN. Sixth data point; third clean result in a row.
+
+### TASK 7 — Metadata Editor: filter Default Source Type combo to processable types — 2026-08-05
+
+**Scope given:** Fix the Metadata Editor's Collections tab so its
+"Default Source Type" combo only offers source types with a working
+cleaner (`PROCESSING_PROFILES`), matching the filter `gui.py`'s main form
+already applies. Explicit design constraint stated up front, not left for
+OC to discover: do **not** add any new blocking validation to
+`validate_collection`/`add_collection`/`edit_collection` — a hard block
+there would make the real, already-saved `cijapanese` collection
+(currently defaulted to the non-processable `cij_transcript`)
+un-editable for any field until its legacy value was fixed first, a
+regression the fix itself would cause. 3 parts: (1) add
+`metadata_editor.is_processable()` wrapping
+`source_package.is_processable_source_type()`; (2) filter the Collections
+tab combo's offered values only, leaving the data layer's existing
+vocabulary-existence check on the full unfiltered list; (3) tests
+covering both the new-selection filter and the legacy-value-still-works
+case.
+
+**OC's self-reported result:** All 3 parts marked done individually.
+Files changed: `metadata_editor.py`, `metadata_editor_gui.py`,
+`test_source_builder_gui_metadata_editor.py`. Explicitly confirmed the
+critical constraint in its own words: "the `source_type_ids=source_types`
+passed to `add_collection`/`edit_collection` remains the full unfiltered
+list, so the data layer's existing validation is unchanged and legacy
+values stay editable — no regression." 21/21 (incl. 2 new), 49/49, 5/5,
+11/11 across affected/adjacent suites, plus a clean-process import
+sanity check (`is_processable('podcast_transcript')` → True,
+`'cij_transcript'` → False).
+
+**Independent verification method:** raw `git status --short` against
+the claimed file list; independently re-ran all 4 claimed test suites;
+read the full `git diff` for both production files and the test file
+directly.
+
+**Verification result:** MATCH, exactly. All test counts confirmed by
+direct run. Diff read directly confirms the exact critical distinction
+holds: only the combo's offered `values` (third tuple element in the
+`fields` list) changed to the filtered `processable_source_types` list;
+the `source_type_ids=source_types` argument passed to `add`/`edit` in the
+closures further down is untouched, still the full list. The two new
+tests are genuinely strong, not superficial — real GUI-dialog exercises
+against a sandboxed fixture reproducing the actual `cijapanese`/
+`cij_transcript` scenario: one confirms the Add dialog excludes
+non-processable types; the other opens Edit on a legacy collection
+stored with `cij_transcript`, confirms the value still displays, saves
+without an error dialog, and the persisted data (including the legacy
+default) is unchanged afterward.
+
+**Scope compliance:** MATCH. Exactly the 3 named files touched; no
+changes to `validate_collection`, `validate_source_type`,
+`add_collection`, `edit_collection`, `controller.py`, `gui.py`,
+`config_loader.py`, or any real config/workspace data — all confirmed via
+diff, not just claim.
+
+**Notable behavior:** OC didn't just avoid touching the forbidden
+functions — it understood *why* the constraint existed (explained the
+regression it was avoiding in its own report) and built a test that
+specifically proves the avoided regression doesn't happen, rather than
+only testing the new filter in isolation. Fourth consecutive clean task.
+
+**Verdict:** CLEAN. Seventh data point; fourth clean result in a row.
