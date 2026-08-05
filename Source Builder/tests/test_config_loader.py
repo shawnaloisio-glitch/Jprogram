@@ -49,6 +49,24 @@ def patch_collections_config(collections):
     return restore
 
 
+def patch_vocab_config(source_types, origins):
+    """Point config_loader.CONFIG_DIR at a sandbox; return restore fn."""
+    saved = config_loader.CONFIG_DIR
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    config_dir = tmp / "Config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "source_types.json").write_text(
+        json.dumps({"source_types": source_types}), encoding="utf-8")
+    (config_dir / "origins.json").write_text(
+        json.dumps({"origins": origins}), encoding="utf-8")
+    config_loader.CONFIG_DIR = config_dir
+
+    def restore():
+        config_loader.CONFIG_DIR = saved
+
+    return restore
+
+
 TESTS = []
 
 
@@ -177,6 +195,85 @@ def _():
     ])
     try:
         check("ids", config_loader.load_collection_ids() == ["b", "a"])
+    finally:
+        restore()
+
+
+@test("load_source_types_full: returns id + display_name pairs in order")
+def _():
+    restore = patch_vocab_config(
+        [{"source_type_id": "podcast_transcript",
+          "display_name": "Podcast Transcript"},
+         {"source_type_id": "cij_transcript",
+          "display_name": "CIJ Transcripts"}],
+        [])
+    try:
+        entries = config_loader.load_source_types_full()
+        check("order",
+              [e["source_type_id"] for e in entries]
+              == ["podcast_transcript", "cij_transcript"])
+        check("display name 1",
+              entries[0]["display_name"] == "Podcast Transcript")
+        check("display name 2",
+              entries[1]["display_name"] == "CIJ Transcripts")
+    finally:
+        restore()
+
+
+@test("load_origins_full: returns id + display_name pairs in order")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"},
+         {"origin_id": "nhk_news", "display_name": "nhk_news"}])
+    try:
+        entries = config_loader.load_origins_full()
+        check("order", [e["origin_id"] for e in entries]
+              == ["cijsub", "nhk_news"])
+        check("display name 1", entries[0]["display_name"] == "CiJapanese Subs")
+        check("display name 2", entries[1]["display_name"] == "nhk_news")
+    finally:
+        restore()
+
+
+@test("full loaders fall back to the id when display_name is absent")
+def _():
+    restore = patch_vocab_config(
+        ["podcast_transcript",
+         {"source_type_id": "article"},
+         {"source_type_id": "manga_text", "display_name": ""}],
+        ["con_teppei_podcast",
+         {"origin_id": "nhk_news"},
+         {"origin_id": "subtitle", "display_name": ""}])
+    try:
+        st = config_loader.load_source_types_full()
+        check("plain string fallback",
+              st[0]["display_name"] == "podcast_transcript")
+        check("missing display fallback", st[1]["display_name"] == "article")
+        check("empty display fallback",
+              st[2]["display_name"] == "manga_text")
+        og = config_loader.load_origins_full()
+        check("origin plain fallback",
+              og[0]["display_name"] == "con_teppei_podcast")
+        check("origin missing display fallback",
+              og[1]["display_name"] == "nhk_news")
+        check("origin empty display fallback",
+              og[2]["display_name"] == "subtitle")
+    finally:
+        restore()
+
+
+@test("id-only loaders are unchanged by the full loaders")
+def _():
+    restore = patch_vocab_config(
+        [{"source_type_id": "podcast_transcript",
+          "display_name": "Podcast Transcript"}],
+        [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"}])
+    try:
+        check("source types ids",
+              config_loader.load_source_types() == ["podcast_transcript"])
+        check("origins ids",
+              config_loader.load_origins() == ["cijsub"])
     finally:
         restore()
 

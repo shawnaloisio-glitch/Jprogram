@@ -204,6 +204,10 @@ class SourceBuilderApp:
         self.source_name_var = tk.StringVar()
         self.source_type_var = tk.StringVar()
         self.origin_var = tk.StringVar()
+        # Display-only vars bound to the combos; they hold the friendly
+        # display names while source_type_var/origin_var keep the raw ids.
+        self.source_type_display_var = tk.StringVar()
+        self.origin_display_var = tk.StringVar()
         self.episode_var = tk.StringVar()
         self.status_var = tk.StringVar(value="")
         self.filename_var = tk.StringVar(value="")
@@ -236,14 +240,44 @@ class SourceBuilderApp:
         self.collections = []
         self.source_types = []
         self.origins = []
+        self.source_type_label_map = {}
+        self.source_type_id_map = {}
+        self.origin_label_map = {}
+        self.origin_id_map = {}
         try:
             self.collections = config_loader.load_collections()
             self.source_types = _processable_source_types(
                 config_loader.load_source_types())
             self.origins = config_loader.load_origins()
+            self._build_vocab_maps()
             self.config_error = None
         except config_loader.ConfigError as exc:
             self.config_error = str(exc)
+
+    def _build_vocab_maps(self):
+        """Build the id<->display-label maps for the source type and origin
+        combos.
+
+        self.source_types / self.origins stay the raw id lists used for
+        membership and logic; these maps are used only to show friendly
+        display names in the combos. Source type labels are limited to the
+        processable subset, exactly like the id list the combo offers.
+        """
+        self.source_type_label_map = {}
+        self.source_type_id_map = {}
+        for entry in config_loader.load_source_types_full():
+            vid = entry["source_type_id"]
+            if vid in self.source_types:
+                label = entry["display_name"]
+                self.source_type_label_map[vid] = label
+                self.source_type_id_map[label] = vid
+        self.origin_label_map = {}
+        self.origin_id_map = {}
+        for entry in config_loader.load_origins_full():
+            vid = entry["origin_id"]
+            label = entry["display_name"]
+            self.origin_label_map[vid] = label
+            self.origin_id_map[label] = vid
 
     def _build_widgets(self):
         main = ttk.Frame(self.root, padding=12)
@@ -331,16 +365,23 @@ class SourceBuilderApp:
         # Shared metadata
         ttk.Label(body, text="Source type:").grid(row=row, column=0, sticky="w")
         self.source_type_combo = ttk.Combobox(
-        body, textvariable=self.source_type_var, values=self.source_types,
+            body, textvariable=self.source_type_display_var,
             state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
         self.source_type_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.source_type_combo, self.source_type_var,
+            self.source_type_display_var, "source_type_label_map",
+            "source_type_id_map")
         row += 1
 
         ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
         self.origin_combo = ttk.Combobox(
-        body, textvariable=self.origin_var, values=self.origins,
+            body, textvariable=self.origin_display_var,
             state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
         self.origin_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.origin_combo, self.origin_var, self.origin_display_var,
+            "origin_label_map", "origin_id_map")
         row += 1
 
         ttk.Separator(body, orient="horizontal").grid(
@@ -531,6 +572,65 @@ class SourceBuilderApp:
             else:
                 button.configure(text=preset.get("display_name")
                                  or quick_presets.EMPTY_SLOT_NAME)
+
+    def _wire_label_combo(self, combo, id_var, display_var, label_map_name,
+                          id_map_name):
+        """Wire a readonly combo to show friendly display names while its
+        paired id var keeps the raw id.
+
+        label_map_name / id_map_name are attribute names on self, resolved
+        at call time so a vocabulary reload (which rebuilds the maps) stays
+        in sync with the trace and selection binding.
+
+        - combo values come from the label map (insertion order preserved).
+        - selecting a label maps it back to the id via the id map, so id_var
+          always holds the raw id (never a display name).
+        - setting id_var programmatically (settings/snapshot/preset restore)
+          updates the shown label via a trace on id_var.
+        """
+        combo.configure(textvariable=display_var,
+                        values=list(getattr(self, label_map_name).values()))
+        combo.bind("<<ComboboxSelected>>",
+                   lambda e: self._apply_label_to_id(
+                       display_var, getattr(self, id_map_name), id_var))
+
+        def _sync(*args):
+            label_map = getattr(self, label_map_name)
+            display_var.set(label_map.get(id_var.get(), id_var.get()))
+
+        id_var.trace_add("write", _sync)
+        # Reflect any value already set on the id var (e.g. restored before
+        # the widgets were built).
+        display_var.set(getattr(self, label_map_name).get(
+            id_var.get(), id_var.get()))
+
+    @staticmethod
+    def _apply_label_to_id(display_var, id_map, id_var):
+        """Translate a chosen display label back into its raw id."""
+        label = display_var.get()
+        id_var.set(id_map.get(label, label))
+
+    def _sync_source_type_display(self, *args):
+        """Show the display label for the current source_type id."""
+        raw = self.source_type_var.get()
+        self.source_type_display_var.set(
+            self.source_type_label_map.get(raw, raw))
+
+    def _sync_origin_display(self, *args):
+        """Show the display label for the current origin id."""
+        raw = self.origin_var.get()
+        self.origin_display_var.set(self.origin_label_map.get(raw, raw))
+
+    def _on_source_type_selected(self, event=None):
+        """Translate the picked source type label back into its id."""
+        self._apply_label_to_id(
+            self.source_type_display_var, self.source_type_id_map,
+            self.source_type_var)
+
+    def _on_origin_selected(self, event=None):
+        """Translate the picked origin label back into its id."""
+        self._apply_label_to_id(
+            self.origin_display_var, self.origin_id_map, self.origin_var)
 
     def _bind_events(self):
         for var, callback in (
@@ -1047,6 +1147,8 @@ class SourceBuilderApp:
         collection_var = tk.StringVar()
         source_type_var = tk.StringVar()
         origin_var = tk.StringVar()
+        source_type_display_var = tk.StringVar()
+        origin_display_var = tk.StringVar()
         feedback_var = tk.StringVar()
 
         body = ttk.Frame(editor, padding=12)
@@ -1090,16 +1192,22 @@ class SourceBuilderApp:
 
         ttk.Label(body, text="Source Type:").grid(row=row, column=0, sticky="w")
         source_type_combo = ttk.Combobox(
-            body, textvariable=source_type_var, values=self.source_types,
+            body, textvariable=source_type_display_var,
             state="readonly", width=30)
         source_type_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            source_type_combo, source_type_var, source_type_display_var,
+            "source_type_label_map", "source_type_id_map")
         row += 1
 
         ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
         origin_combo = ttk.Combobox(
-            body, textvariable=origin_var, values=self.origins,
+            body, textvariable=origin_display_var,
             state="readonly", width=30)
         origin_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            origin_combo, origin_var, origin_display_var,
+            "origin_label_map", "origin_id_map")
         row += 1
 
         feedback_label = ttk.Label(body, textvariable=feedback_var,
@@ -1223,8 +1331,13 @@ class SourceBuilderApp:
         """Update combobox value lists from the freshly loaded config."""
         self.collection_combo.configure(
             values=[c["collection_id"] for c in self.collections])
-        self.source_type_combo.configure(values=self.source_types)
-        self.origin_combo.configure(values=self.origins)
+        self.source_type_combo.configure(
+            values=[self.source_type_label_map[st] for st in self.source_types])
+        self.origin_combo.configure(
+            values=[self.origin_label_map[o] for o in self.origins])
+        # The vocabulary may have changed; re-show the current ids' labels.
+        self._sync_source_type_display()
+        self._sync_origin_display()
         self._apply_mode()
         # A sequencing edit in the metadata editor may have changed the
         # selected collection's mode; ensure the hidden episode value is

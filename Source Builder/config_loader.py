@@ -142,6 +142,50 @@ def load_origins():
             if _vocab_id(v, "origin_id")]
 
 
+def load_source_types_full():
+    """
+    Return the ordered list of source type entries WITH display names.
+
+    Accepts both plain-string entries and object entries
+    {"source_type_id": str, "display_name": str}. display_name falls back
+    to the id when the entry is a bare string or omits/empties display_name.
+
+    Returns:
+        [{"source_type_id": str, "display_name": str}, ...]
+    """
+    data = load_json("source_types")
+    if isinstance(data, dict):
+        values = data.get("source_types")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("source_types.json must contain a list")
+    return [_vocab_full(v, "source_type_id") for v in values
+            if _vocab_full(v, "source_type_id")]
+
+
+def load_origins_full():
+    """
+    Return the ordered list of origin entries WITH display names.
+
+    Accepts both plain-string entries and object entries
+    {"origin_id": str, "display_name": str}. display_name falls back to
+    the id when the entry is a bare string or omits/empties display_name.
+
+    Returns:
+        [{"origin_id": str, "display_name": str}, ...]
+    """
+    data = load_json("origins")
+    if isinstance(data, dict):
+        values = data.get("origins")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("origins.json must contain a list")
+    return [_vocab_full(v, "origin_id") for v in values
+            if _vocab_full(v, "origin_id")]
+
+
 def _vocab_id(item, key):
     """Extract the canonical id from a string or object vocabulary entry."""
     if isinstance(item, str):
@@ -150,6 +194,24 @@ def _vocab_id(item, key):
         value = item.get(key)
         return value if isinstance(value, str) and value else None
     return None
+
+
+def _vocab_full(item, key):
+    """Build a {key: id, "display_name": str} entry from a string or object
+    vocabulary entry, or return None for an invalid entry.
+
+    display_name falls back to the id when the entry is a bare string or
+    omits/empties display_name.
+    """
+    vid = _vocab_id(item, key)
+    if vid is None:
+        return None
+    display_name = vid
+    if isinstance(item, dict):
+        candidate = item.get("display_name")
+        if isinstance(candidate, str) and candidate:
+            display_name = candidate
+    return {key: vid, "display_name": display_name}
 
 
 def default_source_type_for_collection(collection_id):
@@ -174,5 +236,7 @@ __all__ = [
     "load_collection_ids",
     "load_source_types",
     "load_origins",
+    "load_source_types_full",
+    "load_origins_full",
     "default_source_type_for_collection",
 ]

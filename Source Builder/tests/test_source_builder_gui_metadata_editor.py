@@ -208,11 +208,11 @@ def _():
             app._refresh_metadata()
 
             check("processable type shown",
-                  "anime_subtitle" in app.source_type_combo.cget("values"))
+                  "Anime Subtitle" in app.source_type_combo.cget("values"))
             check("non-processable type hidden",
-                  "video" not in app.source_type_combo.cget("values"))
+                  "Video" not in app.source_type_combo.cget("values"))
             check("origins after",
-                  "nhk_radio" in app.origin_combo.cget("values"))
+                  "NHK Radio" in app.origin_combo.cget("values"))
             check("collections unchanged",
                   app.collection_combo.cget("values") == ("teppei_beginner",))
         finally:
