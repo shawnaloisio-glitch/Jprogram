@@ -41,6 +41,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 import paths
+import source_package
 
 CONFIG_DIR = paths.PROJECT_ROOT / "Config"
 
@@ -205,6 +206,11 @@ def _item_to_named(item, key):
             else value,
         }
     return None
+
+
+def is_processable(source_type):
+    """Return True when a source type has an active processing profile."""
+    return source_package.is_processable_source_type(source_type)
 
 
 # ============================================================
@@ -560,6 +566,7 @@ __all__ = [
     "SEQUENCING_VALUES",
     "MetadataError",
     "is_valid_machine_id",
+    "is_processable",
     "load_collections",
     "load_source_types",
     "load_origins",

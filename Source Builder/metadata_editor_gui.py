@@ -241,6 +241,8 @@ class MetadataEditorWindow:
     def _build_collections_tab(self):
         source_types = [s["source_type_id"]
                         for s in metadata_editor.load_source_types()]
+        processable_source_types = [
+            s for s in source_types if metadata_editor.is_processable(s)]
 
         def display(item):
             return (item["collection_id"], item["display_name"],
@@ -264,7 +266,7 @@ class MetadataEditorWindow:
             ("collection_id", "Collection ID (folder name)", "entry"),
             ("display_name", "Display Name", "entry"),
             ("default_source_type", "Default Source Type", "combo",
-             source_types),
+             processable_source_types),
             ("sequencing", "Sequencing", "combo",
              metadata_editor.SEQUENCING_VALUES),
         ]

@@ -57,7 +57,8 @@ def sandbox():
         ]
     }), encoding="utf-8")
     (conf_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript", "subtitle", "article"],
+        "source_types": ["podcast_transcript", "cij_transcript",
+                         "subtitle", "article"],
     }), encoding="utf-8")
     (conf_dir / "origins.json").write_text(json.dumps({
         "origins": ["con_teppei_podcast", "nhk_news"],
@@ -826,6 +827,35 @@ def open_editor(app):
             and w.title() == "Edit Metadata"][0]
 
 
+def find_combo_by_values(dialog, values):
+    """Return the first ttk.Combobox whose offered values match exactly."""
+    import tkinter.ttk as ttk
+    for child in dialog.winfo_children():
+        if isinstance(child, ttk.Combobox):
+            if tuple(child.cget("values")) == tuple(values):
+                return child
+        found = find_combo_by_values(child, values)
+        if found is not None:
+            return found
+    return None
+
+
+def select_tree_row_by_id(tab, collection_id):
+    """Select the Treeview row whose first column matches collection_id."""
+    import tkinter.ttk as ttk
+    for child in tab.winfo_children():
+        if isinstance(child, ttk.Treeview):
+            for iid in child.get_children():
+                values = child.item(iid, "values")
+                if values and values[0] == collection_id:
+                    child.selection_set(iid)
+                    return True
+            return False
+        if select_tree_row_by_id(child, collection_id):
+            return True
+    return False
+
+
 @test("add dialog: sequencing combo defaults to episodic when left at default")
 def _():
     restore = sandbox()
@@ -973,6 +1003,130 @@ def _():
             by_id = {c["collection_id"]: c for c in collections}
             check("edited back to episodic",
                   by_id["teppei_beginner"]["sequencing"] == "episodic")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("add dialog Default Source Type combo only offers processable types")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def inspect_and_cancel():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                combo = find_combo_by_values(d, ("podcast_transcript",))
+                result["combo_found"] = combo is not None
+                if combo is not None:
+                    result["values"] = tuple(combo.cget("values"))
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, inspect_and_cancel)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("source type combo present",
+                  result.get("combo_found") is True)
+            values = result.get("values", ())
+            check("processable type offered", "podcast_transcript" in values)
+            check("known non-processable cij_transcript excluded",
+                  "cij_transcript" not in values)
+            check("subtitle excluded", "subtitle" not in values)
+            check("article excluded", "article" not in values)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("edit dialog pre-fills and saves a legacy non-processable default")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            metadata_editor.add_collection(
+                "cijapanese", "CI Japanese",
+                default_source_type="cij_transcript")
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            edit_button = find_button_in(tab, "Edit")
+            result = {}
+
+            def drive_edit():
+                result["row_selected"] = select_tree_row_by_id(
+                    tab, "cijapanese")
+                edit_button.invoke()
+
+            def inspect_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Edit"]
+                if not tops:
+                    result["error"] = "Edit dialog not found"
+                    return
+                d = tops[0]
+                combo = find_combo_by_values(d, ("podcast_transcript",))
+                if combo is None:
+                    result["error"] = "source type combo not found"
+                    return
+                result["displayed"] = combo.get()
+                result["offered"] = tuple(combo.cget("values"))
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            def verify_no_error_dialog():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)]
+                result["error_dialog"] = any(
+                    w.title() == "Cannot edit" for w in tops)
+                result["edit_dialog_closed"] = not any(
+                    w.title() == "Edit" for w in tops)
+
+            root.after(100, drive_edit)
+            root.after(250, inspect_and_save)
+            root.after(400, verify_no_error_dialog)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("legacy row selected", result.get("row_selected") is True)
+            check("legacy value pre-filled",
+                  result.get("displayed") == "cij_transcript")
+            check("legacy value not offered for new picks",
+                  "cij_transcript" not in result.get("offered", ()))
+            check("saved without error dialog",
+                  result.get("error_dialog") is False)
+            check("edit dialog closed after save",
+                  result.get("edit_dialog_closed") is True)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("collection still present", "cijapanese" in by_id)
+            check("legacy default preserved",
+                  by_id["cijapanese"]["default_source_type"] == "cij_transcript")
+            check("display name preserved",
+                  by_id["cijapanese"]["display_name"] == "CI Japanese")
         finally:
             root.destroy()
     finally:
