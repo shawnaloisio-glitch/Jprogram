@@ -47,6 +47,18 @@ matches whatever the frozen parser prompt actually defines as
 word-boundary punctuation — they're two independent sources of truth for
 the same rule, coupled only by convention.
 
+**Upgraded from inference to confirmed textual evidence:** checked
+`Prompts/parser_prompt.md` directly. Line 142 says only "Word units
+never include the spaces or punctuation that separate them" — open-ended,
+no enumerated character list, leaving "punctuation" to the model's
+judgment. Line 224 uses `～と思います` as a real example expression
+pattern in the frozen prompt itself, confirming the wave-dash character
+genuinely appears in this corpus's expected real content (casual
+Japanese grammar patterns), not a hypothetical edge case. So the risk is
+concrete, not manufactured: the prompt's instruction is genuinely broader
+than the validator's hardcoded set, and the corpus is expected to contain
+exactly the kind of character (〜/～) most likely to expose the gap.
+
 **Confirms an existing WORKING_LIST.md item, not a new finding:**
 `_validate_sentence`'s `sentence_index` check (lines 471-486) only
 verifies non-negative and strictly-increasing — never checks for gaps
@@ -102,3 +114,41 @@ silently repair") explicitly warns against. Low real-world probability —
 it requires both the request data and the filename to lack a usable job
 number — but the failure mode if it ever triggers is silently looking
 for the wrong response file rather than raising a clear error.
+
+## 3. `Data Processor/deepseek_client.py`
+
+Careful, well-scoped transport layer — genuinely does only what its
+docstring claims (send, receive, save raw, record metadata; never
+interprets). API key handling matches the documented contract exactly
+(never logged/printed/stored in response files; env var correctly
+preferred over the file, consistent with the already-known name-collision
+gotcha logged in `WORKING_LIST.md`). Retry logic (`send_with_retry`)
+correctly distinguishes permanent failures (401/403 raises immediately,
+other 4xx doesn't retry) from transient ones (429, 5xx, network errors
+retry with backoff) — a genuinely well-thought-out state machine.
+
+**Same fallback-to-zero pattern found a second time, now confirmed as
+recurring rather than one-off.** `job_number_from_request()` (line 140)
+has the identical "parse from filename, silently default to `0` if that
+fails too" pattern already flagged in `corpus_builder.py`'s
+`response_path_for()`. Two independent files now share the same
+silent-guess risk for the same underlying value (a missing/unparseable
+job number) — worth a single shared fix if this is ever addressed, not
+two separate ones, since they're clearly meant to agree.
+
+**Minor observation, not a real gap given the atomic-write guarantee:**
+the resume/skip logic (`run()`, line 557) treats any pre-existing response
+file as "completed" based purely on file existence — no re-validation of
+its content, not even a basic JSON-parses check, before counting it as
+done and moving on. `_completed_entry_from_existing()` calls
+`extract_usage()` on it, which degrades gracefully to `None` token counts
+if the file doesn't parse — so a corrupted existing file wouldn't crash,
+but would silently report success with null usage metadata rather than
+flagging the corruption at this stage. In practice this is well-guarded:
+`save_response_atomic()`'s temp-file-then-replace pattern means this
+client's own crash recovery can never produce a partially-written file in
+the first place — the only way a corrupted response could exist here is
+external tampering or a bug elsewhere, and downstream `response_validator.py`
+would catch structural corruption regardless. Noted as a documented
+design tradeoff (content validation is deliberately not this layer's job),
+not a finding requiring action.
