@@ -65,7 +65,11 @@ def load_collections():
     separate from the repository product configuration.
 
     Returns a list of collection dicts:
-        [{"collection_id": str, "name": str, "source_type": str}, ...]
+        [{"collection_id": str, "name": str, "source_type": str,
+          "sequencing": str}, ...]
+
+    "sequencing" is "episodic" or "auto", defaulting to "episodic" when a
+    collection does not declare it.
     """
     path = paths.COLLECTIONS_CONFIG
     if not path.is_file():
@@ -92,6 +96,7 @@ def load_collections():
                 "collection_id": collection_id,
                 "name": item.get("name", collection_id),
                 "source_type": item.get("source_type"),
+                "sequencing": item.get("sequencing", "episodic"),
             })
     return result
 

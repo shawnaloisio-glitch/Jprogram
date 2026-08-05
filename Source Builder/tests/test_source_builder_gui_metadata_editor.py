@@ -751,6 +751,234 @@ def _():
         restore()
 
 
+# ============================================================
+# Sequencing field: add default / explicit auto / edit round-trip
+# ============================================================
+
+def collections_tab_frame(editor):
+    """Return the Collections tab's frame inside the metadata editor."""
+    import tkinter.ttk as ttk
+    notebook = [c for c in editor.winfo_children()
+                if isinstance(c, ttk.Notebook)][0]
+    for tab_id in notebook.tabs():
+        if notebook.tab(tab_id, "text") == "Collections":
+            return notebook.nametowidget(tab_id)
+    return None
+
+
+def find_button_in(widget, text):
+    """Recursively find a ttk.Button by its text inside a widget."""
+    import tkinter.ttk as ttk
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Button) and child.cget("text") == text:
+            return child
+        result = find_button_in(child, text)
+        if result is not None:
+            return result
+    return None
+
+
+def fill_dialog_entries(dialog, texts):
+    """Insert texts into the dialog's ttk.Entry widgets in order."""
+    import tkinter.ttk as ttk
+    entries = []
+    def collect(w):
+        for c in w.winfo_children():
+            if isinstance(c, ttk.Entry):
+                entries.append(c)
+            collect(c)
+    collect(dialog)
+    for entry, text in zip(entries, texts):
+        entry.insert(0, text)
+
+
+def set_combo_by_values(dialog, values, choice):
+    """Set the readonly Combobox with the given values to choice."""
+    import tkinter.ttk as ttk
+    for child in dialog.winfo_children():
+        if isinstance(child, ttk.Combobox) and tuple(child.cget("values")) == tuple(values):
+            child.set(choice)
+            return True
+        if set_combo_by_values(child, values, choice):
+            return True
+    return False
+
+
+def select_first_tree_row(tab):
+    """Select the first row of the tab's Treeview, if any."""
+    import tkinter.ttk as ttk
+    for child in tab.winfo_children():
+        if isinstance(child, ttk.Treeview):
+            children = child.get_children()
+            if children:
+                child.selection_set(children[0])
+            return True
+        if select_first_tree_row(child):
+            return True
+    return False
+
+
+def open_editor(app):
+    """Open the metadata editor and return the editor Toplevel."""
+    app._open_metadata_editor()
+    return [w for w in app.root.winfo_children()
+            if isinstance(w, tk.Toplevel)
+            and w.title() == "Edit Metadata"][0]
+
+
+@test("add dialog: sequencing combo defaults to episodic when left at default")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def fill_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                fill_dialog_entries(d, ["nhk_default", "NHK Default"])
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, fill_and_save)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("collection added", "nhk_default" in by_id)
+            check("default sequencing",
+                  by_id["nhk_default"]["sequencing"] == "episodic")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("add dialog: explicitly choosing auto persists correctly")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def fill_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                fill_dialog_entries(d, ["nhk_auto", "NHK Auto"])
+                result["combo_set"] = set_combo_by_values(
+                    d, metadata_editor.SEQUENCING_VALUES, "auto")
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, fill_and_save)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("sequencing combo present",
+                  result.get("combo_set") is True)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("collection added", "nhk_auto" in by_id)
+            check("auto persisted",
+                  by_id["nhk_auto"]["sequencing"] == "auto")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("edit dialog: sequencing value round-trips to auto and back")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            edit_button = find_button_in(tab, "Edit")
+            result = {}
+
+            def drive_edit():
+                select_first_tree_row(tab)
+                edit_button.invoke()
+
+            def change_sequencing_and_save(choice):
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Edit"]
+                if not tops:
+                    result["error"] = "Edit dialog not found"
+                    return
+                d = tops[0]
+                result["combo_set"] = set_combo_by_values(
+                    d, metadata_editor.SEQUENCING_VALUES, choice)
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            # First edit: teppei_beginner (episodic default) -> auto.
+            root.after(100, drive_edit)
+            root.after(250, lambda: change_sequencing_and_save("auto"))
+            root.after(1000, root.quit)
+            root.mainloop()
+
+            check("no error (first edit)", "error" not in result)
+            check("sequencing combo present (first edit)",
+                  result.get("combo_set") is True)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("edited to auto",
+                  by_id["teppei_beginner"]["sequencing"] == "auto")
+
+            # Second edit: auto -> episodic round-trips back.
+            result.clear()
+            root.after(100, drive_edit)
+            root.after(250, lambda: change_sequencing_and_save("episodic"))
+            root.after(1000, root.quit)
+            root.mainloop()
+
+            check("no error (second edit)", "error" not in result)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("edited back to episodic",
+                  by_id["teppei_beginner"]["sequencing"] == "episodic")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

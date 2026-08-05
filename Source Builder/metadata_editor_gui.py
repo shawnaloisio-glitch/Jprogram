@@ -250,19 +250,23 @@ class MetadataEditorWindow:
             return metadata_editor.add_collection(
                 kw["collection_id"], kw["display_name"],
                 default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types)
+                source_type_ids=source_types,
+                sequencing=kw.get("sequencing") or None)
 
         def edit(original_id, **kw):
             return metadata_editor.edit_collection(
                 original_id, kw["display_name"],
                 default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types)
+                source_type_ids=source_types,
+                sequencing=kw.get("sequencing") or None)
 
         fields = [
             ("collection_id", "Collection ID (folder name)", "entry"),
             ("display_name", "Display Name", "entry"),
             ("default_source_type", "Default Source Type", "combo",
              source_types),
+            ("sequencing", "Sequencing", "combo",
+             metadata_editor.SEQUENCING_VALUES),
         ]
         helper = ("The Collection ID becomes the folder name and filename "
                   "prefix. Choose carefully. It cannot be changed later.")

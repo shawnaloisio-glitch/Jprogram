@@ -544,13 +544,15 @@ class SourceBuilderApp:
 
     def _bind_events(self):
         for var, callback in (
-            (self.collection_var, self._on_metadata_changed),
             (self.source_name_var, self._on_metadata_changed),
             (self.episode_var, self._on_metadata_changed),
             (self.source_type_var, self._on_metadata_changed),
             (self.origin_var, self._on_metadata_changed),
         ):
             var.trace_add("write", callback)
+        # The collection selection changes field visibility (its sequencing
+        # mode) as well as metadata, so it gets its own handler.
+        self.collection_var.trace_add("write", self._on_collection_changed)
         self.text_area.bind("<<Modified>>", self._on_text_changed)
 
     def _on_text_changed(self, *args):
@@ -563,6 +565,16 @@ class SourceBuilderApp:
         self._update_next_button_label()
         self._persist_metadata()
         self._refresh_ready_state()
+
+    def _on_collection_changed(self, *args):
+        """React to a collection selection change.
+
+        Re-applies field visibility (the selected collection's sequencing
+        mode can hide the Episode field) and keeps metadata effects intact.
+        """
+        self._apply_mode()
+        self._refresh_auto_episode()
+        self._on_metadata_changed()
 
     def _update_next_button_label(self):
         """Set the Add Another button label from the current source type."""
@@ -625,15 +637,52 @@ class SourceBuilderApp:
         button.configure(bg=bg, activebackground=bg,
                          state="normal" if enabled else "disabled")
 
+    def _current_collection_sequencing(self):
+        """Return the selected collection's sequencing value.
+
+        Returns "episodic" when no collection is selected or the collection
+        does not declare a value (the config default).
+        """
+        collection_id = self.collection_var.get()
+        for collection in self.collections:
+            if collection["collection_id"] == collection_id:
+                return collection.get("sequencing", "episodic")
+        return "episodic"
+
+    def _is_auto_collection(self):
+        """True when a collection is selected and uses auto sequencing."""
+        return (self.identity_var.get() == "collection"
+                and self._current_collection_sequencing() == "auto")
+
+    def _refresh_auto_episode(self):
+        """Fill the hidden episode field with the live next sequence number.
+
+        Auto collections hide the Episode field but the ReadyStateEngine
+        and controller validation still require a valid episode value, so
+        the next live sequence (max+1) is computed silently whenever the
+        selected collection is auto.
+        """
+        if self._is_auto_collection():
+            self.episode_var.set(str(controller.next_auto_sequence(
+                self.collection_var.get())))
+
     def _apply_mode(self):
-        """Show the active identity path's fields and hide the other."""
+        """Show the active identity path's fields and hide the others.
+
+        Three-way visibility:
+        - standalone: hide collection combo + episode field,
+        - collection + "episodic": show the Episode field,
+        - collection + "auto": hide the Episode field (sequence is computed
+          automatically); the collection combo stays visible.
+        """
         is_collection = self.identity_var.get() == "collection"
+        show_episode = is_collection and not self._is_auto_collection()
 
         # Collection fields
         self.collection_label.grid() if is_collection else self.collection_label.grid_remove()
         self.collection_combo.grid() if is_collection else self.collection_combo.grid_remove()
-        self.episode_label.grid() if is_collection else self.episode_label.grid_remove()
-        self.episode_entry.grid() if is_collection else self.episode_entry.grid_remove()
+        self.episode_label.grid() if show_episode else self.episode_label.grid_remove()
+        self.episode_entry.grid() if show_episode else self.episode_entry.grid_remove()
 
         # Standalone field
         if is_collection:
@@ -859,6 +908,12 @@ class SourceBuilderApp:
 
         try:
             if is_collection:
+                if self._is_auto_collection():
+                    # Recompute the sequence live at save time so a source
+                    # added to the collection since the field was last filled
+                    # is never overwritten by a stale cached number.
+                    self.episode_var.set(str(controller.next_auto_sequence(
+                        self.collection_var.get())))
                 result = controller.create_collection_source(
                     collection_id=self.collection_var.get(),
                     episode=self.episode_var.get(),
@@ -1193,6 +1248,10 @@ class SourceBuilderApp:
         self.source_type_combo.configure(values=self.source_types)
         self.origin_combo.configure(values=self.origins)
         self._apply_mode()
+        # A sequencing edit in the metadata editor may have changed the
+        # selected collection's mode; ensure the hidden episode value is
+        # still valid for auto collections.
+        self._refresh_auto_episode()
 
 
 def main():
