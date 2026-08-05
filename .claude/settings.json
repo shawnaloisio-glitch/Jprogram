@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__visualize__show_widget",
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(python \"C:\\Jprogram\\oc_session_dump.py\"*)",
+      "Bash(python oc_session_dump.py*)",
+      "Bash(python \"Source Builder/tests/test_*)",
+      "Bash(python \"Subtitle Cleaner/tests/test_*)",
+      "Bash(python \"Transcript Cleaner/tests/test_*)",
+      "Bash(python \"Data Processor/tests/test_*)",
+      "Bash(python \"Integration/tests/test_*)",
+      "Bash(python \"Source Intake/tests/test_*)",
+      "Bash(python \"Production Manager/tests/test_*)"
+    ]
+  }
+}
