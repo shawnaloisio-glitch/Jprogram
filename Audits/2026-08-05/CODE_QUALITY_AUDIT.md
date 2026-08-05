@@ -213,7 +213,48 @@ file's own stated design ("GUI will not use these; it consumes the
 structured data directly"). Overall: one confirmed defect, otherwise the
 strongest-engineered file read in this audit so far.
 
-## 5. `Data Processor/deepseek_client.py`
+## 5. Remaining unread subsystems: `Common/`, Diagnostics, Subtitle Importer, Templates
+
+**`Common/cleaning_utils.py`** — clean. Exactly matches its stated purpose:
+pure mechanical text primitives, stdlib-only, zero linguistic logic, no
+knowledge of source types/jobs/registry as its docstring requires.
+
+**`Source Builder/diagnostics.py`** — clean, and worth noting a genuinely
+good security practice rather than just an absence of problems: the
+environment/config collector (`collect_environment()`) builds its bundle
+from an explicit, named allowlist of `project_config` attributes rather
+than dumping all module attributes — `API_KEY` lives in `paths.py`, not
+in that allowlist, so it can't leak into a diagnostic bundle that's
+explicitly designed to be shared with "OC/AI" by construction, not by
+accident.
+
+**`Subtitle Importer/cleaner.py`** — clean, well-scoped SRT/VTT parsing,
+correctly pre-intake per its own stated boundary (confirmed consistent
+with the chain-of-custody finding from TASK 8 earlier this session — this
+module is intentionally outside the tracked pipeline).
+
+**`Templates/` — investigated a suspected contradiction, resolved as NOT
+one.** The two template files use an "EPISODE" batch-marker format
+(`===== EPISODE ===== / episode: NNNN`) that superficially resembles the
+parser's `===== Episode N =====` markers already confirmed legacy earlier
+this session (see `WORKING_LIST.md`'s Resolved section). Checked
+`SOURCE_TEMPLATE_SPEC.md` directly before assuming a conflict: this is a
+different, deliberately-current tool — a frozen V1.0 spec dated
+2026-08-02 (3 days before this session, not an old leftover) for a
+**human-authoring staging container** used *before* raw episodes get
+individually split and fed into the one-file-per-episode pipeline. §9 of
+the spec explicitly confirms this: "the template is only the authoring
+container; it does not redefine source ownership." Not a contradiction —
+a genuinely different, still-current purpose. The two template files
+themselves are already thoroughly tested against this spec
+(`test_source_template.py`, 8 tests, all passing) — what isn't covered is
+whether the Template Editor GUI correctly generates new templates
+matching this spec, which is exactly the scope of the already-tracked,
+still-open `WORKING_LIST.md` item ("Template Editor... needs a pass with
+more test data") — confirms that item's scope precisely rather than
+surfacing anything new.
+
+## 6. `Data Processor/deepseek_client.py`
 
 Careful, well-scoped transport layer — genuinely does only what its
 docstring claims (send, receive, save raw, record metadata; never
