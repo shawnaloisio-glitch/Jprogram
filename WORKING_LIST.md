@@ -50,12 +50,9 @@ lists are merged below into one entry each.
 - [ ] **Import doesn't open to a designated folder/root** — need to define an actual import folder structure and have the file picker open at that root, instead of wherever it currently defaults.
 - [ ] **Import-from-subtitle workflow is clunky** — no specifics yet; Owner flagged it needs design thought, not an immediate fix.
 
-### Needs investigation — likely one shared root cause across 3 reports
-- [ ] **Source_type selection appears to have a sticky/incorrect dependency, not a clean per-collection setting:**
-  1. Metadata editor "chose teppei_beginner again" unexpectedly — Owner suspects a dependency that shouldn't exist.
-  2. CIJ collection has `source_type` configured as `cij_transcript`, but the UI dropdown shows/won't-change-from `podcast_transcript`.
-  3. Even after creating a *new* collection using `cij_transcript`, the Sources-tab working dropdown still defaults to and locks on `podcast_transcript`.
-  - Not yet investigated this session — but worth checking whether the GUI's source_type dropdown is reading a stale/cached/first-loaded value instead of re-reading the selected collection's actual configured `source_type` each time the collection changes. All three reports point at the same area (collection → source_type resolution in the GUI), so investigate as one bug, not three.
+### Needs investigation — 2 of 3 reports resolved, 1 still open
+- [x] **CIJ locks on `podcast_transcript` instead of `cij_transcript` — root cause confirmed, working as intended (2026-08-05).** `cij_transcript` is a real entry in `Config/source_types.json` (GUI vocabulary) but has no corresponding entry in `PROCESSING_PROFILES` (`project_config.py` only defines `anime_subtitle` and `podcast_transcript` — no cleaning profile/cleaner exists for `cij_transcript` yet). `test_source_builder_gui_processable.py:120` confirms this is intentional: `check("cij_transcript hidden", "cij_transcript" not in values)` — unprocessable types are deliberately filtered from the working dropdown. Not a bug in the dependency sense Owner suspected — the actual gap is UX: no message tells the user *why* the type won't apply. Fixing this properly means either building the `cij_transcript` cleaning profile/cleaner, or surfacing a clear "not yet processable" message instead of silently falling back.
+- [ ] **Metadata editor "chose teppei_beginner again" — still unresolved, likely a separate issue.** Unlike `cij_transcript`, `teppei_beginner`/`podcast_transcript` is a fully valid, processable combination, so this isn't explained by the finding above. Still needs its own investigation (stale/cached selection state vs. actual last-used-preset logic).
 - [ ] **Template Editor** — works and appears to populate, but Owner could only confirm one origin and one source type; couldn't confirm others populate correctly beyond the collection name. Needs a pass with more test data to confirm broader correctness.
 
 ### Design question, not a bug — needs a decision before any fix

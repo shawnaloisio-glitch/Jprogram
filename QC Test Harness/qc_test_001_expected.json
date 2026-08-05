@@ -1,0 +1,38 @@
+{
+  "note": "Ground truth authored by hand for qc_test_001_source.txt. Sentence positions are 0-based canonical order. Designed to test frequency_analyzer.py and distribution_analyzer.py against known values, and lexical grouping of inflected verb forms via the real DeepSeek parser.",
+  "sentence_count": 20,
+  "lexical_items": {
+    "犬": {
+      "gloss": "dog",
+      "sentence_positions": [0, 3, 6, 9, 12],
+      "occurrences": 5,
+      "sentence_gaps": [3, 3, 3, 3],
+      "sentence_distance": {"min": 3, "max": 3, "mean": 3.0, "median": 3.0, "stddev": 0.0},
+      "purpose": "Positive case for the 'learning threshold' example (>=5 occurrences, >=3 sentence min gap). Should qualify exactly at the boundary."
+    },
+    "猫": {
+      "gloss": "cat",
+      "sentence_positions": [1, 2, 13, 14, 18],
+      "occurrences": 5,
+      "sentence_gaps": [1, 11, 1, 4],
+      "sentence_distance": {"min": 1, "max": 11, "mean": 4.25, "median": 2.5},
+      "purpose": "Negative-control case: same frequency as the dog item (5) but min gap = 1, so it must NOT qualify the threshold despite equal frequency. Proves frequency alone is insufficient."
+    },
+    "食べる": {
+      "gloss": "to eat",
+      "sentence_positions": [5, 8, 11, 16],
+      "occurrences": 4,
+      "expected_surfaces": {
+        "食べました": 1,
+        "食べません": 1,
+        "食べて": 1,
+        "食べる": 1
+      },
+      "purpose": "Tests lexical grouping of inflected verb surfaces to a single dictionary-form lexical key, matching the exact example pattern in PARSER_OUTPUT_SPEC.md §4."
+    }
+  },
+  "qualitative_checks": {
+    "chunk_pattern": "Sentence 19 (明日は勉強することにしました。) contains the same grammar pattern as PARSER_OUTPUT_SPEC.md's own example (行くことにしました). Expect chunk_analyzer.py to surface a chunk covering ことにしました or similar -- exact word-span boundaries are up to the parser's judgment, not hard-asserted.",
+    "expressions": "Historically returned 0 for this model on real data (2026-08-05, ep001) -- likely EXPRESSIONS_DISABLED_DIRECTIVE in request builder.py, not a bug. Confirm this test also returns 0 for consistency; if it returns >0, that's a change worth investigating."
+  }
+}
