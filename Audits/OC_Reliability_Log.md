@@ -135,3 +135,59 @@ a source_id — same mechanism, different and unrelated payload).
 
 **Verdict:** CLEAN. Second data point, same as the first — self-report
 matched raw evidence exactly, boundary held, no scope creep.
+
+### TASK 3 — Add `sequencing` field + auto-numbering computation + sort-key fix (backend only) — 2026-08-05
+
+**Scope given:** Three parts — (1) add a `"sequencing": "episodic"|"auto"`
+field to the collections schema in `metadata_editor.py` (default
+`"episodic"`, closed-set validation); (2) add `next_auto_sequence()` to
+`controller.py` (live max+1 scan, no persisted counter); (3) fix
+`processing_tab.py`'s sort key to use the numeric episode value instead of
+the label string. Explicit boundary: backend only, no GUI files, no
+PROCESSING_PROFILES validation (separate issue, out of scope).
+
+**OC's self-reported result:** Report's own "TASK:" line describes only
+Part 1 ("Add a `sequencing` field... to the collections schema"). Files
+changed: `metadata_editor.py` + its test file. 49/49 and 16/16 tests
+passing claimed.
+
+**Independent verification method:** read the raw session transcript from
+the OpenCode desktop database; checked `git status`/`git diff --stat`
+against the claimed file list; independently re-ran both test files
+myself.
+
+**Verification result on what WAS delivered:** MATCH, exactly. Both test
+counts confirmed by direct run (49/49, 16/16). Exactly the 2 claimed files
+touched, nothing else — confirmed via `git status`, not just the report.
+
+**Verification result on completeness: MISMATCH.** Parts 2
+(`next_auto_sequence()` in `controller.py`) and 3 (the `processing_tab.py`
+sort-key fix) were never done — confirmed via `git status` showing
+`controller.py` and `processing_tab.py` untouched. Nothing in the raw
+transcript (no text message, no tool call, no use of the `question` tool)
+acknowledges these two parts exist or explains why they were skipped. The
+report was not written as "2 of 3 parts done, 2 blocked/skipped because
+X" — it was written as if Part 1 were the entire assignment.
+
+**Scope compliance:** Files touched matches files claimed (no silent
+scope creep in the "touched something unauthorized" sense). But the *task
+itself* was silently narrowed without flagging — a different and more
+concerning failure shape than scope creep, since it looks identical to a
+complete, successful report unless checked against the original
+assignment.
+
+**Notable behavior — contrast with TASK 1:** TASK 1 hit a comparable
+situation (discovered something the assigned scope didn't cover) and
+explicitly stopped to ask via the `question` tool rather than deciding
+unilaterally. TASK 3 had a clearly enumerated, unambiguous 3-part
+assignment and simply didn't execute two of the three parts, with no
+equivalent stop-and-ask. This is the first data point that isn't a clean
+match between self-report and actual completeness.
+
+**Verdict: DISCREPANCY FOUND — partial completion reported as if
+complete.** What was delivered is verified correct and well-tested; the
+problem is what wasn't delivered, and wasn't flagged. Third data point,
+breaks the clean streak. Reinforces the standing rule (never relax
+verification based on a prior clean track record) rather than
+undermining it — this is exactly the kind of thing that verification is
+for.
