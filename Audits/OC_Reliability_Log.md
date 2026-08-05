@@ -255,3 +255,69 @@ process fix (AGENTS.md), is itself informative — suggests the TASK 3 gap
 was a reporting-discipline problem that responded to an explicit rule
 change, not a deeper reliability issue. Continue verifying every task
 regardless.
+
+### TASK 5 — GUI wiring for non-episodic collection auto-sequencing — 2026-08-05
+
+**Scope given:** GUI-layer only, 3 parts — (1) `config_loader.py`'s
+`load_collections()` to expose the `sequencing` field (default
+`"episodic"`); (2) `metadata_editor_gui.py`'s Collections tab to add a
+`sequencing` combo field wired through `add_collection`/`edit_collection`;
+(3) `gui.py` — a three-way `_apply_mode()` visibility branch, a
+collection-change hook, and a silent `next_auto_sequence()` fill for auto
+collections (recomputed fresh at save time, not trusted from a cached
+value). Explicit boundary: no changes to `metadata_editor.py`,
+`controller.py`, or `processing_tab.py` (backend already complete from
+TASK 3/4).
+
+**OC's self-reported result:** All 3 parts marked done individually under
+an explicit "Per-part status" section. Files changed: `config_loader.py`,
+`metadata_editor_gui.py`, `gui.py`, plus test files `test_config_loader.py`
+(new, 8 tests), `test_source_builder_gui_metadata_editor.py` (+3 tests),
+`test_source_builder_gui_auto_sequencing.py` (new, 8 tests) — 35 new tests
+total, all passing. All existing suites passing except one pre-existing
+`test_source_builder_gui_presets.py` failure, confirmed pre-existing via a
+`git stash` control test run on the clean tree. Two judgment calls
+proactively flagged rather than silently decided: (1) an extra
+`_refresh_auto_episode()` trigger inside `_refresh_dropdowns()`, beyond the
+two specified trigger points, to handle a sequencing-mode edit on the
+currently-selected collection; (2) correctly identified two concurrent
+Advisor-authored files (`JPROGRAM_SESSION_BOOTSTRAP.md`,
+`ARTIFACT_CONTRACT_TRACE.md`) that appeared mid-session as external and not
+its own work, verified via file timestamps, left untouched per the
+"report, don't fix" rule.
+
+**Independent verification method:** raw `git status --short` against the
+claimed file list; independently re-ran all new/modified test files plus
+the adjacent Source Builder suites (`metadata_editor`, `controller`,
+`processing_tab`, `quick_presets`, `gui_presets`) myself; read the full
+`git diff` for all three production files directly.
+
+**Verification result:** MATCH, exactly. All test counts confirmed by
+direct run: `test_config_loader.py` 8/8,
+`test_source_builder_gui_metadata_editor.py` 19/19,
+`test_source_builder_gui_auto_sequencing.py` 8/8, `metadata_editor` 49/49,
+`controller` 30/30, `processing_tab` 16/16, `quick_presets` 21/21,
+`gui_presets` 7/8 (same single pre-existing "article" source_type mismatch
+already known and decided to leave as-is, see
+`JPROGRAM_SESSION_BOOTSTRAP.md` §10). The diff read directly confirms
+`_apply_mode()`'s three-way branch, the new
+`_current_collection_sequencing()`/`_is_auto_collection()` helpers,
+`_refresh_auto_episode()`, and the save-time fresh recompute in `on_save()`
+are all implemented correctly and match the settled option-(a) design
+(GUI-only fill, zero `controller.py` validation changes).
+
+**Scope compliance:** MATCH. `git status --short` showed exactly the six
+claimed files touched; `metadata_editor.py`, `controller.py`,
+`processing_tab.py` confirmed untouched.
+
+**Notable behavior:** Same good instinct as TASK 1 and TASK 4 — surfaced
+both judgment calls explicitly rather than deciding silently or guessing.
+The concurrent-file investigation (checking file timestamps to distinguish
+its own work from a parallel Advisor session's commits, rather than
+assuming its own mistake or silently "fixing" unexplained files) is a new
+and welcome behavior not seen in prior tasks.
+
+**Verdict:** CLEAN. Fifth data point; second clean result in a row in the
+sequencing-feature task family (TASK 4 → TASK 5), following the TASK 3
+discrepancy and its process fix. Continue verifying every task
+regardless.
