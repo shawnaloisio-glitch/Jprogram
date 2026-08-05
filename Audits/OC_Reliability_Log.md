@@ -446,3 +446,72 @@ specifically proves the avoided regression doesn't happen, rather than
 only testing the new filter in isolation. Fourth consecutive clean task.
 
 **Verdict:** CLEAN. Seventh data point; fourth clean result in a row.
+
+### TASK 8 — Enforce hash verification at cleaner entry and job-builder entry — 2026-08-05
+
+**Scope given:** The largest task this session. Two production fixes: (1)
+`Subtitle Cleaner/clean_subtitles.py` and `Transcript Cleaner/clean_transcript.py`
+(identical fix in both, confirmed both had the identical gap, not just
+Subtitle Cleaner as the original WORKING_LIST wording implied) — re-hash
+`raw_path` at cleaner entry and fail closed against the Source Registry's
+recorded `sha256`; (2) `Data Processor/job builder.py`'s
+`cleaning_result_errors()` — re-hash the cleaned artifact against the
+Cleaning Result's `output_hash`. Both reusing the existing
+`Source Intake/hashing.py` utility, no new hashing helper. Part 3: fix
+test fixtures in all three affected test files via their shared
+fixture-builder functions (not per-test edits), since none of the ~46
+existing tests across those files previously set up a matching Registry
+entry or `output_hash`. Explicit boundary: named files only; no Frozen
+Component changes (`response_validator.py`, `corpus_builder.py`,
+`deepseek_client.py` untouched); no schema changes.
+
+**Mid-task scope event:** OC discovered `Integration/tests/test_intake_cleaner_boundary.py`
+(a 4th test file, outside the original named list — a genuine gap in
+Advisor's own investigation, not an OC error) regressed to 0/10 because
+its fixture patched Source Intake's `SOURCE_REGISTRY` into a sandbox but
+not the cleaners' new `SOURCE_REGISTRY` global. OC stopped and used its
+own `question` tool to ask how to proceed rather than silently fixing or
+silently leaving it broken. Advisor investigated the file directly,
+confirmed the fix needed was the same minimal fixture-patch pattern
+already authorized elsewhere in this task, and recommended extending the
+boundary; Owner authorized it. OC then made exactly the minimal patch
+recommended — nothing more.
+
+**OC's self-reported result:** All 3 parts done. Files changed: the 6
+named files plus the one authorized extension (7 total). Test counts:
+Subtitle Cleaner 19/19, Transcript Cleaner 21/21, Job Builder 18/18,
+Integration boundary 10/10 (was 0/10 pre-fix). Also ran a full repo-wide
+sweep beyond what was asked (Production Manager, Source Intake, Source
+Builder's 22 files, Analysis, Common, Subtitle Importer, Templates, root
+`test_app_shell.py`) — all green, proactively, because this change
+touches code other subsystems depend on.
+
+**Independent verification method:** raw `git status --short` against the
+claimed 7-file list; independently re-ran all 4 core suites plus spot-checked
+two downstream suites not in OC's own required boundary (Production
+Manager's 7 files, Source Intake's 11 files); read the full `git diff` for
+both cleaners, Job Builder, and the Integration test fixture fix directly.
+
+**Verification result:** MATCH, exactly. All test counts confirmed by
+direct run (19/19, 21/21, 18/18, 10/10), plus zero regressions across the
+spot-checked downstream suites (18 additional files, all pass). Diff read
+directly confirms: both cleaners' fixes are symmetric and correct, four
+distinct fail-closed error messages each; Job Builder's fix follows the
+existing error-list pattern with no new control flow; the test fixture
+fixes route through each file's shared helper (`run_cleaner()`,
+`valid_result()`) exactly as directed, rather than touching individual
+tests one by one; the Integration test fix is exactly the minimal
+two-global-plus-wrapper patch discussed, nothing extra.
+
+**Scope compliance:** MATCH, with the one Owner-authorized extension
+handled correctly — OC asked before acting rather than deciding
+unilaterally, and the actual fix matched exactly what was authorized.
+
+**Notable behavior:** The `question`-tool escalation on the Integration
+test regression is the same good instinct as TASK 1 and TASK 6, now
+proven on the largest and most consequential task of the session. The
+unprompted full repo-wide regression sweep at the end is new and
+noteworthy — proportionate diligence scaled to the actual size of the
+change, not a fixed checklist.
+
+**Verdict:** CLEAN. Eighth data point; fifth clean result in a row.
