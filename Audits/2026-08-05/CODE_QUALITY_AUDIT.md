@@ -168,7 +168,37 @@ one real, still-standing finding is narrower than my first pass suggested
 architecture's own stated design, but not a live correctness risk given
 how carefully every analyzer already orders its own output.
 
-## 4. `Data Processor/deepseek_client.py`
+## 4. `Production Manager/production_manager.py` (in progress, 1344 lines)
+
+Well-architected overall so far: genuinely launches pipeline stages as
+isolated subprocesses (confirmed no direct imports of any stage module —
+matches its own "does NOT... import pipeline stage modules" claim
+exactly), and `launch_stage()` correctly requires both a zero exit code
+*and* a valid result artifact before reporting success — "Exit code alone
+is never sufficient" is a real, enforced rule here, not just a comment.
+
+**Confirmed defect, not a risk — a genuinely dead, duplicate branch in
+the core state-machine function.** `state_for()` (lines 536-605) contains
+two consecutive `elif` branches with the **exact same condition**:
+
+```python
+elif evidence["requests_count"] > 0:
+    state = "requests_created"
+elif evidence["requests_count"] > 0:      # line 579 — unreachable
+    state = "requests_created"
+```
+
+The second branch (line 579-580) can never execute — if the identical
+condition at line 576 was false, evaluating it again on the same
+unchanged `evidence` dict is also false. Both branches assign the same
+value, so this is functionally harmless today, but it's clear evidence of
+either a copy-paste artifact left over from an edit, or — more
+concerning — a distinct intermediate state that was meant to exist here
+and got lost in a refactor, leaving a stub branch behind. Worth a quick
+fix (delete the duplicate) and worth checking whether it signals a
+missing state distinction that was actually intended.
+
+## 5. `Data Processor/deepseek_client.py`
 
 Careful, well-scoped transport layer — genuinely does only what its
 docstring claims (send, receive, save raw, record metadata; never
