@@ -10,9 +10,16 @@ practice this file supports and when to refresh it.
 
 **Last captured:** 2026-08-05, from `source_id =
 podcast_transcript_qc-test-001` (the QC Test Harness's standing fixture —
-see `QC Test Harness/README.md`). Read-only capture; no new pipeline run
-was needed since this source_id's full chain already existed on disk from
-an earlier real run, including a real DeepSeek API call.
+see `QC Test Harness/README.md`). Sections 1, 2, 5, 6 (Source Registry,
+Source Package, parser response, canonical JSONL) are a read-only capture
+from an earlier real run, including a real DeepSeek API call — untouched
+since, and still accurate (nothing between Request Builder and Corpus
+Builder has changed). Sections 3–4 (Cleaning Job, Cleaning Result) were
+re-captured via a genuine live re-run of the `clean` and `jobs` stages
+later the same day, specifically to confirm TASK 8's new hash-enforcement
+code against real on-disk data rather than only unit-test fixtures — both
+free, no-network stages, no DeepSeek call needed since TASK 8 never
+touched Request Builder or the parser.
 
 **Update trigger:** refresh this file after any change to a pipeline-stage
 program (Source Intake writers, a cleaner, Job Builder, Request Builder,
@@ -89,7 +96,7 @@ just edit the JSON by hand to match a new schema; pull it from a real run.
 {
     "cleaned_artifact": "C:\\Jprogram Workspace\\Cleaned Archive\\podcast_transcript_qc-test-001.clean.txt",
     "cleaner_version": "1.0",
-    "completion_time": "2026-08-05 15:18:26",
+    "completion_time": "2026-08-05 20:46:16",
     "errors": [],
     "output_hash": "314d0b3bf0186cd009c7286a3f40038d842ba9a3377e8393adfdf791cba2111d",
     "schema_version": "1",
@@ -108,10 +115,20 @@ just edit the JSON by hand to match a new schema; pull it from a real run.
 
 Note: raw `sha256` and cleaned `output_hash` match exactly here only
 because this fixture required zero cleaning changes (all statistics are
-0) — that's a coincidence of this specific source, not evidence that
-raw-vs-cleaned hash verification is enforced anywhere. It isn't — see
-`WORKING_LIST.md`'s open "Hash verification computed but never enforced
-downstream" item.
+0) — that's a coincidence of this specific source, not evidence on its
+own that raw-vs-cleaned hash verification is enforced.
+
+**Updated 2026-08-05:** it now is. TASK 8 (same day, see
+`Audits/OC_Reliability_Log.md`) added enforcement at both cleaners'
+entry points (re-hash `raw_path` against the Source Registry's recorded
+`sha256`, fail closed) and at Job Builder (re-hash the cleaned artifact
+against this Cleaning Result's `output_hash`, fail closed). Confirmed
+directly, not just by reading the diff: re-ran the `clean` and `jobs`
+stages live against this real fixture post-TASK-8 (`completion_time`
+above reflects that re-run) — identical `output_hash`, `errors: []`,
+`success: true`. The new fail-closed hash check ran for real against
+real on-disk data and passed cleanly; this isn't inferred from the code
+or from unit tests alone.
 
 ## 5. Raw parser response (DeepSeek), excerpt
 

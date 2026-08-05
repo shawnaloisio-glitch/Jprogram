@@ -36,6 +36,10 @@ import metadata_editor_gui
 import quick_presets
 import paths
 
+SEQUENCING_LABELS = metadata_editor_gui.SEQUENCING_LABELS
+SEQUENCING_DISPLAY = tuple(
+    SEQUENCING_LABELS[v] for v in metadata_editor.SEQUENCING_VALUES)
+
 
 def sandbox():
     """Redirect Sources, settings, presets, and Config into temp dirs."""
@@ -924,7 +928,7 @@ def _():
                 d = tops[0]
                 fill_dialog_entries(d, ["nhk_auto", "NHK Auto"])
                 result["combo_set"] = set_combo_by_values(
-                    d, metadata_editor.SEQUENCING_VALUES, "auto")
+                    d, SEQUENCING_DISPLAY, SEQUENCING_LABELS["auto"])
                 save = find_button_in(d, "Save")
                 if save:
                     save.invoke()
@@ -972,7 +976,7 @@ def _():
                     return
                 d = tops[0]
                 result["combo_set"] = set_combo_by_values(
-                    d, metadata_editor.SEQUENCING_VALUES, choice)
+                    d, SEQUENCING_DISPLAY, SEQUENCING_LABELS[choice])
                 save = find_button_in(d, "Save")
                 if save:
                     save.invoke()
@@ -1127,6 +1131,241 @@ def _():
                   by_id["cijapanese"]["default_source_type"] == "cij_transcript")
             check("display name preserved",
                   by_id["cijapanese"]["display_name"] == "CI Japanese")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+# ============================================================
+# Sequencing display labels
+# ============================================================
+
+@test("sequencing combo shows friendly labels, not raw values")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def inspect_and_cancel():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                combo = find_combo_by_values(d, SEQUENCING_DISPLAY)
+                result["combo_found"] = combo is not None
+                if combo is not None:
+                    result["values"] = tuple(combo.cget("values"))
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, inspect_and_cancel)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("sequencing combo present", result.get("combo_found") is True)
+            values = result.get("values", ())
+            check("Series label shown", SEQUENCING_LABELS["episodic"] in values)
+            check("Auto label shown", SEQUENCING_LABELS["auto"] in values)
+            check("raw episodic hidden", "episodic" not in values)
+            check("raw auto hidden", "auto" not in values)
+            check("two friendly labels offered", values == SEQUENCING_DISPLAY)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("add dialog: friendly-label selections persist raw sequencing values")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def fill_and_save(cid, name, label):
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                fill_dialog_entries(d, [cid, name])
+                result["combo_set"] = set_combo_by_values(
+                    d, SEQUENCING_DISPLAY, label)
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            # Select the "Series (manual numbering)" label.
+            root.after(100, drive_add)
+            root.after(250, lambda: fill_and_save(
+                "nhk_ep", "NHK Ep", SEQUENCING_LABELS["episodic"]))
+            root.after(1200, root.quit)
+            root.mainloop()
+
+            check("no error (series)", "error" not in result)
+            check("combo set (series)", result.get("combo_set") is True)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("series collection added", "nhk_ep" in by_id)
+            check("raw episodic persisted",
+                  by_id["nhk_ep"]["sequencing"] == "episodic")
+
+            # Select the "Auto (site/source grouping)" label.
+            result.clear()
+            root.after(100, drive_add)
+            root.after(250, lambda: fill_and_save(
+                "nhk_au", "NHK Au", SEQUENCING_LABELS["auto"]))
+            root.after(1200, root.quit)
+            root.mainloop()
+
+            check("no error (auto)", "error" not in result)
+            check("combo set (auto)", result.get("combo_set") is True)
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("auto collection added", "nhk_au" in by_id)
+            check("raw auto persisted",
+                  by_id["nhk_au"]["sequencing"] == "auto")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("edit dialog pre-fills friendly labels for stored raw values")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            metadata_editor.add_collection(
+                "nhk_auto_col", "NHK Auto Col", sequencing="auto")
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            edit_button = find_button_in(tab, "Edit")
+            result = {}
+
+            def drive_edit(cid):
+                result["row_selected"] = select_tree_row_by_id(tab, cid)
+                edit_button.invoke()
+
+            def inspect_and_cancel():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Edit"]
+                if not tops:
+                    result["error"] = "Edit dialog not found"
+                    return
+                d = tops[0]
+                combo = find_combo_by_values(d, SEQUENCING_DISPLAY)
+                result["combo_found"] = combo is not None
+                if combo is not None:
+                    result["displayed"] = combo.get()
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            # teppei_beginner is stored as episodic (the default).
+            root.after(100, lambda: drive_edit("teppei_beginner"))
+            root.after(250, inspect_and_cancel)
+            root.after(1200, root.quit)
+            root.mainloop()
+
+            check("no error (episodic)", "error" not in result)
+            check("row selected (episodic)", result.get("row_selected") is True)
+            check("combo present (episodic)", result.get("combo_found") is True)
+            check("episodic pre-fills Series label",
+                  result.get("displayed") == SEQUENCING_LABELS["episodic"])
+
+            # nhk_auto_col is stored as auto.
+            result.clear()
+            root.after(100, lambda: drive_edit("nhk_auto_col"))
+            root.after(250, inspect_and_cancel)
+            root.after(1200, root.quit)
+            root.mainloop()
+
+            check("no error (auto)", "error" not in result)
+            check("row selected (auto)", result.get("row_selected") is True)
+            check("combo present (auto)", result.get("combo_found") is True)
+            check("auto pre-fills Auto label",
+                  result.get("displayed") == SEQUENCING_LABELS["auto"])
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Default Source Type combo values and save behavior are unchanged")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = collections_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def fill_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                combo = find_combo_by_values(d, ("podcast_transcript",))
+                result["combo_found"] = combo is not None
+                if combo is not None:
+                    result["displayed_values"] = tuple(combo.cget("values"))
+                    combo.set("podcast_transcript")
+                fill_dialog_entries(d, ["nhk_st", "NHK ST"])
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, fill_and_save)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("source type combo present", result.get("combo_found") is True)
+            check("displayed values unchanged",
+                  result.get("displayed_values") == ("podcast_transcript",))
+            collections = metadata_editor.load_collections()
+            by_id = {c["collection_id"]: c for c in collections}
+            check("collection added", "nhk_st" in by_id)
+            check("default persisted",
+                  by_id["nhk_st"]["default_source_type"] == "podcast_transcript")
+            check("sequencing default still episodic",
+                  by_id["nhk_st"]["sequencing"] == "episodic")
         finally:
             root.destroy()
     finally:

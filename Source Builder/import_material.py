@@ -10,11 +10,8 @@ creation workflow. It does NOT process material, create registry entries,
 create cleaning jobs, or start the pipeline.
 
 Supported source formats:
-- podcast transcript
 - subtitle file   (reuses the Subtitle Importer cleaner for .srt/.vtt)
-- ebook
-- OCR text
-- plain text
+- clean text
 
 This module is GUI-free and deterministic so it can be unit tested. It does
 not duplicate parsing logic already owned by the Subtitle Importer.
@@ -33,27 +30,18 @@ class ImportError(Exception):
 
 
 # Source format identifiers shown to the user.
-FORMAT_PODCAST_TRANSCRIPT = "podcast_transcript"
 FORMAT_SUBTITLE = "subtitle"
-FORMAT_EBOOK = "ebook"
-FORMAT_OCR = "ocr"
-FORMAT_PLAIN_TEXT = "plain_text"
+FORMAT_CLEAN_TEXT = "clean_text"
 
 SOURCE_FORMATS = (
-    FORMAT_PODCAST_TRANSCRIPT,
     FORMAT_SUBTITLE,
-    FORMAT_EBOOK,
-    FORMAT_OCR,
-    FORMAT_PLAIN_TEXT,
+    FORMAT_CLEAN_TEXT,
 )
 
 # Display labels for the import dialog.
 FORMAT_LABELS = {
-    FORMAT_PODCAST_TRANSCRIPT: "Podcast Transcript",
     FORMAT_SUBTITLE: "Subtitle File",
-    FORMAT_EBOOK: "Ebook",
-    FORMAT_OCR: "OCR Text",
-    FORMAT_PLAIN_TEXT: "Plain Text",
+    FORMAT_CLEAN_TEXT: "Clean Text",
 }
 
 
@@ -84,11 +72,10 @@ def _normalize_lines(text):
 
 def convert_text(content, source_format):
     """
-    Convert plain text content for a non-subtitle source format.
+    Convert clean text content for a non-subtitle source format.
 
-    Podcast transcript, ebook, OCR text, and plain text are treated as plain
-    text material: line-ending normalization only. No linguistic or parsing
-    logic is applied.
+    Clean text is normalized: line-ending normalization only. No linguistic
+    or parsing logic is applied.
 
     Input: content (str), source_format (one of SOURCE_FORMATS except
         subtitle).
@@ -107,7 +94,7 @@ def convert_file(path, source_format):
     Convert one file into the plain text Source Builder expects.
 
     Subtitle files reuse the Subtitle Importer cleaner (SRT/VTT -> dialogue
-    text). All other formats read the file and normalize line endings.
+    text). Clean text reads the file and normalizes line endings.
 
     Input: path (str or Path), source_format (one of SOURCE_FORMATS).
     Output: converted text (str).
@@ -149,11 +136,8 @@ def convert_files(paths, source_format):
 
 
 __all__ = [
-    "FORMAT_PODCAST_TRANSCRIPT",
     "FORMAT_SUBTITLE",
-    "FORMAT_EBOOK",
-    "FORMAT_OCR",
-    "FORMAT_PLAIN_TEXT",
+    "FORMAT_CLEAN_TEXT",
     "SOURCE_FORMATS",
     "FORMAT_LABELS",
     "ImportError",

@@ -3,10 +3,6 @@
     {
       "source_type_id": "podcast_transcript",
       "display_name": "podcast_transcript"
-    },
-    {
-      "source_type_id": "cij_transcript",
-      "display_name": "CIJ Transcripts"
     }
   ]
 }

@@ -804,7 +804,7 @@ class SourceBuilderApp:
         dialog.transient(self.root)
         dialog.resizable(False, False)
 
-        format_var = tk.StringVar(value=import_material.FORMAT_PODCAST_TRANSCRIPT)
+        format_var = tk.StringVar(value=import_material.FORMAT_SUBTITLE)
         paths_var = tk.StringVar(value="")
         feedback_var = tk.StringVar()
 

@@ -209,7 +209,7 @@ def _():
         sample = tmp / "sample.txt"
         sample.write_text("こんにちは。\n元気です。\n", encoding="utf-8")
         converted = import_material.convert_file(
-            sample, import_material.FORMAT_PODCAST_TRANSCRIPT)
+            sample, import_material.FORMAT_CLEAN_TEXT)
         check("converted", "こんにちは。" in converted)
     finally:
         restore()

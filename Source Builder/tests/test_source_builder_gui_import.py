@@ -29,6 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Subtitle Importer"))
 sys.path.insert(0, str(SOURCE_BUILDER))
 
 import tkinter as tk
+import tkinter.ttk as ttk
 
 import config_loader
 import controller
@@ -119,7 +120,7 @@ def _():
         restore()
 
 
-@test("import dialog opens with five formats")
+@test("import dialog opens with two formats")
 def _():
     restore = sandbox()
     try:
@@ -137,6 +138,18 @@ def _():
                 for w in root.winfo_children():
                     if isinstance(w, tk.Toplevel) \
                             and w.title() == "Import Material":
+                        radios = []
+
+                        def collect(widget):
+                            for child in widget.winfo_children():
+                                if isinstance(child, ttk.Radiobutton):
+                                    radios.append(child)
+                                collect(child)
+
+                        collect(w)
+                        result["radio_count"] = len(radios)
+                        result["radio_texts"] = sorted(
+                            r.cget("text") for r in radios)
                         w.destroy()
                 result["closed"] = True
 
@@ -147,6 +160,11 @@ def _():
 
             check("dialog opened", result.get("opened") is True)
             check("dialog closed", result.get("closed") is True)
+            check("exactly two format radios", result.get("radio_count") == 2)
+            check("subtitle radio shown",
+                  "Subtitle File" in result.get("radio_texts", ()))
+            check("clean text radio shown",
+                  "Clean Text" in result.get("radio_texts", ()))
         finally:
             root.destroy()
     finally:
@@ -162,7 +180,7 @@ def _():
         app = gui.SourceBuilderApp(root)
         try:
             a, b = tmp_files()
-            app._do_import(None, _var(import_material.FORMAT_PLAIN_TEXT),
+            app._do_import(None, _var(import_material.FORMAT_CLEAN_TEXT),
                            _var(f"{a}; {b}"), _var())
             content = app.text_area.get("1.0", "end")
             check("file a present", "一つ目の本文。" in content)
@@ -187,7 +205,7 @@ def _():
         app = gui.SourceBuilderApp(root)
         try:
             a, _ = tmp_files()
-            app._do_import(None, _var(import_material.FORMAT_PLAIN_TEXT),
+            app._do_import(None, _var(import_material.FORMAT_CLEAN_TEXT),
                            _var(f"{a}"), _var())
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("70")
@@ -243,7 +261,7 @@ def _():
                               wraps=import_material.convert_files) as conv, \
                  patch.object(controller, "create_collection_source",
                               wraps=controller.create_collection_source) as save:
-                app._do_import(None, _var(import_material.FORMAT_PLAIN_TEXT),
+                app._do_import(None, _var(import_material.FORMAT_CLEAN_TEXT),
                                _var(f"{a}"), _var())
             check("conversion called", conv.called)
             check("no save triggered", not save.called)

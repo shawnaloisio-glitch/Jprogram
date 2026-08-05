@@ -20,6 +20,38 @@ from tkinter import messagebox, ttk
 
 import metadata_editor
 
+SEQUENCING_LABELS = {
+    "episodic": "Series (manual numbering)",
+    "auto": "Auto (site/source grouping)",
+}
+
+
+def _combo_display_values(field):
+    """Display values for a combo field, applying an optional label map."""
+    values = list(field[3] if len(field) > 3 else [])
+    label_map = field[4] if len(field) > 4 else None
+    if label_map:
+        return [label_map.get(v, v) for v in values]
+    return values
+
+
+def _display_value(field, raw):
+    """Map a stored raw value to its display form for a form field."""
+    label_map = field[4] if len(field) > 4 else None
+    value = str(raw)
+    if label_map:
+        return label_map.get(value, value)
+    return value
+
+
+def _raw_value(field, display):
+    """Map a chosen display label back to its raw value for a combo field."""
+    label_map = field[4] if len(field) > 4 else None
+    if label_map:
+        inverse = {label: raw for raw, label in label_map.items()}
+        return inverse.get(display, display)
+    return display
+
 
 class MetadataEditorWindow:
     """Tabs: Collections / Source Types / Origins."""
@@ -147,7 +179,10 @@ class MetadataEditorWindow:
         Open a small form dialog for the given fields.
 
         fields: list of (key, label, kind) where kind is "entry" or "combo"
-        plus an optional "values" key for combos.
+        plus an optional "values" key for combos and an optional "labels"
+        dict mapping each raw value to a friendly display label (combos only).
+        When labels are present the combo shows the friendly labels and the
+        raw value is passed back on save, unchanged.
         locked_key (str|None): when editing, this identifier field is shown
         read-only (with a lock indicator) and is not returned, keeping it
         immutable after creation.
@@ -164,6 +199,7 @@ class MetadataEditorWindow:
         variables = {}
         widgets = {}
         labels = {}
+        field_by_key = {field[0]: field for field in fields}
         body = ttk.Frame(dialog, padding=12)
         body.grid(row=0, column=0, sticky="nsew")
 
@@ -176,9 +212,9 @@ class MetadataEditorWindow:
             label_widget.grid(row=row, column=0, sticky="w", pady=2)
             labels[key] = label_widget
             if kind == "combo":
-                values = fields[row][3] if len(fields[row]) > 3 else []
                 var = tk.StringVar()
-                combo = ttk.Combobox(body, textvariable=var, values=values,
+                combo = ttk.Combobox(body, textvariable=var,
+                                     values=_combo_display_values(field),
                                      state="readonly", width=28)
                 combo.grid(row=row, column=1, sticky="w", pady=2)
                 variables[key] = var
@@ -195,7 +231,7 @@ class MetadataEditorWindow:
         if original is not None:
             for key, var in variables.items():
                 if key in original and original[key]:
-                    var.set(str(original[key]))
+                    var.set(_display_value(field_by_key[key], original[key]))
             # Lock the identifier field so it cannot be changed after creation.
             if locked_key and locked_key in widgets:
                 widgets[locked_key].configure(state="readonly")
@@ -225,6 +261,11 @@ class MetadataEditorWindow:
         if result["cancelled"]:
             return None
         values = {key: var.get() for key, var in variables.items()}
+        for key, var in variables.items():
+            field = field_by_key.get(key)
+            if (field and field[2] == "combo"
+                    and len(field) > 4 and field[4]):
+                values[key] = _raw_value(field, values[key])
         if original is not None and locked_key:
             # The immutable identifier is never part of an edit payload.
             values.pop(locked_key, None)
@@ -268,7 +309,7 @@ class MetadataEditorWindow:
             ("default_source_type", "Default Source Type", "combo",
              processable_source_types),
             ("sequencing", "Sequencing", "combo",
-             metadata_editor.SEQUENCING_VALUES),
+             metadata_editor.SEQUENCING_VALUES, SEQUENCING_LABELS),
         ]
         helper = ("The Collection ID becomes the folder name and filename "
                   "prefix. Choose carefully. It cannot be changed later.")

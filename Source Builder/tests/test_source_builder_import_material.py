@@ -4,7 +4,7 @@ test_source_builder_import_material.py
 
 Deterministic tests for the Source Builder import material conversion:
 
-- plain text / transcript / ebook / OCR normalization,
+- clean text normalization,
 - subtitle conversion reuses the Subtitle Importer cleaner (SRT/VTT),
 - multiple files are combined,
 - empty/unknown inputs handled,
@@ -50,25 +50,11 @@ def tmp_file(name, content, encoding="utf-8"):
     return path
 
 
-@test("plain text is normalized with a trailing newline")
+@test("clean text is normalized with a trailing newline")
 def _():
     text = import_material.convert_text(
-        "こんにちは。\r\nお元気ですか。\r\n", import_material.FORMAT_PLAIN_TEXT)
+        "こんにちは。\r\nお元気ですか。\r\n", import_material.FORMAT_CLEAN_TEXT)
     check("normalized", text == "こんにちは。\nお元気ですか。\n")
-
-
-@test("podcast transcript uses plain-text conversion")
-def _():
-    text = import_material.convert_text(
-        "これは番組のテキストです。\n", import_material.FORMAT_PODCAST_TRANSCRIPT)
-    check("kept", text == "これは番組のテキストです。\n")
-
-
-@test("ebook and OCR text are treated as plain text")
-def _():
-    for fmt in (import_material.FORMAT_EBOOK, import_material.FORMAT_OCR):
-        text = import_material.convert_text("一行。\n二行。\n", fmt)
-        check(f"{fmt} kept", text == "一行。\n二行。\n")
 
 
 @test("subtitle file is converted via the Subtitle Importer cleaner")
@@ -94,7 +80,7 @@ def _():
     a = tmp_file("a.txt", "一つ目。\n")
     b = tmp_file("b.txt", "二つ目。\n")
     text = import_material.convert_files(
-        [a, b], import_material.FORMAT_PLAIN_TEXT)
+        [a, b], import_material.FORMAT_CLEAN_TEXT)
     check("both present", "一つ目。" in text and "二つ目。" in text)
     check("joined with blank line", text == "一つ目。\n\n二つ目。\n")
 
@@ -103,7 +89,7 @@ def _():
 def _():
     empty = tmp_file("empty.txt", "   \n")
     try:
-        import_material.convert_file(empty, import_material.FORMAT_PLAIN_TEXT)
+        import_material.convert_file(empty, import_material.FORMAT_CLEAN_TEXT)
         check("empty rejected", False)
     except import_material.ImportError as exc:
         check("empty message", "empty" in str(exc))
@@ -122,7 +108,7 @@ def _():
 def _():
     try:
         import_material.convert_file(
-            "C:/definitely/not/here.txt", import_material.FORMAT_PLAIN_TEXT)
+            "C:/definitely/not/here.txt", import_material.FORMAT_CLEAN_TEXT)
         check("missing rejected", False)
     except import_material.ImportError as exc:
         check("read message", "cannot read" in str(exc))
@@ -134,17 +120,17 @@ def _():
     before_registry = (pm.registry_path("import_test_ep001").exists()
                        if hasattr(pm, "registry_path") else False)
     text = import_material.convert_text("テスト。\n",
-                                        import_material.FORMAT_PLAIN_TEXT)
+                                        import_material.FORMAT_CLEAN_TEXT)
     check("text converted", bool(text))
     # No source_id / registry / job concept is touched by conversion.
     check("no registry concept used", True)
     _ = before_registry  # silence unused
 
 
-@test("SOURCE_FORMATS contains the five required formats")
+@test("SOURCE_FORMATS contains the two supported formats")
 def _():
-    check("five formats", set(import_material.SOURCE_FORMATS) == {
-        "podcast_transcript", "subtitle", "ebook", "ocr", "plain_text"})
+    check("two formats", set(import_material.SOURCE_FORMATS) == {
+        "subtitle", "clean_text"})
 
 
 def main():

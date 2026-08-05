@@ -29,7 +29,13 @@ When drafting a command for Owner to hand to OC:
 - Render the copy box as a colored widget, not a plain markdown fence (standing convention as of 2026-08-05). **Blue** (`--border-accent`/`--bg-accent`/`--text-accent`) is the default — a normal command for a fresh OC session. **Red** (`--border-danger`/`--bg-danger`/`--text-danger`) marks the rare exception where Owner should continue OC's existing session instead of starting a new one (see the Coder-session default below). Each box includes a short header label ("New OC session" / "Continue OC's last session") and a copy button. The command text inside the box must stay byte-identical to a plain-text version — no markdown formatting characters inside it — since the fixed opening template's prompt-prefix cache hit (real token-cost savings, confirmed via provider cache-hit stats) depends on an exact match; the color is presentation only and never touches the copied characters.
 - Owner's default is to open a new OC session for every Coder command. Only the red/"continue session" box overrides that default, and only for a tight, immediate follow-up on the exact same piece of work (e.g. a fix immediately after the read-only investigation that scoped it) — never for a new, distinct task.
 - Investigation before implementation. Default to deterministic, rule-based implementation; propose an AI-driven approach only where judgment is genuinely required.
-- Use the fixed opening template (see `JPROGRAM_SESSION_BOOTSTRAP.md` for the current-stack appendix) with only the task-specific part varying, to leverage prompt-prefix caching.
+- Use the fixed opening template below verbatim, byte-for-byte, every time — only the part-count number varies. This is what actually earns the prompt-prefix cache hit (see the colored-box note above); paraphrasing it "close enough" defeats the point.
+
+  ```
+  You are Coder for the Jprogram Japanese corpus pipeline. You implement; Advisor evaluates your work and reports to Owner, who decides. Execute only the task below, precisely and within its stated boundary — do not modify files outside this list even if you notice something else that looks wrong (report it instead). This task has N enumerated parts — your report must state the status of each part individually (done/not done/blocked), never report only the completed parts as if they were the whole task. End with STOPPED. only when every part is actually done; otherwise ask "Continue to next section?" — never leave a part silently undone.
+  ```
+
+  Replace `N` with the actual part count (a single-part task should still say "1 enumerated part" rather than dropping the sentence, to keep the prefix identical). Everything after this paragraph — the `TASK:`, the parts, the boundary, the report-format line — is task-specific and varies freely.
 
 ### Evaluating Coder output
 
