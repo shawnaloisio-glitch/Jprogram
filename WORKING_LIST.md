@@ -1,0 +1,66 @@
+# Working List
+
+A running queue of small, concrete items to check, decide, or act on —
+distinct from `JPROGRAM_SESSION_BOOTSTRAP.md`, which holds major
+architecture/state/scope and should stay lean. This file is allowed to be
+messy and grow/shrink within a session. When an item resolves into
+something that changes the project's actual state (a real fix, a settled
+decision), that result gets written into the appropriate real home
+(`JPROGRAM_SESSION_BOOTSTRAP.md`, a code fix, an Audit entry, etc.) and the
+item is checked off here — this file itself is not the permanent record of
+outcomes, just the queue.
+
+**Format:** one item per entry. Mark `[x]` when resolved and note where the
+resolution actually landed (which file/commit), don't just delete it —
+that keeps a short local history of what got checked off without needing
+to dig through conversation history.
+
+---
+
+## Open
+
+- [ ] **`sentence_index` "no gaps" not validated** — `Data Processor/response_validator.py` only checks strictly-ascending + non-negative, never checks for skipped indices (e.g. `0, 1, 3` passes). `PARSER_OUTPUT_SPEC.md` §14 requires "no gaps." Found 2026-08-05 during spec-vs-code audit. Decide: fix now (small, deterministic — good Coder task), or defer.
+- [ ] **Section assignment "from source markers" isn't wired up** — `corpus_builder.py`'s `assign_sections()` has a working boundary mechanism, but nothing in the pipeline ever converts real `===== Episode N =====` markers into boundaries; every source currently gets a single default section. `parser_normalizer.py` only strips marker lines, never extracts their positions. Found 2026-08-05. Bigger than the sentence_index item — needs a design decision (how should markers map to boundaries?) before it's a Coder task, not just a bug fix.
+- [ ] **New API key structure design** — mentioned early in this session (2026-08-05), not started. Owner wants to design this fresh given no live key exists in any file currently.
+- [ ] **Small API-key-entry utility** — Owner's idea (2026-08-05): a small Tkinter GUI (matching existing project conventions, e.g. `Subtitle Importer/gui.py`) where an end user pastes an API key, picks which provider/module it's for (e.g. `DEEPSEEK_API_KEY`, future `ANTHROPIC_API_KEY`), and it persists as a Windows environment variable (`setx` or `winreg`, matching what `deepseek_client.py` already prefers via `DEEPSEEK_API_KEY`). Checked for existing free/open-source tools first — nothing matches this specific guided flow (PowerToys' Environment Variables tool and a PyPI package called "Windy" both exist as general-purpose env-var editors, but neither has the paste+provider-select UX). Recommended building this small and in-house rather than adapting either. Related to the API key structure design item above — probably the same piece of work.
+- [ ] **Test the DeepSeek-vs-Claude transport swap, once tokens are available post-development** — Owner's speculative plan: once programming work is done, use leftover Claude API tokens to test running the parser against Claude instead of DeepSeek. Assessed 2026-08-05: not a drop-in swap, but well-contained — only `deepseek_client.py` (Transport) and `extract_parser_content`'s response-shape parsing (in `corpus_builder.py`) would need a new sibling module (e.g. `claude_client.py`); the parser prompt, Validator, and Builder logic are all provider-agnostic already. Needs the API-key utility above to actually test.
+
+- [ ] **Hash verification is computed but never enforced anywhere downstream** — pattern found across the whole intake→cleaning→job chain, not a single isolated bug:
+  - `Source Registry` records `sha256` of the raw file at birth-certificate time.
+  - `Subtitle Cleaner/clean_subtitles.py` reads `job["raw_path"]` and cleans it directly — never re-checks its current sha256 against the Registry's recorded fingerprint before cleaning. Confirmed no check exists anywhere else in the dispatch chain either (`production_manager.py` has zero sha256 references outside its own tests).
+  - `Subtitle Cleaner` then computes its own `output_hash` of the cleaned text and stores it in the Cleaning Result — but `job builder.py`'s `cleaning_result_errors()` only checks `success == True`, `cleaned_artifact` non-empty, and file-exists. It re-reads the cleaned artifact fresh from disk and never compares it against the stored `output_hash`.
+  - Net effect: both hashes exist in the schema/artifacts (available for manual/forensic checking later) but neither is actively read back and enforced as a gate anywhere in the pipeline. If a raw or cleaned file changed after being hashed (bug, disk issue, manual edit), nothing would catch it — processing would silently continue on the changed bytes, and everything downstream would carry provenance pointing at a hash that no longer matches what was actually processed.
+  - Request Builder checked too, for completeness — no equivalent gap there: it doesn't re-touch the cleaned artifact file at all (works from the job's already-embedded text) and does properly enforce source_id lineage matching.
+  - Found 2026-08-05 during chain-of-custody audit (prompted by Owner). Likely two small, deterministic fixes (re-hash `raw_path` at cleaner entry vs. Registry; re-hash `cleaned_artifact` at job-builder entry vs. Cleaning Result's `output_hash`; fail closed on mismatch) — good Coder task once confirmed this is wanted.
+  - Confirmed NOT a gap: the SRT/Subtitle Importer is intentionally pre-intake; the official chain of custody starts at Source Builder's raw-text ingestion, not at whatever tool produced that text (by design, to allow future manga-OCR/audio-TTS importers without touching the tracked pipeline).
+  - Addendum (checked `deepseek_client.py`): same asymmetry continues — no hash is computed/stored for saved response files at all (unlike sha256/output_hash upstream). Lower severity than the other two: `response_validator.py` + `parser_normalizer.py`'s exact source-reconstruction gate already do strong content-level verification downstream, which would likely catch corruption anyway even without a hash. Lineage check (`request_source_id != source_id`) is solid here, same as everywhere else in the chain.
+
+## Live testing issues (reported by Owner, 2026-08-05)
+
+GUI/workflow bugs found using the actual app. Duplicates across Owner's two
+lists are merged below into one entry each.
+
+- [ ] **No cancel button in Processing tab** — no way to quit a stalled process; reported twice.
+- [ ] **No useful status indicator during processing** — can't tell if it's working or stalled.
+- [ ] **Redundant "Run Analysis" button in the Processing tab** — Analysis already has its own tab; reported twice.
+- [ ] **Tkinter GUI state errors** — surfaces as console output in the terminal Owner uses to launch the app (`cd /d C:\Jprogram` then `python app.py`), triggered by specific UI interactions. Not reproducible from an agent session (no way to interact with the actual GUI). **Blocked on Owner pasting the actual error/traceback text** next time it occurs.
+- [ ] **Processing and Analysis sub-windows should be embedded in their tabs, not opened as separate pop-up windows** — reported twice, described as "sloppy workflow." Structural GUI change, not a small fix.
+- [ ] **Analysis tab can't analyze multiple files at once** — single-file only currently.
+- [ ] **Import radial/source-type selector should default to "subtitle," not "podcast_transcript"** — subtitle is the most frequent (or most-recently-used) import type; reported for both the import-material tab default and the general import radial selector.
+- [ ] **Import doesn't open to a designated folder/root** — need to define an actual import folder structure and have the file picker open at that root, instead of wherever it currently defaults.
+- [ ] **Import-from-subtitle workflow is clunky** — no specifics yet; Owner flagged it needs design thought, not an immediate fix.
+
+### Needs investigation — likely one shared root cause across 3 reports
+- [ ] **Source_type selection appears to have a sticky/incorrect dependency, not a clean per-collection setting:**
+  1. Metadata editor "chose teppei_beginner again" unexpectedly — Owner suspects a dependency that shouldn't exist.
+  2. CIJ collection has `source_type` configured as `cij_transcript`, but the UI dropdown shows/won't-change-from `podcast_transcript`.
+  3. Even after creating a *new* collection using `cij_transcript`, the Sources-tab working dropdown still defaults to and locks on `podcast_transcript`.
+  - Not yet investigated this session — but worth checking whether the GUI's source_type dropdown is reading a stale/cached/first-loaded value instead of re-reading the selected collection's actual configured `source_type` each time the collection changes. All three reports point at the same area (collection → source_type resolution in the GUI), so investigate as one bug, not three.
+- [ ] **Template Editor** — works and appears to populate, but Owner could only confirm one origin and one source type; couldn't confirm others populate correctly beyond the collection name. Needs a pass with more test data to confirm broader correctness.
+
+### Design question, not a bug — needs a decision before any fix
+- [ ] **Large non-episodic collections (e.g. CI Japanese's YouTube library) need folder-level organization instead of dumping everything in `\standalone\`.** Owner's proposed idea — fix `episode` at 0 and route through the collection pathway — **confirmed via code (2026-08-05) to cause a real source_id collision**: `Source Builder/controller.py` derives the collection-mode source_id slug from `collection_id` alone, with `episode` as the only per-video differentiator (`source_id.py`: `{type}_{slug}_{sequence}`). Fixing episode at 0 means every video in the collection generates the identical source_id; `handoff.py`'s idempotency logic would then either silently reject every video after the first (sha256 mismatch on the same source_id) or, if forced, overwrite/clobber the prior entry instead of adding a new one. **Do not use episode=0 for this.** Needs an actual per-video unique identifier in the sequence slot instead — e.g. a real running counter unique per video within the collection, a video-ID-derived token, or similar — the mechanism (`collection_id` + unique sequence) already supports non-episodic collections fine, it just needs a real unique value in the sequence position, not a constant.
+
+## Resolved
+
+(none yet)

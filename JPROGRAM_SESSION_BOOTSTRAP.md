@@ -4,6 +4,8 @@ Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standin
 
 **Note:** the status content below is carried over from the prior version of this doc and has not been independently re-verified as of this rewrite — a project audit is planned as a near-term task specifically to confirm or correct it (see Jprogram design spec, §8, task 9).
 
+**Small, concrete pending items** (things to check/decide/fix that aren't major scope) go in `WORKING_LIST.md`, not here — keeps this file about architecture/state/major tasks only.
+
 ---
 
 ## 1. Project Purpose
@@ -206,7 +208,7 @@ Work through these in order. Don't skip ahead — several depend on confirming t
 
 2. **Verify the standing-instruction files are actually in place** at repo root: `CLAUDE.md`, `QWEN.md`, `AGENTS.md`, this file. Report what you find — don't assume.
 
-3. **Qwen Code authentication — deferred, not blocking.** Alibaba ModelStudio signup hit a broken email-verification loop; decided to proceed without Qwen Code for now rather than keep fighting it. Auditor's frozen-component tier temporarily falls back to a second CC session when needed (see `CLAUDE.md`'s Auditor section) — Advisor must state plainly in the trigger report whenever this fallback is used, since it's weaker independence than the design calls for. Revisit Qwen Code authentication when convenient; it's genuinely low-urgency given Auditor's rare invocation rate.
+3. **Qwen Code authentication — permanently on hold (Owner decision, 2026-08-05) until Owner explicitly says otherwise.** Not "revisit when convenient" — do not propose or pursue this unprompted. Alibaba ModelStudio signup hit a broken email-verification loop; Owner has since decided to leave this on indefinite hold rather than revisit it. Auditor's frozen-component tier falls back to a second CC session when needed (see `CLAUDE.md`'s Auditor section) — Advisor must state plainly in the trigger report whenever this fallback is used, since it's weaker independence than the design calls for.
 
 4. **Delete the two confirmed-identical duplicate files** (verified byte-for-byte identical earlier): `Daily Handoff/Handoff_2026-08-04/PROJECT_STATUS.md` and `Daily Handoff/Handoff_2026-08-04/Session_Handoff_Audit.md`. Keep the root-level / `Audits/2026-08-04/` originals.
 

@@ -50,7 +50,7 @@ Any change you conclude is genuinely needed goes back to Owner as a reported fin
 
 **You handle the lower-stakes tier specifically.** Frozen-component changes route to Qwen Code (`QWEN.md`), not to you — that's the deliberate design for genuine cross-vendor independence on the highest-stakes tier. You are invoked for judgment-based cases (Advisor's confidence is Moderate/Low on a non-frozen-component change). If you're invoked and the change actually touches a Frozen Component, flag that as a routing mismatch rather than proceeding — it should have gone to Qwen Code instead.
 
-**Temporary fallback (Qwen Code authentication deferred as of this writing):** if a Frozen Component change genuinely needs an audit right now and Qwen Code isn't yet authenticated, you may act as Auditor for it — but Advisor must state explicitly, in the trigger report, that this is a same-vendor fallback with weaker independence than the design calls for, not silently treat it as equivalent. Owner should be told plainly when this fallback is used, and it should stop happening once Qwen Code is authenticated.
+**Standing fallback (Qwen Code on indefinite hold, per Owner, 2026-08-05 — not "temporary," do not treat as urgent, do not propose revisiting it unprompted):** if a Frozen Component change genuinely needs an audit, you may act as Auditor for it — but Advisor must state explicitly, in the trigger report, that this is a same-vendor fallback with weaker independence than the design calls for, not silently treat it as equivalent. Owner should be told plainly every time this fallback is used. Only pursue Qwen Code authentication again if Owner explicitly says to.
 
 ## Evidence hierarchy
 
