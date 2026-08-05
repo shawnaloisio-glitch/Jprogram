@@ -552,3 +552,14 @@ Create a high-quality Japanese corpus that supports evidence-based analysis of:
 - comprehensibility metrics
 
 while minimizing API cost and maximizing reproducibility.
+---
+
+# AI-Assisted Development
+
+This project is built with AI assistance under an Owner/Advisor/Coder/Auditor protocol. Three files carry standing operating instructions and are auto-loaded by their respective tools — they are not duplicated here:
+
+- `CLAUDE.md` — Advisor and Auditor instructions (Claude Code)
+- `QWEN.md` — Auditor instructions for frozen-component-tier review (Qwen Code)
+- `AGENTS.md` — Coder instructions (OpenCode)
+
+Current project state, architecture, and next planned work live in `JPROGRAM_SESSION_BOOTSTRAP.md`, refreshed each session.

@@ -1,6 +1,8 @@
 # Jprogram Session Bootstrap
 
-Self-contained orientation for a fresh ChatGPT session working on the Japanese Corpus Pipeline. No prior conversation access assumed. Read the referenced files before making changes.
+Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format, Frozen Components trigger list) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
+
+**Note:** the status content below is carried over from the prior version of this doc and has not been independently re-verified as of this rewrite — a project audit is planned as a near-term task specifically to confirm or correct it (see Jprogram design spec, §8, task 9).
 
 ---
 
@@ -45,7 +47,7 @@ Entry points today:
 
 - **`app.py`** — the application shell (Sources / Processing / Analysis tabs). This is the primary entry point.
 - **`Source Builder\source_builder.py`** — standalone Source Builder launcher.
-- **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`.
+- **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.)
 - Pipeline stage scripts: `job builder.py`, `request builder.py`, `deepseek_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners.
 
 Source Intake (utilities, artifact writers, and coordinator) is implemented.
@@ -54,7 +56,7 @@ The current GUI path creates Registry + Cleaning Job through
 
 ---
 
-## 3. Core Design Principles (Frozen)
+## 3. Core Design Principles
 
 ### ONE PROGRAM = ONE TASK
 
@@ -65,7 +67,7 @@ Rules:
 - Direct imports between programs are avoided unless explicitly approved as shared utilities.
 - Management/orchestration belongs to future manager tools, not individual programs.
 
-Related frozen principles:
+Related principles:
 - **The parser preserves evidence; it never produces conclusions** (Garbage in, garbage out).
 - **Verify over trust** — deterministic checks wherever cheap; never silently repair.
 - **The canonical corpus is the single source of truth** (Rule 5); analyzers only read it.
@@ -76,13 +78,7 @@ Related frozen principles:
 
 ## 4. Frozen Components
 
-These should not be changed without explicit approval:
-
-- **Parser:** `Prompts\parser_prompt.md`, `PARSER_OUTPUT_SPEC.md` (and the hybrid fixed-position-array format + API configuration).
-- **Validator:** `Data Processor\response_validator.py`.
-- **Builder:** `Data Processor\corpus_builder.py` and the **canonical JSONL format**.
-- **Analysis:** all `Analysis\` modules and `ANALYZER_ARCHITECTURE.md`.
-- **Transport:** `Data Processor\deepseek_client.py`.
+See `CLAUDE.md` for the authoritative list — it's the one Advisor's automatic audit-trigger check runs against. Keeping a single copy there avoids the two files drifting out of sync.
 
 ---
 
@@ -202,61 +198,66 @@ Source Intake\
 
 ---
 
-## 10. Next Planned Task
+## 10. Next Planned Task — First Advisor-CC Session Checklist
 
-Source Intake Phase 3 is complete. The next work items are:
+Work through these in order. Don't skip ahead — several depend on confirming the prior step actually worked.
 
-1. **Real data validation** — run the full workflow with real source material
-   (import → save → process → corpus → analysis).
-2. **Packaging** — launch/installer packaging.
-3. **External QC review** — the pending Qwen review.
+1. **Sanity-check your own setup.** Confirm you've loaded `CLAUDE.md` and understand you're Advisor by default (read-only, Plan mode). State this back before doing anything else, so Owner can catch a misconfiguration immediately rather than after real work starts.
 
-Requirements for real-data validation:
-- process real material through the Production Manager pipeline
-- verify a real canonical corpus + analysis output
-- confirm the clean-install workflow end to end
+2. **Verify the standing-instruction files are actually in place** at repo root: `CLAUDE.md`, `QWEN.md`, `AGENTS.md`, this file. Report what you find — don't assume.
+
+3. **Qwen Code authentication — deferred, not blocking.** Alibaba ModelStudio signup hit a broken email-verification loop; decided to proceed without Qwen Code for now rather than keep fighting it. Auditor's frozen-component tier temporarily falls back to a second CC session when needed (see `CLAUDE.md`'s Auditor section) — Advisor must state plainly in the trigger report whenever this fallback is used, since it's weaker independence than the design calls for. Revisit Qwen Code authentication when convenient; it's genuinely low-urgency given Auditor's rare invocation rate.
+
+4. **Delete the two confirmed-identical duplicate files** (verified byte-for-byte identical earlier): `Daily Handoff/Handoff_2026-08-04/PROJECT_STATUS.md` and `Daily Handoff/Handoff_2026-08-04/Session_Handoff_Audit.md`. Keep the root-level / `Audits/2026-08-04/` originals.
+
+5. **Propose a restructure plan for `Daily Handoff/` — propose only, do not execute without Owner approval.** Prior analysis (outside this session) found three distinct things mixed in that folder:
+   - `HANDOFF_2026-07-31.md`, `HANDOFF_2026-08-01_QWEN_BUILDER_REVIEW.md`, `HANDOFF_2026-08-02_FLASH_EXPRESSION_POLICY.md` — artifacts of the old ChatGPT-session-handoff system, now superseded by this file. Likely fine to leave in place (git history preserves them) but should not be treated as current input.
+   - `Handoff_2026-08-04/CURRENT_IMPLEMENTATION_MAP.md`, `CURRENT_TEST_STATE.md`, `DATA_LIFECYCLE_REALITY.md`, `IMPLEMENTATION_VS_DOCUMENTATION.md` — look like a partial prior attempt at the project audit (task below). Treat as useful starting input to that audit, not clutter.
+   - `SOURCE_BUILDER_*.md`, `SOURCE_METADATA_SPEC.md`, `GUI_ARCHITECTURE.md`, the undated `PROJECT_CONTEXT.md` — genuine design/spec docs that don't belong in a folder called "Daily Handoff." Confirm this read is correct and propose where they should actually live.
+
+6. **The actual project audit** (per the design spec, sequenced to happen only after setup is confirmed working): verify current status of everything in §§1–9 above, using the `Handoff_2026-08-04/` snapshot files from step 5 as a starting point rather than starting from zero. Confirm or correct the "Source Intake Phase 3 complete, 106 tests passing" claim and the "5 test failures — stale fixture config" claim specifically — both are unverified carryovers from before the git migration.
+
+   **Done (2026-08-05). Findings, from raw test-run evidence (every `test_*.py` in the repo run directly — this project's tests are standalone scripts, not pytest/unittest — 60 files, 748 tests total):**
+   - Entry points (§2) and Frozen Components (§4 / `CLAUDE.md`): all confirmed present on disk, no gaps.
+   - Source Intake: **109/109 passing** (not 106 — count grew slightly, e.g. `test_paths.py` covers the newer workspace-separation logic).
+   - Repo-wide: **742/748 passing**, 6 failures, two distinct causes:
+     - **1 failure was self-inflicted this session**, by the step-5 `Daily Handoff/` → `Archive/` move: `Production Manager/tests/test_production_manager_api_docs.py` hardcoded the old path to `GUI_ARCHITECTURE.md`. Fixed by updating the test to point at the new archive path; confirmed passing again (7/7).
+     - **5 failures confirm the old "stale fixture config" claim exactly** (4 in `Source Builder/tests/test_source_builder_gui_presets.py` + 1 in `test_source_builder_quick_presets.py` = 5) — not in Source Intake as the old wording implied, but in Source Builder. Root cause: these tests depend on a `"teppei_beginner"` collection resolving via `Config/collections.json`, which no longer has that entry after the intentional runtime-data reset noted in the checkpoint below. **This is an expected side effect of that reset, not a bug and not migration damage — left as-is per Owner decision (2026-08-05).** Restore the fixture data only if/when real collection config work resumes.
+   - `cleaner common.py` (present in the pre-migration backup `C:\Jprogram stable build backup 8-4-26`, absent from the git repo): confirmed dead/unreferenced (zero imports anywhere, content was a stray stale draft of `paths.py` under the wrong filename) — correctly excluded from the git baseline, not lost migration content.
+   - Conclusion: **the git migration itself did not break anything found so far.** The only real breakage found was caused by this session's own archive move, and was fixed within the same session.
+
+---
+
+**Original next-task list, superseded by the above but kept for reference:** real-data validation (full workflow with real source material), packaging/installer, external QC review (status was unclear — listed as "pending" in one place, "invoked once in ~60 hours" in another; Qwen Code is now available for this role regardless).
 
 ---
 
 ## 11. OC Operating Instructions
 
-When generating future reports, always include:
+See `AGENTS.md` (auto-loaded by OpenCode) for the authoritative reporting format and core rules — keeping a single copy there avoids this file and `AGENTS.md` drifting out of sync.
 
-- TASK number
-- Files changed
-- Files not changed
-- Tests performed
-- Boundary confirmation
-
-End reports with:
-
-```
-STOPPED.
-```
-
-If work remains, ask:
-
-```
-Continue to next section?
-```
+Advisor reads OC's output from `opencode session export` / raw session storage (see `CLAUDE.md`), not terminal display text.
 
 ---
 
-## 12. Review Guidance for ChatGPT
+## 12. Audit Log
 
-The reviewer should:
-- prioritize architecture boundaries
-- prevent responsibility overlap
-- question unnecessary complexity
-- approve clean incremental changes
-- avoid redesigning frozen components
+Location: `Audits/Trigger_Log/` — nested under the existing `Audits/` folder rather than a sibling, since it's still fundamentally audit-related content, just a different granularity (every trigger decision, vs. `Audits/2026-08-04/`-style full review reports). Every Advisor trigger-field decision (Yes or No) gets recorded here, giving a queryable history for calibrating invocation rate over time.
 
 ---
 
-Current checkpoint:
+## 13. Current-Stack Appendix
+
+Provider-specific — revisit if the Coder model/platform changes:
+- Coder commands use a fixed opening template, with only the task-specific part varying, to leverage prompt-prefix caching.
+- OpenCode's `autoCompact` setting is enabled for long sessions.
+- Reasoning effort is scaled per task rather than fixed.
+
+
+---
+
+Current checkpoint (carried over, unverified — see note at top of this file):
 Pipeline, Source Package, Handoff, Application Shell (Sources / Processing /
 Analysis), and Analysis surface complete and tested. Runtime data reset;
 metadata config cleaned. Next: real-data validation, packaging, external QC
 review.
-
-STOPPED.

@@ -24,7 +24,7 @@ import production_manager as pm
 
 GUI_API = PRODUCTION_MANAGER / "GUI_API.md"
 API_VERSION = PRODUCTION_MANAGER / "API_VERSION.md"
-GUI_ARCH = PROJECT_ROOT / "Daily Handoff" / "GUI_ARCHITECTURE.md"
+GUI_ARCH = PROJECT_ROOT / "Archive" / "Daily Handoff (pre-2026-08-05)" / "GUI_ARCHITECTURE.md"
 
 PUBLIC_API = ("status", "report", "dry_run", "run_stage", "pipeline")
 
