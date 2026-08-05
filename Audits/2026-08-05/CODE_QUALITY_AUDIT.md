@@ -168,7 +168,7 @@ one real, still-standing finding is narrower than my first pass suggested
 architecture's own stated design, but not a live correctness risk given
 how carefully every analyzer already orders its own output.
 
-## 4. `Production Manager/production_manager.py` (in progress, 1344 lines)
+## 4. `Production Manager/production_manager.py` (full file, 1344 lines)
 
 Well-architected overall so far: genuinely launches pipeline stages as
 isolated subprocesses (confirmed no direct imports of any stage module —
@@ -197,6 +197,21 @@ concerning — a distinct intermediate state that was meant to exist here
 and got lost in a refactor, leaving a stub branch behind. Worth a quick
 fix (delete the duplicate) and worth checking whether it signals a
 missing state distinction that was actually intended.
+
+**Rest of the file (read in full, no further defects found):** `plan_stages()`
+has real cycle detection (`if next_stage in seen: ... "boundary": "cycle"`)
+preventing infinite loops from a malformed `NEXT_STAGE` table.
+`pipeline()`'s "no-progress guard" (lines 1078-1093) is a genuinely
+excellent piece of defensive engineering: if a stage reports success but
+`state_for()` shows the state didn't actually advance afterward, it stops
+and reports `boundary: "no_progress"` rather than looping or trusting the
+stage's own success claim — a real, concrete instance of "verify over
+trust" applied to cross-process communication, not just a slogan. Clean
+separation between structured-data functions (`status`, `report`,
+`dry_run`, `pipeline`) and rendering functions (`render_*`), matching the
+file's own stated design ("GUI will not use these; it consumes the
+structured data directly"). Overall: one confirmed defect, otherwise the
+strongest-engineered file read in this audit so far.
 
 ## 5. `Data Processor/deepseek_client.py`
 
