@@ -115,7 +115,60 @@ it requires both the request data and the filename to lack a usable job
 number — but the failure mode if it ever triggers is silently looking
 for the wrong response file rather than raising a clear error.
 
-## 3. `Data Processor/deepseek_client.py`
+## 3. `Analysis/` modules vs. `ANALYZER_ARCHITECTURE.md`
+
+**Analyzer Independence Principle (§8, frozen design) — confirmed intact.**
+Checked every analyzer module's imports directly: none of the 9 modules
+import another analyzer module. Each is genuinely a pure function taking
+already-loaded `records` and returning a structured dict — real
+independence, not just claimed independence.
+
+**Significant finding: `output_writer.py` — the architecture's own
+"deterministic derived-data writer" (§3, §7) — is never actually used by
+production code.** Confirmed via repo-wide grep: the only import of
+`output_writer` anywhere is its own test file
+(`Analysis/tests/test_output_writer.py`). The one real production caller,
+`Source Builder/processing_tab.py`'s `run_analysis()`, writes the
+analysis result with a manual `json.dump(result, ..., ensure_ascii=False,
+indent=2)` — **no `sort_keys=True`** — instead of calling
+`output_writer.write_json()`, which does supply it. This is the same
+shape of finding as `corpus_builder.py`'s unused `write_jsonl_record()`:
+a properly-built, tested component the real path doesn't wire up to.
+
+**Correction after reading the actual analyzer code (worth stating
+plainly — my first-pass severity assessment here was overstated):**
+I initially inferred this bypass could cause real byte-for-byte
+non-determinism via Python's per-process string-hash randomization
+affecting `set` iteration order. Having now read `frequency_analyzer.py`
+and `distribution_analyzer.py` in full, that's not the actual risk here:
+both build their output dicts via explicit `for key in sorted(items):`
+at every nesting level (top-level lexical keys, and `frequency_analyzer`'s
+nested `surfaces` dict too), and only use `set()` internally for
+order-independent counting (`len(item["sentences"])`), never iterating
+a set directly into output order. So these two analyzers' outputs are
+already deterministically ordered by construction, independent of
+`sort_keys` at the JSON layer — the missing flag doesn't actually risk
+non-determinism for them specifically. **Update — all 9 modules now read, discipline confirmed consistent
+throughout.** `exposure_analyzer.py`, `expression_analyzer.py`,
+`chunk_analyzer.py`, `sentence_metrics.py`, and `comparison_analyzer.py`
+all follow the identical pattern: `for key in sorted(items):` (or
+equivalent `sorted()`-keyed construction) at every dict-nesting level,
+`set()` used only for order-independent counting. `sentence_metrics.py`'s
+top-level `sentences` list is deliberately left in canonical record order
+rather than sorted — correct, since that's its documented, meaningful
+order, not something that should be alphabetized.
+`comparison_analyzer.py` additionally confirmed compliant with its own
+frozen independence rule (§8): its `analyze(sources)` signature takes raw
+canonical records per source directly (`each source's records from
+corpus_loader`), never another analyzer's output — real independence,
+not just a docstring claim. **Net conclusion:** the whole `Analysis/`
+subsystem is genuinely well-built and deterministic by construction; the
+one real, still-standing finding is narrower than my first pass suggested
+— `output_writer.py` sits unused in production, a real gap from the
+architecture's own stated design, but not a live correctness risk given
+how carefully every analyzer already orders its own output.
+
+## 4. `Data Processor/deepseek_client.py`
 
 Careful, well-scoped transport layer — genuinely does only what its
 docstring claims (send, receive, save raw, record metadata; never
