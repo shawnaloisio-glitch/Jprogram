@@ -261,8 +261,17 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-Current checkpoint (carried over, unverified — see note at top of this file):
-Pipeline, Source Package, Handoff, Application Shell (Sources / Processing /
-Analysis), and Analysis surface complete and tested. Runtime data reset;
-metadata config cleaned. Next: real-data validation, packaging, external QC
-review.
+Current checkpoint (updated 2026-08-05): Pipeline, Source Package, Handoff,
+Application Shell (Sources / Processing / Analysis), and Analysis surface
+complete and tested. Full repo-wide test audit done (§10 step 6) — git
+migration introduced no damage. Chain-of-custody traced end-to-end
+(§10/WORKING_LIST.md) — identity checks solid throughout, hash verification
+computed but not yet enforced downstream (queued). **Real-data validation is
+no longer just "next" — done once, successfully**: `QC Test Harness/` ran a
+hand-authored source through the full real pipeline including a real
+DeepSeek API call, and every ground-truth check passed (see
+WORKING_LIST.md's Resolved section). This confirms the pipeline works
+end-to-end in practice, not just in code review, though it's one synthetic
+test, not broad real-world coverage yet. Next: address the live-testing GUI
+bug backlog (WORKING_LIST.md), the birth-certificate collision fix for
+non-episodic collections, packaging, external QC review.

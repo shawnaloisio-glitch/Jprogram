@@ -209,6 +209,9 @@ ORDER = ["setup", "clean", "jobs", "requests", "send", "corpus", "check"]
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     if len(sys.argv) != 2 or sys.argv[1] not in STAGES and sys.argv[1] != "all":
         print(__doc__)
         return 1
