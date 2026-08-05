@@ -254,6 +254,61 @@ still-open `WORKING_LIST.md` item ("Template Editor... needs a pass with
 more test data") — confirms that item's scope precisely rather than
 surfacing anything new.
 
+---
+
+## Summary — prioritized findings for Owner's review
+
+Every subsystem targeted for this audit has now been read (Frozen
+Components, all 9 Analysis modules, Production Manager, and the
+remaining unread subsystems). Overall picture: **this is a genuinely
+well-engineered codebase.** The project's own stated principles
+(deterministic-by-default, verify over trust, no silent repair, analyzer
+independence) aren't just docstring claims — they hold up under direct
+reading in every file checked, with a small number of real exceptions
+listed below. Nothing found required emergency action; everything is a
+candidate for a future small Coder task, prioritized by real stakes.
+
+**Highest priority — a governance gap, not a code bug:**
+1. `parser_normalizer.py` contains the actual Frozen-architecture logic
+   (canonicalization, the exact-reconstruction integrity gate) but isn't
+   on `CLAUDE.md`'s Frozen Components list — only `corpus_builder.py` is
+   named, and it now just re-exports that logic. A change to
+   `parser_normalizer.py` today would not auto-trigger Advisor's audit
+   check. Worth a one-line addition to the standing-instructions file.
+
+**Real, worth fixing when convenient:**
+2. `response_validator.py`'s hardcoded `_PUNCTUATION` set is missing
+   marks that are confirmed (via the parser prompt's own example text)
+   to appear in real corpus content — wave dash, interpunct, em/en dash —
+   creating a risk of false-positive fatal validation failures on
+   genuinely correct parser output. Not observed failing yet.
+3. `production_manager.py`'s `state_for()` has a confirmed dead,
+   duplicate `elif` branch (`requests_count > 0` checked twice in a
+   row). Harmless today, but worth a quick fix and a check for whether
+   it signals a lost intermediate state.
+4. The same "silently default to job_number `0` when it can't be parsed
+   from anywhere" pattern appears independently in both
+   `corpus_builder.py`'s `response_path_for()` and
+   `deepseek_client.py`'s `job_number_from_request()` — low probability,
+   but worth one shared fix instead of two separate ones if addressed.
+
+**Low priority — cleanup, not correctness:**
+5. `corpus_builder.py`'s `write_jsonl_record()` and `Analysis/output_writer.py`
+   are both fully built and tested but never actually called by their
+   real production paths, which each do their own inline writing instead.
+   Neither is a live bug (the actual paths used are themselves correctly
+   atomic/deterministic), but both are a "two sources of truth, only one
+   is real" maintenance hazard worth resolving — either wire them in or
+   remove them.
+
+**Investigated and cleared, not findings:** the `sentence_index` "no
+gaps" gap (already tracked in `WORKING_LIST.md`, re-confirmed, not new);
+`Templates/`'s EPISODE markers (confirmed a different, still-current
+tool, not a contradiction of the resolved parser-section-marker
+finding); the DeepSeek Client resume-logic's lack of content
+re-validation (well-guarded by the atomic-write contract elsewhere,
+documented as an intentional layering choice not a gap).
+
 ## 6. `Data Processor/deepseek_client.py`
 
 Careful, well-scoped transport layer — genuinely does only what its
