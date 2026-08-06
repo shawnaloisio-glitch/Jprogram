@@ -261,193 +261,264 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-06) — Updated after Session 4
+## 14. Session Wrap-Up (2026-08-06) — Updated after Session 5
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "Session 3"
+not appended to indefinitely.** This update supersedes the "Session 4"
 version. If anything below conflicts with an older section elsewhere in
 this file, this section wins — it was last refreshed 2026-08-06, end of
-session 4.
-
-### Relocation is DONE — repo now lives at the new path
-
-**This session's whole scope.** The plan at
-`C:\AI Development Projects\Corpus change study\2026-08-06_relocation_plan.md`
-was executed in full and verified step by step, not just self-reported:
-
-1. **Pre-flight** — `JPROGRAM_WORKSPACE` set (User env var) to
-   `C:\Jprogram Workspace` *before* the folder moved. Verified directly
-   against the real persistent store both before (empty) and after
-   (correct value) via `[System.Environment]::GetEnvironmentVariable(...)`,
-   and the app was confirmed showing real existing data (Recent Sources,
-   templates) with the override active.
-2. **Close + move** — done by Owner. Confirmed on disk from two
-   independent shells (Bash and PowerShell): `C:\Jprogram` no longer
-   exists; `C:\AI Development Projects\Jprogram` exists with `.git` and
-   the full tree intact.
-3. **Code/config fixes** (done by Advisor directly — Owner's explicit
-   one-off exception to the standing Advisor/OC boundary, see below):
-   - `oc_session_dump.py`: `JPROGRAM_WORKTREE` is now computed from the
-     file's own location (`Path(__file__).resolve().parent`) instead of
-     hardcoded — a future move won't need this touched again.
-   - `.claude/settings.json`: the one absolute-path permission entry
-     updated.
-4. **Living docs updated**: `PROJECT_STATUS.md`, `ARCHITECTURE_CURRENT.md`,
-   `ANALYZER_ARCHITECTURE.md`, `WORKING_LIST.md`,
-   `OC_Session_Access_Procedure.md` (in-repo), plus
-   `ECOSYSTEM_OVERVIEW.md` (sibling repo). Deliberately left unchanged:
-   `JPROGRAM_SESSION_BOOTSTRAP.md`'s and
-   `AI_Coding_Environment_Design_Spec.md`'s only matches were historical
-   incident narrative, accurate to when written — rewriting those to the
-   new path would have made them factually wrong about the past.
-   `LANGZ_SESSION_BOOTSTRAP.md` also left alone — its mention is about
-   Claude Code's own working-directory history, not Jprogram's location.
-5. **Validated**: `verify_paths()` passes and resolves the real
-   `WORKSPACE_ROOT`; all 64 `test_*.py` files pass (checked actual
-   PASS/FAIL text, not just exit codes); `git status` showed exactly the
-   7 files touched, nothing unexpected; `git log` intact, still 4 commits
-   ahead of `origin/master`.
-6. **Owner's own environment — investigated, mostly nothing to do**:
-   - Desktop shortcut: doesn't exist. Checked the real (OneDrive-
-     redirected) Desktop and every `.lnk` there by actual target path,
-     not filename — none point at Jprogram. The plan's assumption about
-     an existing shortcut didn't match reality.
-   - Shell aliases/profile scripts: none exist (`$PROFILE` absent, no
-     `.bashrc`/`.bash_profile`/`.profile`). Nothing to fix.
-   - OpenCode desktop's working directory: found its per-workspace state
-     file (`opencode.workspace.C--Jprogram.*.dat` under
-     `%APPDATA%\ai.opencode.desktop\`), but it's an opaque JSON format
-     keyed by a hash of the old path — not something safe to hand-edit.
-     **Still open, Owner action**: next time OC opens, point it at
-     `C:\AI Development Projects\Jprogram` directly; it will create a
-     fresh, correctly-keyed entry on its own.
-
-**Not yet done: nothing committed.** The 7 touched files
-(`oc_session_dump.py`, `.claude/settings.json`, and the 5 in-repo docs)
-are sitting as uncommitted working-tree changes. Advisor deliberately did
-not commit without an explicit ask — see "Next immediate task" below.
-
-### Read the two Session-2 audit reports before assuming anything about project state
-
-Unchanged pointer, still current:
-- **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md`** — behavioral/documentation
-  audit, 800/800 tests repo-wide, Frozen Components untouched across the
-  entire git history at that time.
-- **`Audits/2026-08-05/CODE_QUALITY_AUDIT.md`** — code-level review
-  against the project's own stated principles. Its two headline findings
-  were resolved in Session 3.
+session 5. This was a long, dense session — read the summary below
+before diving into `Audits/Trigger_Log/` or `Audits/OC_Reliability_Log.md`
+for detail on any specific item.
 
 ### Current phase
 
-Relocation complete and verified. Still **13 Coder tasks** logged (no new
-Coder tasks this session — every edit this session was a direct Advisor
-edit under Owner's one-off authorization, not an OC task), see
-`Audits/OC_Reliability_Log.md` for full per-task detail. `master` remains
-the intentionally mothballed reference for the current (DeepSeek-based)
-architecture, now sitting at the new path with 7 uncommitted relocation-
-fix files on top of it. Per the original agreed sequencing, the
-deterministic-parser work (Corpus Change Study) is the next major
-project, on a new branch — not started yet.
+Relocation (Session 4) is old news now, fully absorbed. This session did
+three things, in order: (1) revised the Advisor/Auditor contract now that
+Qwen Code is permanently off the table, (2) closed out a real "outside
+best practice" audit (secrets, dependency tracking, linting, git hygiene),
+(3) did substantial product cleanup on the `deterministic-parser`
+branch — dead code, a full `source_type` collapse to one `clean_text`
+value, and moving `origin` to the workspace. **The deterministic-parser
+work itself (the actual GiNZA/SudachiPy rewrite) has still not started** —
+everything this session was branch prep and cleanup, not the Corpus
+Change Study's own phases.
+
+Coder task count: **20 tasks now** (TASK 14–20 this session), all
+independently verified — see `Audits/OC_Reliability_Log.md` and
+`Audits/Trigger_Log/2026-08-06_task14-*.md` through `task20-*.md`.
+`master` remains the mothballed DeepSeek-architecture reference,
+untouched this session. Two commits landed on `deterministic-parser`
+this session (`2935fb4`, `3994642`), both pushed to `origin` — nothing
+uncommitted right now.
+
+### The Advisor/Auditor contract changed — read `CLAUDE.md` directly, don't assume from memory
+
+Qwen Code is now stated as permanently not part of this project's audit
+model (previously "on indefinite hold" with a fallback framing — now just
+the settled model). Concretely:
+- **Auditor is now a fresh Claude Code subagent/session**, never a
+  continuation of the Advisor conversation that evaluated the change —
+  used for real this session (TASK 14, see below), including a mistake
+  (isolating the subagent in a stale git worktree that didn't have the
+  uncommitted diff) caught and corrected before any conclusion was drawn.
+- **Advisor/OC boundary redrawn at logic vs. size**, not size alone —
+  Advisor may now directly edit docs, config values, path strings, and do
+  simple file management; OC still implements anything that changes
+  program logic/behavior, no exception for how small the change is.
+- **New "Git handling" section** — Owner has no informed git preferences
+  (stated directly), so Advisor decides git mechanics and explains
+  what/why, only asking for a go/no-go on the action itself (commit,
+  push). Established this session: push early on solo feature branches,
+  no reason to hold back like the old `master`-only caution.
+- **Phase-boundary audit calibration for `deterministic-parser`
+  specifically**: once the actual parser rewrite starts, the fresh-subagent
+  audit fires once per completed phase (not per Coder command), because
+  branch isolation already means mistakes don't reach `master` until
+  merge. This does not loosen the automatic-Yes trigger anywhere else.
+- **Trigger-log self-check added** — the log had silently lapsed for 4
+  tasks (TASK 10–13) before this session caught and backfilled it;
+  `CLAUDE.md` now says not to treat a task as closed until the log file
+  itself is confirmed on disk.
+- `QWEN.md` retired to `Archive/QWEN.md` with a header explaining why.
+
+### "Outside best practice" audit — closed out
+
+A deliberate self-audit against general software-engineering practice
+(not just this project's own rules) found and fixed: 5 commits sitting
+unpushed (pushed immediately, and push-early is now the standing habit);
+zero dependency manifest (added `requirements.txt`/`requirements-dev.txt`,
+currently empty runtime deps, ready for GiNZA/SudachiPy); zero lint
+tooling (added a conservative `ruff` config, pyflakes-only — it caught a
+real closure-capture `NameError` bug on its first run, fixed separately);
+a leaked plaintext DeepSeek key sitting in `.claude/settings.local.json`
+(confirmed stale/dead, not the live key, but removed anyway).
+
+### TASK 14 — API key fallback removed from `deepseek_client.py` (Frozen, Transport)
+
+The legacy `api_key.txt` file-fallback is gone; `DEEPSEEK_API_KEY` (env
+var) is the only supported source now. Removing it exposed a real bug —
+`run()`'s exception handler no longer matched what the simplified
+`_resolve_api_key()` could raise, so an unset key crashed instead of
+failing cleanly. OC found and correctly declined to fix it (Advisor's own
+command boundary was too narrow), then fixed it in an immediate follow-up.
+This was the first real exercise of the new fresh-subagent Auditor model.
+
+### TASK 15 — dead-code cleanup
+
+Removed a confirmed unreachable duplicate `elif` branch in
+`production_manager.py`'s `state_for()`, and the orphaned
+`RAW_SUBTITLES`/`RAW_TRANSCRIPTS` path constants (a retired
+folder-scan-acquisition design, same root cause investigated further in
+TASK 16). One part (removing two apparently-dead methods from `gui.py`)
+was correctly blocked by OC — they're called directly by a test file
+outside that command's boundary — and Advisor's own follow-up
+investigation found the concern was smaller than it looked (both dead
+methods delegate to the same shared helper the live binding also uses).
+Left as-is; `_on_source_type_selected` was later removed anyway as a
+side effect of TASK 19.
+
+### TASK 16–18 — `source_type` collapsed to a single `clean_text` value
+
+The `podcast_transcript`/`anime_subtitle` split was already dead:
+subtitle-specific cleaning happens at Import Material's Subtitle File
+step (`Subtitle Importer/cleaner.py`, a fully separate implementation),
+not at the old `Subtitle Cleaner/clean_subtitles.py` route, which was
+confirmed to be an abandoned remnant of the pre-"birth certificate"
+design and deleted entirely. Sequenced as three Coder commands — config/
+backend (TASK 16), every downstream reference and ~40 test fixture files
+(TASK 17, including a real production bug found and fixed in
+`source_intake.py` and a genuine GUI test hang root-caused, not just
+patched over), then the GUI itself — main-form dropdown and the Metadata
+Editor's now-pointless Source Types tab removed (TASK 18). Full suite
+green (63/63) after each command.
+
+### TASK 19 — removed the source type display entirely
+
+Even the static display TASK 18 left behind turned out to be
+unnecessary once there's only one real value — Owner's call, live in the
+app. Removed both display rows and their now-dead plumbing
+(`source_type_display_var`, `source_type_label_map`,
+`_sync_source_type_display`); `source_type_var` itself and the logic
+setting it from the real Config vocabulary are untouched.
+
+### Workspace relocated, and origin moved to live there too
+
+Separately from the repo relocation (Session 4), the **Workspace data
+folder** itself moved this session, at Owner's request: `JPROGRAM_WORKSPACE`
+now points to `C:\AI Development Projects\Jprogram Workspace` (previously
+`C:\Jprogram Workspace`, which stayed put through the Session 4 repo
+move on purpose). Owner wiped it clean via the standard "delete folder,
+reopen app, `ensure_workspace()` recreates it fresh" procedure — the
+workspace is now genuinely empty, a deliberate clean slate for testing
+the setup from scratch. Owner also renamed/cleaned up the various
+`Jprogram... backup` folders that had accumulated at the old location.
+
+While looking at a live screenshot during this, confirmed `origin` no
+longer drives any pipeline routing (absent from Source Intake's resolver/
+schemas and every Data Processor stage) — it's pure descriptive metadata
+now, same category as `collections`. TASK 20 moved it to live in the
+workspace exactly like collections: no shipped defaults, no seeding,
+empty until the user adds an entry. This also deleted a real personal
+entry (`cijsub`/"CiJapanese Subs") that had been baked into shipped
+product config — a live instance of the "no user-specific data in
+product" principle being enforced, not just stated.
 
 ### Last several decisions and why
 
-- **Advisor made this session's code/doc edits directly, as an explicit
-  one-off exception** to the standing Advisor/OC boundary
-  (`feedback_advisor_implementation_boundary`) — Owner authorized this
-  specifically for the relocation's mechanical path-string updates, not
-  as a general precedent. Route future product-file changes through OC
-  as usual.
-- **OpenCode's per-workspace state file was deliberately left untouched**
-  rather than hand-edited — its format is undocumented/opaque (hash-keyed
-  JSON), and the correct fix (opening OC pointed at the new folder)
-  achieves the same result without risking corrupting app-internal state
-  Advisor doesn't fully understand. Consistent with "verify over trust" —
-  don't act on state you can't confirm the shape of.
-- **Relocation changes were verified independently at each step**, not
-  accepted from either tool self-report or assumption — the env var via a
-  direct persistent-store read (twice), the move via two separate shells
-  agreeing, the app's real-data read via Owner's own screenshot, the
-  tests via actual PASS/FAIL text. No step was taken on trust alone.
-- **Commit deliberately deferred** — 7 files modified, nothing staged or
-  committed. This wasn't asked for as part of "wrap up," and committing
-  is an explicit-permission action; Owner should decide whether these
-  land on `master` (most likely, since they're maintenance on the current
-  architecture, not new-branch work) before the next branch gets cut.
-- **The recurring identity/file-coupling pattern's 5th instance (from
-  Session 3) is now resolved**, not just tracked — the
-  `JPROGRAM_WORKSPACE` pre-flight step worked exactly as designed.
+- **Qwen Code's retirement is now stated plainly, not softened** — the
+  real independence axis in this setup is OC (implementer) vs. Claude
+  Code (reviewer), not cross-vendor audit. Fresh-subagent review is the
+  cheap substitute that's actually available.
+- **The Advisor/OC boundary moved from size to logic** because the old
+  "no exception even for trivial" wording kept getting tested by real
+  mechanical work (relocation path-fixes, then this session's own
+  contract edits) that carried zero implementation judgment.
+- **`Subtitle Cleaner/` was deleted outright, not just deprecated** —
+  confirmed via direct trace of every caller (none) that it was fully
+  dead, not just unused-for-the-recommended-workflow. Matches the
+  project's stated aversion to "two sources of truth, only one real."
+- **`origin`'s move to the workspace mirrors `collections` exactly**
+  (no shipped defaults, no seeding) rather than inventing a new pattern —
+  found and reused an existing special-case hook in
+  `metadata_editor.py`'s `_config_path()` rather than building parallel
+  machinery.
+- **Both post-collapse commits used one combined commit each** rather
+  than surgical per-task splitting — the fixture-rename passes touched
+  nearly every file the preceding cleanup pass had also touched, making
+  clean separation impractical without risky interactive staging. Judged
+  proportionate for a solo project; each commit message enumerates the
+  distinct threads bundled together.
 
 ### Open risks / unresolved questions
 
 Full detail in `WORKING_LIST.md` — this is a pointer, not a duplicate.
 Headline items still open:
 
-- **The Corpus Change Study work** — the big one. No longer blocked
-  (relocation is done) but still deliberately not started. Start at
-  `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-- **Uncommitted relocation-fix changes** (this session) — 7 files, needs
-  an explicit commit decision from Owner.
-- **A real DeepSeek API key in plaintext**, found in
-  `.claude/settings.local.json` (git-ignored, not tracked, but still live
-  on disk) — flagged in the relocation plan's own "separate finding," not
-  yet rotated. Carrying this forward explicitly so it doesn't get lost.
-- **OpenCode desktop still pointed at the old folder** — Owner action,
-  see step 6 above.
-- **GUI terminology fix** — the standalone/series/site-collection
-  three-way split doesn't exist anywhere yet; scoped but not built.
-- **`sentence_index` "no gaps" not validated** — deliberately deferred
-  (Session 3), zero current functional impact confirmed. Revisit if
-  something ever starts reading `sentence_index` directly.
-- **Two dead methods in `gui.py`** (`_on_source_type_selected`/
-  `_on_origin_selected` from TASK 12) — queued into the next task that
-  touches `gui.py`, not standalone.
-- **From the Session-2 code quality audit, still open**: the dead
-  duplicate branch in `production_manager.py`'s state machine; the
-  duplicated silent-fallback-to-zero pattern in two files
-  (`corpus_builder.py`'s `response_path_for()`,
-  `deepseek_client.py`'s `job_number_from_request()`); two unused write
-  helpers (`write_jsonl_record`, `output_writer.py`).
+- **The Corpus Change Study work itself** — still the big one, still not
+  started. Start at
+  `C:\AI Development Projects\Corpus change study\00_INDEX.md`. Now
+  genuinely unblocked — no more prep work queued ahead of it that anyone
+  is aware of.
+- **12 `ruff` findings deliberately deferred**, all inside Frozen
+  Components the parser rewrite will touch anyway (`corpus_builder.py`,
+  `deepseek_client.py`, `parser_normalizer.py`) — fold into that work,
+  don't do a separate pass. One real trap already found there: some of
+  `corpus_builder.py`'s "unused" re-exports from `parser_normalizer` are
+  actually used externally (`test_corpus_builder.py` via the `cb.` alias)
+  — verify each one individually before removing, don't trust ruff's
+  suggestion blindly on this file.
+- **A forward-looking, unscoped note**: possible future need for
+  metadata to organize processor/analysis output data, distinct from
+  `origin`. Not a task yet, just don't lose the thought.
+- **`origin`'s name itself may change later** — Owner floated this,
+  explicitly deferred, cheap to do anytime since it's just a JSON key and
+  a few Python identifiers.
+- **OpenCode desktop still likely pointed at the old repo folder** —
+  Owner action from Session 4, status not re-checked this session.
+- **`sentence_index` "no gaps" not validated** — still deliberately
+  deferred, zero current functional impact confirmed (Session 3).
+- **From the Session-2 code quality audit, still open**: the duplicated
+  silent-fallback-to-zero pattern in `corpus_builder.py`'s
+  `response_path_for()` and `deepseek_client.py`'s
+  `job_number_from_request()`; two unused write helpers
+  (`write_jsonl_record`, `Analysis/output_writer.py`). All in Frozen
+  Components in the parser-rewrite blast radius — same "defer, don't do
+  separately" logic as the ruff findings above. The dead duplicate
+  `production_manager.py` branch from this same audit **is now fixed**
+  (TASK 15) — drop it from future carry-forward lists.
 - **API key structure/utility design** — not started.
 - **Remaining live-testing GUI backlog** — embedded-tabs restructure,
-  import defaults, Analysis multi-file, Template Editor pass, the
-  Tkinter-error report still blocked on Owner pasting a traceback,
-  Import Material default-format GUI fix — see `WORKING_LIST.md`.
+  import defaults, Analysis multi-file capability (Owner's direction:
+  one report per file, loop the existing single-file logic, no Frozen
+  changes — not yet built), Template Editor pass, the Tkinter GUI-state
+  error report still blocked on Owner pasting a traceback, the
+  `teppei_beginner` stale-selection bug (Owner was going to test this
+  live; outcome unknown to Advisor) — see `WORKING_LIST.md`.
 
 ### Next immediate task
 
-Two open decisions, neither a hard blocker on the other:
-1. **Commit the 7 relocation-fix files** — Owner's call on whether these
-   land on `master` (this bootstrap doc's read: yes, since they're
-   maintenance on the current architecture, not new-branch work).
-2. **Create the new branch for the deterministic-parser work**, per the
-   original sequencing — now unblocked. Start from
-   `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-
-If Owner instead wants to pick something off `WORKING_LIST.md` first,
-that's fine too.
+No hard blocker on anything. In rough priority order per this session's
+own momentum:
+1. If Owner wants to keep doing branch-prep/cleanup: pick another
+   `WORKING_LIST.md` item, same pattern as this session (all clearly
+   outside the Frozen-Component blast radius until the parser work
+   itself starts).
+2. Otherwise: start the actual Corpus Change Study work from
+   `C:\AI Development Projects\Corpus change study\00_INDEX.md` — the
+   real reason `deterministic-parser` exists as a branch.
+3. Test the freshly-wiped workspace end to end (Owner's own stated goal
+   for wiping it) — confirm the full setup/workflow still works from a
+   genuinely clean state before assuming it does.
 
 ### Real-data validation status
 
 Unchanged: done once, successfully, via `QC Test Harness/`. See
-`QC Test Harness/README.md` for reuse instructions.
+`QC Test Harness/README.md` for reuse instructions. Note: the real
+workspace was wiped this session — if this needs re-running, it's
+starting from a clean slate now, not the previously-populated state.
 
 ### Tooling and standing docs available going forward
 
 - `QC Test Harness/` — reusable known-ground-truth pipeline test.
+- `requirements.txt` / `requirements-dev.txt` / `pyproject.toml` — new
+  this session. Runtime deps currently empty; `ruff` configured
+  pyflakes-only, deliberately conservative for a never-linted codebase.
 - `oc_session_dump.py` — reads OC's raw session data directly (see
-  `OC_Session_Access_Procedure.md`). Fixed this session — worktree path
-  now computed dynamically, no longer hardcoded.
+  `OC_Session_Access_Procedure.md`).
 - `Audits/OC_Reliability_Log.md` — the evidence-based OC track record,
-  13 tasks deep, ten consecutive clean-or-clean-with-notes results.
+  now 20 tasks deep.
+- `Audits/Trigger_Log/` — every trigger decision this session
+  (TASK 14–20) logged individually; the self-check added to `CLAUDE.md`
+  should keep this from lapsing again.
 - `WORKING_LIST.md` — the living queue; check here first every session.
 - `ARTIFACT_CONTRACT_TRACE.md` (see §15 below) — real, on-disk artifact
-  examples for every pipeline stage; last refreshed post-TASK-8.
-- `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and `CODE_QUALITY_AUDIT.md`
-  — Session 2's two audits; still current, read before assuming project
-  state.
+  examples for every pipeline stage; **stale as of this session** — the
+  source_type/origin changes likely shifted some of these examples;
+  refresh before trusting it blindly.
 - **`C:\AI Development Projects\Corpus change study\`** — the
   deterministic-parser scoping work, outside this repo. Start at
-  `00_INDEX.md`. Read before starting that work.
+  `00_INDEX.md`. Still nothing built toward it as of this session's end.
 
 ---
 
