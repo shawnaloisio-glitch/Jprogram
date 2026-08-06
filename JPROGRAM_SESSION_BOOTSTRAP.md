@@ -261,155 +261,245 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-05) — Updated after Session 2
+## 14. Session Wrap-Up (2026-08-06) — Updated after Session 3
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "First
-Advisor-CC Session" version: that session covered TASK 1-4 and initial
-setup; this second same-day session added TASK 5-9 (all independently
-verified clean) plus two full audits. If anything below conflicts with
-an older section elsewhere in this file, this section wins — it was
-last refreshed 2026-08-05, end of session 2.
+not appended to indefinitely.** This update supersedes the "Session 2"
+version. If anything below conflicts with an older section elsewhere in
+this file, this section wins — it was last refreshed 2026-08-06, end of
+session 3.
 
-### Read the two audit reports before assuming anything about project state
+### Before anything else: read the Corpus Change Study folder
 
+**This is the single most important pointer in this update.** A parallel
+session on 2026-08-06 produced a fully-scoped proposal to replace the
+DeepSeek API call in the Parser stage (word/lexical/chunk layers only —
+expressions stays on hold, unrelated reasons) with a deterministic,
+offline tokenizer (GiNZA/SudachiPy tested, 0 empty lemmas across 7 real
+sources, ~18,800 tokens, verified against the project's own QC harness
+ground truth). It lives **outside this repo**, at
+`C:\AI Development Projects\Corpus change study\` — start at
+`00_INDEX.md`. Nothing in it has been executed; it's scoping only. It
+touches all four Frozen Component categories at once (Parser, Validator,
+Builder, Transport) — the largest audit-trigger footprint scoped for
+this project so far. **Do not start this work casually** — it's a
+multi-phase project (each phase its own Coder task per that doc's
+suggested 7-phase order), and Owner has deliberately sequenced it to
+happen only after the relocation below, not concurrently with it.
+
+**The agreed sequencing (Owner, 2026-08-06, still standing):**
+1. ~~Finish the in-flight OC command in the active session.~~ **Done —
+   TASK 13, see below.**
+2. ~~Wrap up that session.~~ **This update.**
+3. Start a fresh session.
+4. Execute the relocation plan (`2026-08-06_relocation_plan.md` in that
+   folder) — move `C:\Jprogram` → `C:\AI Development Projects\Jprogram`,
+   **including its own pre-flight step** (set `JPROGRAM_WORKSPACE`
+   explicitly *before* moving anything, or the app will silently
+   self-initialize an empty workspace at the wrong default location).
+5. Only after relocation is confirmed working: **create a new branch**
+   for the deterministic-parser work. `master` stays exactly as it is
+   right now (see "Current phase" below) as a mothballed, fully-working
+   reference — the new branch carries the new development, `master` is
+   not touched by it.
+
+### Read the two Session-2 audit reports before assuming anything about project state
+
+Unchanged pointer from the last wrap-up — still current, nothing in them
+has gone stale this session:
 - **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md`** — behavioral/documentation
-  audit. Headline: 800/800 tests pass repo-wide (verified by running
-  every one directly, not trusted from a prior claim); Frozen Components
-  confirmed untouched across the *entire* git history, not just this
-  session's tasks; found `JPROGRAM_SESSION_BOOTSTRAP.md` §14 (the old
-  version) and two other root docs (`PROJECT_STATUS.md`,
-  `ARCHITECTURE_CURRENT.md`) had drifted from reality.
-- **`Audits/2026-08-05/CODE_QUALITY_AUDIT.md`** — read-only code-level
-  review of every Frozen Component, all 9 Analysis modules, the full
-  Production Manager, and remaining unread subsystems, checked against
-  the project's own stated principles rather than generic style
-  nitpicks. Headline finding: `parser_normalizer.py` contains the actual
-  Frozen-architecture canonicalization logic but isn't itself on
-  `CLAUDE.md`'s Frozen Components list — only `corpus_builder.py` is
-  named, and it now just re-exports that logic. A handful of smaller
-  real findings (a confirmed dead duplicate branch in
-  `production_manager.py`'s state machine, a punctuation-set gap in
-  `response_validator.py` with direct textual evidence it's a real risk,
-  two fully-built-but-unused write helpers) are prioritized in that
-  report's summary section. Nothing found requires emergency action.
+  audit, 800/800 tests repo-wide, Frozen Components untouched across the
+  entire git history at that time.
+- **`Audits/2026-08-05/CODE_QUALITY_AUDIT.md`** — code-level review
+  against the project's own stated principles. Its two headline findings
+  (`parser_normalizer.py` missing from the Frozen list;
+  `response_validator.py`'s punctuation gap) are **both resolved this
+  session** — see below.
 
 ### Current phase
 
-Past initial setup/audit, doing real implementation work through the
-Advisor→Coder loop with active verification, now 9 Coder tasks deep, all
-independently verified against raw evidence — see
-`Audits/OC_Reliability_Log.md` for the full history. TASK 1-4 recap: TASK
-1/2 clean, TASK 3 a genuine discrepancy (1 of 3 parts delivered, not
-flagged), TASK 4 (the fix, after `AGENTS.md` was strengthened) clean
-again. **TASK 5-9, all clean, no further discrepancies**: TASK 5
-(sequencing GUI wiring — Metadata Editor combobox, `gui.py` conditional
-field visibility, save-flow branch), TASK 6 (origin-dropdown filter bug +
-standalone quick-preset `source_name` bug, both confirmed live via
-Owner's own testing), TASK 7 (Metadata Editor `PROCESSING_PROFILES`
-validation gap — GUI-side filter only, deliberately not a data-layer
-block, to avoid breaking the already-saved `cijapanese` collection),
-TASK 8 (hash verification enforcement at both cleaners' entry points and
-Job Builder — the largest task this session, including one
-Owner-authorized mid-task boundary extension that OC surfaced via its
-own `question` tool rather than deciding silently), TASK 9 (Processing
-tab: removed the redundant Run Analysis button, added a Cancel button
-and real per-source progress status). Six clean results in a row since
-the TASK 3 discrepancy.
+Past setup/audit, deep into the Advisor→Coder loop with active
+verification — now **13 Coder tasks**, all independently verified
+against raw evidence, see `Audits/OC_Reliability_Log.md` for full
+per-task detail (this bootstrap doc no longer carries the full task-by-
+task history; the reliability log is the authoritative record). TASK
+1-9 recap: one genuine discrepancy (TASK 3, caught and fixed via TASK 4
+after `AGENTS.md` was strengthened), otherwise clean throughout.
+
+**TASK 10-13, this session, all CLEAN (one CLEAN WITH NOTES):**
+- **TASK 10** — Metadata Editor's Sequencing dropdown shows friendly
+  labels instead of raw "episodic"/"auto" values.
+- **TASK 11** — Import Material format picker: removed 3 non-functional
+  formats (Podcast Transcript/Ebook/OCR, all were stub pass-throughs
+  with zero real logic), renamed Plain Text → Clean Text. OC self-caught
+  a mid-task git-restore that had silently reverted one of its own
+  edits, caught it, and re-verified — the strongest self-correction
+  logged so far at that point.
+- **TASK 12** — main-form Source type / Origin dropdowns show display
+  names, not raw ids, while everything saved to disk stays byte-
+  identical (proven by a dedicated anti-corruption test). **CLEAN WITH
+  NOTES**: OC self-caught and fixed a genuinely subtle stale-closure bug
+  (label maps captured by reference, would go stale on a metadata
+  reload) unprompted, adding a dedicated regression test for it — the
+  strongest independent-correctness behavior in the log. The one
+  blemish: two harmless dead methods left in `gui.py`
+  (`_on_source_type_selected`/`_on_origin_selected`), unflagged by OC —
+  **queued into the next task that touches `gui.py`**, not a standalone
+  fix.
+- **TASK 13** — Frozen Component fix: `response_validator.py`'s
+  `_PUNCTUATION` set was missing wave dash/interpunct/em-dash, risking a
+  false-positive fatal rejection on genuinely correct parser output
+  (confirmed via the frozen `parser_prompt.md`'s own worked example).
+  Fixed, plus a new `test_response_validator.py` (none existed before).
+  **Automatic audit trigger. Qwen Code is still on indefinite hold, so
+  Advisor served as the CC same-vendor fallback auditor for this change
+  — explicitly weaker independence than the design calls for, stated
+  here per the standing protocol, not silently treated as equivalent.**
+  See `Audits/OC_Reliability_Log.md` TASK 13 for the full governance
+  note and verification detail.
+
+Also this session, outside the Coder-task loop:
+- **`parser_normalizer.py` added to `CLAUDE.md`'s Frozen Components
+  list** (the Session-2 audit's highest-priority finding) — a direct
+  Advisor edit to its own standing-instructions doc, not a Coder task.
+- **Dead `cij_transcript` source type removed** from the shipped
+  `Config/source_types.json` — CIJ transcripts are the same plain text
+  as `podcast_transcript`, never had a distinct cleaner, and were never
+  selectable on the main form. **Process note, corrected mid-session:**
+  Advisor initially made this edit directly, which was a real boundary
+  violation (Advisor evaluates, OC implements — no exception for
+  "trivial"). Owner caught it; the change itself was left in place
+  (correct, low-risk, documented) but Advisor should route product-file
+  changes through OC going forward regardless of size. See memory
+  `feedback_advisor_implementation_boundary`.
+- **Three git commits this session**, `master` now sitting exactly at
+  the state described in this document:
+  - `4e84445` — TASK 10 + TASK 11 + the `cij_transcript` removal
+  - `c8b1731` — TASK 12
+  - `0e4bd76` — TASK 13 + this session's remaining records (**the final
+    commit to this architecture version** — see the Corpus Change Study
+    pointer above for what comes next)
+  - **Not pushed to `origin`** — Owner is deferring push until the
+    git/audit contract is redesigned post-relocation; local commits are
+    the current source of truth.
 
 ### Last several decisions and why
 
-- **Non-episodic collection sequencing is now fully done, backend and
-  GUI** (TASK 3/4/5) — Owner has real ~800-item non-episodic collections
-  (CI Japanese) that the original episode=0 proposal would have collided
-  on. No longer an open item.
-- **Metadata Editor's validation fix is GUI-side only, not a data-layer
-  block** — a hard block in `validate_collection()` would have made the
-  already-saved real `cijapanese` collection (defaulted to the
-  non-processable `cij_transcript`) un-editable for any field until its
-  legacy value was fixed first, a regression the fix itself would have
-  caused. This "don't retroactively break existing data" reasoning is
-  worth reapplying to any future validation-tightening task.
-- **Hash enforcement reuses the existing `hashing.sha256_file()` utility
-  everywhere, no new hashing helper, no schema changes** — and the
-  Integration test fixture that broke as a side effect got fixed only
-  after OC stopped and asked, confirming the boundary-extension protocol
-  works as intended under real pressure (largest task of the session).
-- **Ran both audits this session, not deferred** — Owner explicitly
-  granted multi-session token budget and asked for a deep-understanding
-  report; both are read-only investigation, no code changes, and the
-  findings are prioritized for whoever picks this up next rather than
-  acted on unilaterally.
-- **Standing process changes made this session**: OC now gets a fresh
-  OpenCode session per Coder command by default (see memory
-  `feedback_oc_session_per_task` and `CLAUDE.md`'s Coder command format
-  section) — Owner explicitly confirmed continuing one OC session is
-  the exception, only for a tight immediate follow-up on the same work,
-  not the default. Coder commands are now presented as a colored widget
-  (blue = new session, red = continue existing session) instead of a
-  plain code fence, same section of `CLAUDE.md`. A project-level
-  `.claude/settings.json` permission allowlist now exists, reducing
-  repeat prompts for git add/commit and known test-file invocations — a
-  deliberate, informed exception to the `fewer-permission-prompts`
-  skill's conservative default, explicitly authorized by Owner.
+- **`master` is now the intentionally mothballed reference for "this
+  version of the project."** No more commits land on it for the current
+  (DeepSeek-based) architecture. New development (the deterministic
+  parser) happens on a new branch, created only after relocation.
+- **Relocation is sequenced strictly before the parser work**, not
+  concurrent — avoids compounding a structural folder move with a
+  multi-phase, all-four-Frozen-Components rewrite at the same time. Full
+  reasoning and the pre-flight step's importance:
+  `2026-08-06_relocation_plan.md` in the Corpus Change Study folder.
+- **Push to `origin` intentionally held off** — Owner is about to
+  redesign the git/audit contract after the move; committing locally
+  fully satisfies "git matches disk" for now, and locking in a push
+  habit before that redesign would be premature.
+- **`response_validator.py`'s punctuation fix was judged safe on a
+  Frozen Component because `_normalize()` applies symmetrically to both
+  sides of every comparison it's used in** — confirmed by reading all
+  three call sites directly, not inferred. Worth remembering as the
+  template for reasoning about future narrow, additive fixes to this
+  file specifically.
+- **Effort-level standing preference set this session**: Advisor
+  defaults to "High" in Owner's Claude Code UI, with Owner asking to be
+  proactively advised when a task warrants a bump to "Extra" (large/
+  persistence-touching diffs, non-trivial Coder-command drafting) or
+  "Max" (hard architectural calls, Frozen-Component correctness
+  review). See memory `feedback_effort_level_default_high` — note the
+  UI's own slider labels are High → Extra → Max → Ultracode, not the
+  API's internal `high`/`xhigh`/`max` names.
+- **The recurring identity/file-coupling pattern gained a probable 5th
+  instance this session**: the relocation plan's finding that
+  `JPROGRAM_WORKSPACE` is unset and `paths.py` derives the workspace
+  location from wherever the code folder currently sits — moving the
+  folder without setting that variable first would silently
+  self-initialize an empty workspace at the wrong location. Same shape
+  as the already-tracked instances (memory
+  `project_identity_file_coupling_pattern`); check that memory before
+  the relocation session for the full pattern history.
 - **Qwen Code authentication remains on indefinite hold** — unchanged,
-  do not propose revisiting unprompted.
-- **The recurring identity/file-coupling pattern** (memory
-  `project_identity_file_coupling_pattern`) — still worth checking for
-  whenever raw file content/structure seems like it should inform
-  identity going forward; no new instances found this session.
+  do not propose revisiting unprompted. TASK 13 is a concrete, logged
+  instance of the CC-fallback-auditor consequence of this being still in
+  effect.
 
 ### Open risks / unresolved questions
 
-All granular detail lives in `WORKING_LIST.md` (kept continuously updated
-and committed throughout both sessions) and the two audit reports linked
-above — this is a pointer, not a duplicate. Headline items:
+Full detail in `WORKING_LIST.md` (continuously updated and committed
+throughout the session) — this is a pointer, not a duplicate. Headline
+items still open:
 
-- **From the code quality audit** (see that report's summary for full
-  detail and priority order): `parser_normalizer.py` missing from
-  `CLAUDE.md`'s Frozen Components list (highest priority — a one-line
-  standing-instructions fix); `response_validator.py`'s punctuation-set
-  gap; the dead duplicate branch in `production_manager.py`; the
-  duplicated silent-fallback-to-zero pattern in two files; two unused
-  write helpers (`write_jsonl_record`, `output_writer.py`).
+- **The Corpus Change Study work** (see the pointer at the top of this
+  section) — the big one, deliberately not started yet.
 - **GUI terminology fix** — the standalone/series/site-collection
   three-way split doesn't exist anywhere yet; scoped but not built.
-- **`sentence_index` "no gaps" not validated** — small, deterministic,
-  but lives in `response_validator.py`, a Frozen Component, so fixing it
-  auto-triggers an audit regardless of how simple the change is.
+- **`sentence_index` "no gaps" not validated** — investigated this
+  session and **deliberately deferred**: confirmed zero current
+  functional impact (the parser's job-local `sentence_index` is never
+  used by any Analysis module or by `corpus_builder.py`'s global-id
+  assignment; only `ids.sentence_id`, independently assigned, is ever
+  read for real computation). Still a real Frozen-Component spec/code
+  drift, just not urgent — Owner chose to prioritize real user-facing
+  issues instead. Revisit if something ever starts reading
+  `sentence_index` directly.
+- **Two dead methods in `gui.py`** (`_on_source_type_selected`/
+  `_on_origin_selected` from TASK 12) — queued into the next task that
+  touches `gui.py`, not standalone.
+- **Origin dropdown in the *preset editor*** and the main-form
+  Source-type/Origin display-name fix are both done (TASK 12) — but
+  **worth double-checking live in the app** that the friendly labels
+  render correctly now that this session is ending without that manual
+  check having happened.
+- **From the Session-2 code quality audit, still open**: the dead
+  duplicate branch in `production_manager.py`'s state machine; the
+  duplicated silent-fallback-to-zero pattern in two files
+  (`corpus_builder.py`'s `response_path_for()`,
+  `deepseek_client.py`'s `job_number_from_request()`); two unused write
+  helpers (`write_jsonl_record`, `output_writer.py`).
 - **API key structure/utility design** — not started.
 - **Remaining live-testing GUI backlog** — embedded-tabs restructure,
   import defaults, Analysis multi-file, Template Editor pass, the
-  Tkinter-error report still blocked on Owner pasting a traceback — see
-  `WORKING_LIST.md`.
+  Tkinter-error report still blocked on Owner pasting a traceback,
+  Import Material default-format GUI fix — see `WORKING_LIST.md`.
 
 ### Next immediate task
 
-No hard dependency forces one choice. Reasonable candidates in rough
-priority order: the `parser_normalizer.py` Frozen Components list fix
-(trivial, high-value, a `CLAUDE.md` edit not a Coder task); the
-production_manager.py dead-branch fix; the GUI terminology fix; or
-anything else from `WORKING_LIST.md`. Owner's call.
+Per the agreed sequencing at the top of this section: **the relocation
+plan**, in a fresh session, starting from
+`C:\AI Development Projects\Corpus change study\00_INDEX.md`. Not the
+parser work itself yet — that's sequenced after relocation is confirmed
+working. If Owner instead wants to pick something off `WORKING_LIST.md`
+first, that's fine too; nothing here is a hard blocker on anything else.
 
 ### Real-data validation status
 
-Unchanged from last wrap-up: done once, successfully, via
-`QC Test Harness/`. See that section's original note below (§ "Tooling
-built") and `QC Test Harness/README.md` for reuse instructions.
+Unchanged: done once, successfully, via `QC Test Harness/`. See
+`QC Test Harness/README.md` for reuse instructions. Note: the Corpus
+Change Study's GiNZA feasibility testing reused this same ground-truth
+fixture (plus 7 additional real sources) — see that folder's
+`2026-08-06_ginza_deterministic_parser_test.md` for how.
 
 ### Tooling and standing docs available going forward
 
 - `QC Test Harness/` — reusable known-ground-truth pipeline test.
 - `oc_session_dump.py` — reads OC's raw session data directly (see
-  `OC_Session_Access_Procedure.md`).
+  `OC_Session_Access_Procedure.md`). **Will need a small fix as part of
+  relocation** — `JPROGRAM_WORKTREE` is hardcoded to `C:/Jprogram` at
+  line 46; see the relocation plan for the fix.
 - `Audits/OC_Reliability_Log.md` — the evidence-based OC track record,
-  now 9 tasks deep.
+  now 13 tasks deep, ten consecutive clean-or-clean-with-notes results.
 - `WORKING_LIST.md` — the living queue; check here first every session.
 - `ARTIFACT_CONTRACT_TRACE.md` (see §15 below) — real, on-disk artifact
-  examples for every pipeline stage.
-- **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and `CODE_QUALITY_AUDIT.md`**
-  — this session's two audits; read both before assuming project state,
-  per the top of this section.
+  examples for every pipeline stage; last refreshed post-TASK-8.
+- `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and `CODE_QUALITY_AUDIT.md`
+  — Session 2's two audits; still current, read before assuming project
+  state.
+- **`C:\AI Development Projects\Corpus change study\`** — this
+  session's major scoping output, outside this repo. Start at
+  `00_INDEX.md`. Read before touching relocation or the parser work.
 
 ---
 
