@@ -261,15 +261,182 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-06) — Updated after Session 5
+## 14. Session Wrap-Up (2026-08-07) — Updated after Session 6
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "Session 4"
-version. If anything below conflicts with an older section elsewhere in
-this file, this section wins — it was last refreshed 2026-08-06, end of
-session 5. This was a long, dense session — read the summary below
-before diving into `Audits/Trigger_Log/` or `Audits/OC_Reliability_Log.md`
-for detail on any specific item.
+not appended to indefinitely.** This update supersedes the "Session 5"
+version below it (kept for reference, marked accordingly). If anything
+below conflicts with an older section elsewhere in this file, this
+section wins — it was last refreshed 2026-08-07, end of session 6.
+
+### Current phase
+
+Same category as Session 5: more `deterministic-parser` branch prep and
+cleanup, not the Corpus Change Study's own phases. **The actual
+GiNZA/SudachiPy rewrite still has not started.** This session worked
+through several `WORKING_LIST.md` items specifically chosen because
+they sit outside the upcoming parser rewrite's blast radius (none touch
+a Frozen Component), plus one governance change to Advisor's own git
+behavior.
+
+Six commits landed on `deterministic-parser` this session, all local,
+not yet pushed at the time of this wrap-up (pushing now, as the
+session's own end-of-session housekeeping, per the git-handling policy
+revised this same session — see below):
+
+1. `71dad32` — swapped Episode/Origin field order on the main Sources
+   form (Owner reported it visually backwards from a live screenshot).
+2. `2c477c3` — revised `CLAUDE.md`'s Git handling: commits now
+   pre-approved once a change passes Advisor's evaluation; pushes
+   default to end-of-session wrap-up instead of an explicit ask every
+   time (Owner's own initiative — commits are cheap/reversible, gating
+   every one added friction without adding safety; push kept at a
+   higher bar since it's shared/visible state).
+3. `136940c` — removed the per-collection `default_source_type` field
+   entirely (not just hidden). Investigation found it was more than a
+   stale display: live-wired into `quick_presets.py`'s preset-population
+   fallback. Confirmed safe to remove outright because `source_type_var`
+   already stays correctly populated from Config independent of that
+   mechanism, now that only one `source_type` value exists anywhere.
+   Touched `metadata_editor.py`, `config_loader.py`, `quick_presets.py`,
+   `gui.py`, `metadata_editor_gui.py`, and 4 test files. OC also caught
+   and removed a related dead check in `delete_source_type()` that
+   referenced the now-gone field — correct follow-through, not scope
+   creep.
+4. `9dc506d` — corrected two stale `WORKING_LIST.md` entries found
+   already resolved while scanning for parser-rewrite-safe work:
+   `RAW_SUBTITLES`/`RAW_TRANSCRIPTS` removal was actually done in
+   TASK 15 but never checked off; the `podcast_transcript` import-default
+   bug is moot since that `source_type` no longer exists anywhere after
+   the TASK 16-18 collapse.
+5. `f646709` — added `paths.RAW_IMPORTS` as a standard workspace folder.
+   Owner had manually created a `Raw Imports` folder at project root;
+   moved it (with its existing `Subtitles`/`For Future Import Types`
+   structure intact) into the real Workspace instead, since raw import
+   material is customer/runtime data, not product code — matches
+   `paths.py`'s own stated product-vs-customer-data split. Wired into
+   the existing `WORKSPACE_FOLDERS`/`ensure_workspace()` auto-creation
+   mechanism, so no new setup utility was needed (Owner initially
+   thought one would be, correctly reconsidered once this was pointed
+   out).
+6. `6fa18d0` — Import Material's Browse button now defaults to
+   `paths.RAW_IMPORTS` and remembers the last-picked folder for the rest
+   of the running session, mirroring the Load File button's existing
+   pattern exactly.
+
+All six independently verified against raw `git diff` and direct test
+re-runs, not OC's self-report — full Source Builder suite green (23
+files, 0 failures) after every change. `master` remains the mothballed
+DeepSeek-architecture reference, untouched this session.
+
+### Two process/environment findings from this session, not code
+
+- **A citation gap in this project's own docs.** Both this file and
+  `WORKING_LIST.md` cite `2026-08-06_blast_radius_scope.md` as the
+  source confirming the Analysis modules are unaffected by the parser
+  rewrite. That file does not actually exist anywhere in the repo or
+  git history — confirmed via direct search. Worked around it this
+  session by using `CLAUDE.md`'s Frozen Components list directly (the
+  actually-authoritative source regardless). Not fixed: either the
+  missing analysis should be redone and saved, or the citation should
+  be removed/corrected so it stops pointing at a file that isn't there.
+- **This Bash shell has a stale `JPROGRAM_WORKSPACE` environment
+  variable** (the pre-relocation value, `C:\Jprogram Workspace`) — the
+  real persistent store is correct (confirmed via the direct registry
+  read `CLAUDE.md` already prescribes for this exact failure mode).
+  Root cause: env vars are inherited once at process start, not
+  live-refreshed; the underlying shell process was spawned before the
+  variable was last updated. Caused one small accidental side effect
+  (an empty folder created in the stale location during a sanity
+  check), cleaned up immediately. Owner's plan: a full computer restart
+  before the next session resolves it — confirmed sufficient, since a
+  fresh login re-reads the registry-stored value cleanly. **Verify this
+  directly at the start of next session rather than assuming the
+  restart happened or worked** — same standing caution `CLAUDE.md`
+  already states for this class of issue.
+- Separately, and not addressed this session: a **pre-existing stale
+  `C:\Jprogram Workspace` folder tree** (predates this session, not
+  created by this session's work) is still sitting on disk — likely
+  tied to the still-open "OpenCode desktop may still point at the old
+  repo folder" item carried from Session 4. Not touched without Owner's
+  say-so; flagged, not cleaned up.
+
+### Last several decisions and why
+
+- **Git handling policy revised** (see commit `2c477c3` above) — the
+  reasoning and exact new rule are in `CLAUDE.md` itself now; this
+  entry is just the pointer so it isn't missed at next wrap-up.
+- **`default_source_type` removed outright, not just hidden** — same
+  judgment already established for `origin`/`source_type` cleanup this
+  branch: when a field can only ever resolve to one value, keeping it
+  around as inert data invites exactly the kind of stale-legacy-value
+  confusion already seen elsewhere in this project, so delete rather
+  than leave as dead weight.
+- **`Raw Imports` corrected to live in the Workspace, not project
+  root** — Owner's first instinct was project root (where the folder
+  was manually created); corrected against `paths.py`'s own stated
+  convention once the "would need a setup utility" concern turned out
+  to be moot (the existing auto-creation mechanism already covers it).
+
+### Open risks / unresolved questions
+
+Full detail in `WORKING_LIST.md` — this is a pointer, not a duplicate.
+Headline items still open:
+
+- **The Corpus Change Study work itself** — still the big one, still not
+  started. Start at
+  `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
+- **The missing `2026-08-06_blast_radius_scope.md` citation** (new this
+  session, see above) — fix by either recreating that analysis or
+  removing the dangling reference.
+- **This shell's stale `JPROGRAM_WORKSPACE` value** — expected resolved
+  by Owner's planned computer restart; verify at next session's start.
+- **The pre-existing stale `C:\Jprogram Workspace` folder tree** — still
+  on disk, still not cleaned up, still tied to the unresolved OpenCode
+  desktop repo-location question from Session 4.
+- **12 `ruff` findings deliberately deferred**, all inside Frozen
+  Components the parser rewrite will touch anyway — unchanged from
+  Session 5, see that section below for the caution about
+  `corpus_builder.py`'s re-exports.
+- **A forward-looking, unscoped note**: possible future need for
+  metadata to organize processor/analysis output data, distinct from
+  `origin`. Not a task yet.
+- **`origin`'s name itself may change later** — explicitly deferred,
+  cheap to do anytime.
+- **`sentence_index` "no gaps" not validated** — still deliberately
+  deferred, zero current functional impact confirmed.
+- **Remaining live-testing GUI backlog** — Import default-folder is now
+  done (drop from future carry-forward). Still open: embedded-tabs
+  restructure, Analysis multi-file capability (direction already
+  settled: one report per file, loop the existing single-file logic,
+  no Frozen changes — just not built), Template Editor pass, the
+  Tkinter GUI-state error report still blocked on Owner pasting a
+  traceback, the `teppei_beginner` stale-selection bug, the
+  import-from-subtitle workflow (needs design thought, not scoped).
+- **API key structure/utility design** — not started.
+
+### Next immediate task
+
+No hard blocker on anything. In rough priority order:
+1. More `WORKING_LIST.md` items outside the parser rewrite's blast
+   radius remain if more branch-prep is wanted: the `teppei_beginner`
+   stale-selection bug, Analysis multi-file capability, or a Template
+   Editor pass are the next-easiest candidates.
+2. Otherwise: start the actual Corpus Change Study work from
+   `C:\AI Development Projects\Corpus change study\00_INDEX.md` — the
+   real reason `deterministic-parser` exists as a branch.
+3. Test the freshly-wiped workspace end to end, per Session 5's own
+   stated goal — still not done.
+
+### Real-data validation status
+
+Unchanged from Session 5: done once, successfully, via
+`QC Test Harness/`. See `QC Test Harness/README.md` for reuse
+instructions.
+
+---
+
+## Session 5 wrap-up (2026-08-06) — superseded by the section above, kept for reference
 
 ### Current phase
 
