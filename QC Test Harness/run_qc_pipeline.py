@@ -40,7 +40,7 @@ source_id + same sha256 -> reports "exists", creates nothing new).
 Re-running "send" is also safe if a response already exists (DeepSeek
 Client resumes rather than re-sending), but if you genuinely want a fresh
 parse, delete the response file under
-responses\\podcast_transcript_qc-test-001\\ first.
+responses\\clean_text_qc-test-001\\ first.
 """
 
 import json
@@ -57,10 +57,10 @@ sys.path.insert(0, str(PROJECT_ROOT / "Source Intake"))
 sys.path.insert(0, str(PROJECT_ROOT / "Analysis"))
 
 SOURCE_NAME = "qc_test_001"
-SOURCE_TYPE = "podcast_transcript"
+SOURCE_TYPE = "clean_text"
 ORIGIN = "qc_test"
 LANGUAGE = "ja"
-SOURCE_ID = "podcast_transcript_qc-test-001"
+SOURCE_ID = "clean_text_qc-test-001"
 
 
 def stage_setup():

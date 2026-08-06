@@ -41,11 +41,11 @@ def write_initial(conf_dir):
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (conf_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript", "subtitle", "article"],
+        "source_types": ["clean_text", "subtitle", "article"],
     }), encoding="utf-8")
     (conf_dir / "origins.json").write_text(json.dumps({
         "origins": ["con_teppei_podcast", "nhk_news"],
@@ -84,7 +84,7 @@ def _():
     check("id", items[0]["collection_id"] == "teppei_beginner")
     check("display name", items[0]["display_name"] == "Con Teppei for Beginner")
     check("default source type",
-          items[0]["default_source_type"] == "podcast_transcript")
+          items[0]["default_source_type"] == "clean_text")
 
 
 @test("collections: missing file loads empty")
@@ -172,7 +172,7 @@ def _():
         metadata_editor.add_collection(
             "new_col", "New", default_source_type="nope",
             path=conf_path(conf_dir, "collections"),
-            source_type_ids=["podcast_transcript", "subtitle", "article"])
+            source_type_ids=["clean_text", "subtitle", "article"])
         check("unknown default rejected", False)
     except metadata_editor.MetadataError as exc:
         check("source type message", "not a known source type" in str(exc))
@@ -233,7 +233,7 @@ def _():
     (conf_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "cij_corpus", "name": "CIJ Corpus",
-             "source_type": "podcast_transcript", "sequencing": "auto"},
+             "source_type": "clean_text", "sequencing": "auto"},
         ]
     }), encoding="utf-8")
     items = metadata_editor.load_collections(conf_path(conf_dir, "collections"))
@@ -291,7 +291,7 @@ def _():
     (conf_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "cij_corpus", "name": "CIJ Corpus",
-             "source_type": "podcast_transcript", "sequencing": "auto"},
+             "source_type": "clean_text", "sequencing": "auto"},
         ]
     }), encoding="utf-8")
     metadata_editor.edit_collection(
@@ -433,8 +433,8 @@ def _():
     items = metadata_editor.load_source_types(
         conf_path(conf_dir, "source_types"))
     check("three source types", len(items) == 3)
-    check("id", items[0]["source_type_id"] == "podcast_transcript")
-    check("display", items[0]["display_name"] == "podcast_transcript")
+    check("id", items[0]["source_type_id"] == "clean_text")
+    check("display", items[0]["display_name"] == "clean_text")
 
 
 @test("source types: add")
@@ -516,7 +516,7 @@ def _():
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    # teppei_beginner uses podcast_transcript as its default.
+    # teppei_beginner uses clean_text as its default.
     sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
     folder = sources_root / "collections" / "teppei_beginner"
     folder.mkdir(parents=True, exist_ok=True)
@@ -524,7 +524,7 @@ def _():
                                                        encoding="utf-8")
     try:
         metadata_editor.delete_source_type(
-            "podcast_transcript",
+            "clean_text",
             path=conf_path(conf_dir, "source_types"),
             sources_root=sources_root)
         check("default delete blocked", False)
@@ -536,10 +536,10 @@ def _():
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    # teppei_beginner declares podcast_transcript but has no source files.
+    # teppei_beginner declares clean_text but has no source files.
     sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
     remaining = metadata_editor.delete_source_type(
-        "podcast_transcript",
+        "clean_text",
         path=conf_path(conf_dir, "source_types"),
         sources_root=sources_root)
     check("deleted when no source files", len(remaining) == 2)

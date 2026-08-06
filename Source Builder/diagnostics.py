@@ -167,7 +167,6 @@ def collect_environment():
         config_values = {"error": str(exc)}
 
     import platform
-    import sys as _sys
     return {
         "python_version": platform.python_version(),
         "platform": platform.platform(),

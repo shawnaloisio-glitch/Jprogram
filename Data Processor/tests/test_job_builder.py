@@ -28,7 +28,6 @@ job_builder = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(job_builder)
 jb = job_builder
 
-import schemas
 
 import hashing
 
@@ -361,9 +360,6 @@ def _():
         before_jobs_intake = sorted(x.name for x in project_paths.CLEANING_JOBS.iterdir())
         before_clean_results = sorted(
             x.name for x in project_paths.CLEANING_RESULTS.iterdir())
-        before_raw = sorted(
-            x.name for x in project_paths.RAW_SUBTITLES.iterdir()
-        ) + sorted(x.name for x in project_paths.RAW_TRANSCRIPTS.iterdir())
 
         code = jb.run("pod_conteppei_ep051")
         check("exit 0", code == 0)
@@ -372,15 +368,11 @@ def _():
         after_jobs_intake = sorted(x.name for x in project_paths.CLEANING_JOBS.iterdir())
         after_clean_results = sorted(
             x.name for x in project_paths.CLEANING_RESULTS.iterdir())
-        after_raw = sorted(
-            x.name for x in project_paths.RAW_SUBTITLES.iterdir()
-        ) + sorted(x.name for x in project_paths.RAW_TRANSCRIPTS.iterdir())
 
         check("no registry write", after_registry == before_registry)
         check("no Cleaning Jobs write", after_jobs_intake == before_jobs_intake)
         check("no Cleaning Results write",
               after_clean_results == before_clean_results)
-        check("no Raw folder write", after_raw == before_raw)
     finally:
         restore(saved)
 

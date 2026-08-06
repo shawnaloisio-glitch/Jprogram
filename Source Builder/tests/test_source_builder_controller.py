@@ -104,7 +104,7 @@ def _():
 
 @test("validation: valid input passes")
 def _():
-    errors = controller.validate_fields("teppei_beginner", 51, "podcast_transcript",
+    errors = controller.validate_fields("teppei_beginner", 51, "clean_text",
                                         "con_teppei_podcast", "こんにちは")
     check("no errors", errors == [])
 
@@ -114,7 +114,7 @@ def _():
     root, sources, saved = setup()
     try:
         result = controller.create_source(
-            "teppei_beginner", 51, "podcast_transcript",
+            "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "これはテストです。\n")
         check("success true", result["success"] is True)
         check("filename", result["filename"] == "teppei_beginner_ep0051.txt")
@@ -132,13 +132,13 @@ def _():
     root, sources, saved = setup()
     try:
         result = controller.create_source(
-            "teppei_beginner", 51, "podcast_transcript",
+            "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "first\n")
         check("first save succeeds", result["success"] is True)
 
         check("collision detected", controller.collision_exists("teppei_beginner", 51))
         result2 = controller.create_source(
-            "teppei_beginner", 51, "podcast_transcript",
+            "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "second\n")
         check("second save rejected", result2["success"] is False)
         check("error mentions exists",
@@ -153,10 +153,10 @@ def _():
 def _():
     root, sources, saved = setup()
     try:
-        controller.create_source("teppei_beginner", 51, "podcast_transcript",
+        controller.create_source("teppei_beginner", 51, "clean_text",
                                  "con_teppei_podcast", "first\n")
         result = controller.create_source(
-            "teppei_beginner", 51, "podcast_transcript",
+            "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "second\n", overwrite=True)
         check("overwrite succeeds", result["success"] is True)
         path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0051.txt"
@@ -184,7 +184,7 @@ def _():
     root, sources, saved = setup()
     try:
         result = controller.create_source(
-            "teppei_beginner", 7, "podcast_transcript",
+            "teppei_beginner", 7, "clean_text",
             "con_teppei_podcast", "text\n")
         check("success true", result["success"] is True)
         path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0007.txt"
@@ -301,12 +301,12 @@ def _():
 @test("next_source_state: collection retains and increments episode")
 def _():
     state = controller.next_source_state(
-        "collection", "teppei_beginner", 51, "podcast_transcript",
+        "collection", "teppei_beginner", 51, "clean_text",
         "con_teppei_podcast")
     check("identity type", state["identity_type"] == "collection")
     check("collection retained", state["collection_id"] == "teppei_beginner")
     check("episode incremented", state["episode"] == "52")
-    check("source type retained", state["source_type"] == "podcast_transcript")
+    check("source type retained", state["source_type"] == "clean_text")
     check("origin retained", state["origin"] == "con_teppei_podcast")
     check("source text reset", state["source_text"] == "")
 
@@ -359,7 +359,7 @@ def _():
     try:
         for ep in (1, 2, 3):
             controller.create_collection_source(
-                "teppei_beginner", ep, "podcast_transcript",
+                "teppei_beginner", ep, "clean_text",
                 "con_teppei_podcast", f"text {ep}\n")
         check("max plus one",
               controller.next_auto_sequence("teppei_beginner") == 4)
@@ -373,7 +373,7 @@ def _():
     try:
         for ep in (1, 2, 5):
             controller.create_collection_source(
-                "teppei_beginner", ep, "podcast_transcript",
+                "teppei_beginner", ep, "clean_text",
                 "con_teppei_podcast", f"text {ep}\n")
         check("max plus one, gap ignored",
               controller.next_auto_sequence("teppei_beginner") == 6)
@@ -386,7 +386,7 @@ def _():
     root, sources, saved = setup()
     try:
         controller.create_collection_source(
-            "teppei_beginner", 7, "podcast_transcript",
+            "teppei_beginner", 7, "clean_text",
             "con_teppei_podcast", "text\n")
         directory = controller.collection_dir("teppei_beginner")
         (directory / "notes.txt").write_text("not an episode\n",

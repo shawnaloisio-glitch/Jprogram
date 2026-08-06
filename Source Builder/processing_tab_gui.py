@@ -19,10 +19,8 @@ The window opens centred over the Source Builder window using the same
 child-window placement helper as other dialogs.
 """
 
-import json
 import threading
 import tkinter as tk
-from pathlib import Path
 from tkinter import messagebox, ttk
 
 import diagnostics

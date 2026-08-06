@@ -30,7 +30,7 @@ import quick_presets
 
 SAMPLE_CONFIG = {
     "collection_ids": ["teppei_beginner", "other_collection"],
-    "source_types": ["podcast_transcript", "subtitle", "article"],
+    "source_types": ["clean_text", "subtitle", "article"],
     "origins": ["con_teppei_podcast", "nhk_news"],
 }
 
@@ -52,7 +52,7 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
 
@@ -114,7 +114,7 @@ def _():
     path = temp_path()
     quick_presets.save_slot(
         1, "Teppei_Beginner", "collection", collection_id="teppei_beginner",
-        source_type="podcast_transcript", origin="con_teppei_podcast",
+        source_type="clean_text", origin="con_teppei_podcast",
         path=path)
     presets = quick_presets.load_presets(path)
     preset = presets[1]
@@ -122,7 +122,7 @@ def _():
     check("name", preset["display_name"] == "Teppei_Beginner")
     check("identity", preset["identity_type"] == "collection")
     check("collection", preset["collection_id"] == "teppei_beginner")
-    check("source type", preset["source_type"] == "podcast_transcript")
+    check("source type", preset["source_type"] == "clean_text")
     check("origin", preset["origin"] == "con_teppei_podcast")
 
 
@@ -217,7 +217,7 @@ def _():
 
 def default_source_type(collection_id):
     if collection_id == "teppei_beginner":
-        return "podcast_transcript"
+        return "clean_text"
     return None
 
 
@@ -226,14 +226,14 @@ def _():
     preset = {
         "slot": 1, "display_name": "Teppei_Beginner",
         "identity_type": "collection", "collection_id": "teppei_beginner",
-        "source_type": "podcast_transcript", "origin": "con_teppei_podcast",
+        "source_type": "clean_text", "origin": "con_teppei_podcast",
     }
     updates = quick_presets.preset_population(
         preset, **SAMPLE_CONFIG,
         collection_default_source_type=default_source_type)
     check("identity", updates["identity_type"] == "collection")
     check("collection", updates["collection_id"] == "teppei_beginner")
-    check("source type", updates["source_type"] == "podcast_transcript")
+    check("source type", updates["source_type"] == "clean_text")
     check("origin", updates["origin"] == "con_teppei_podcast")
     check("no language", "language" not in updates)
 
@@ -278,7 +278,7 @@ def _():
     updates = quick_presets.preset_population(
         preset, **SAMPLE_CONFIG,
         collection_default_source_type=default_source_type)
-    check("fallback applied", updates["source_type"] == "podcast_transcript")
+    check("fallback applied", updates["source_type"] == "clean_text")
 
 
 @test("population: None preset yields empty updates")
@@ -299,7 +299,7 @@ def _():
     preset = {
         "slot": 1, "display_name": "Teppei_Beginner",
         "identity_type": "collection", "collection_id": "teppei_beginner",
-        "source_type": "podcast_transcript", "origin": "con_teppei_podcast",
+        "source_type": "clean_text", "origin": "con_teppei_podcast",
     }
     first = quick_presets.preset_population(
         preset, **SAMPLE_CONFIG,
@@ -314,7 +314,7 @@ def _():
     third = quick_presets.preset_population(
         preset, **SAMPLE_CONFIG,
         collection_default_source_type=default_source_type)
-    check("no shared state", third["source_type"] == "podcast_transcript")
+    check("no shared state", third["source_type"] == "clean_text")
 
 
 # ============================================================
@@ -347,7 +347,7 @@ def _():
     restore = sandbox()
     try:
         st = config_loader.default_source_type_for_collection("teppei_beginner")
-        check("resolved", st == "podcast_transcript")
+        check("resolved", st == "clean_text")
     finally:
         restore()
 

@@ -17,14 +17,9 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_INTAKE = PROJECT_ROOT / "Source Intake"
 sys.path.insert(0, str(SOURCE_INTAKE))
 
-import cleaning_job
-import duplicate_check
-import hashing
-import registry
 import resolver
 import schemas
 import source_intake as si
-import source_id
 
 
 def fixture():
@@ -48,7 +43,7 @@ def fixture():
     si.SOURCE_REGISTRY = registry_dir
     si.CLEANING_JOBS = jobs_dir
     si.LOG_SOURCE_INTAKE = logs_dir
-    resolver.SOURCE_TYPE_RAW_DIR = {"podcast_transcript": str(raw_dir)}
+    resolver.SOURCE_TYPE_RAW_DIR = {"clean_text": str(raw_dir)}
     return root, raw_dir, registry_dir, jobs_dir, saved
 
 
@@ -83,9 +78,9 @@ def _():
     root, raw, reg, jobs, saved = fixture()
     try:
         raw_file = make_raw(raw, "con.txt", b"podcast content")
-        result = si.register_source(str(raw_file), "podcast_transcript",
+        result = si.register_source(str(raw_file), "clean_text",
                                     "ja", "Con Teppei", "ep051")
-        sid = "podcast_transcript_con-teppei_ep051"
+        sid = "clean_text_con-teppei_ep051"
         check("action", result["action"] == "registered")
         check("source_id", result["source_id"] == sid)
         reg_file = reg / f"{sid}.json"
@@ -107,14 +102,14 @@ def _():
     root, raw, reg, jobs, saved = fixture()
     try:
         raw_file = make_raw(raw, "a.txt", b"same content")
-        si.register_source(str(raw_file), "podcast_transcript", "ja", "Alpha", "ep001")
+        si.register_source(str(raw_file), "clean_text", "ja", "Alpha", "ep001")
         before_reg = sorted(p.name for p in reg.iterdir())
         before_jobs = sorted(p.name for p in jobs.iterdir())
         raw_file2 = make_raw(raw, "b.txt", b"same content")
-        result = si.register_source(str(raw_file2), "podcast_transcript", "ja", "Beta", "ep001")
+        result = si.register_source(str(raw_file2), "clean_text", "ja", "Beta", "ep001")
         check("action duplicate", result["action"] == "duplicate")
         check("duplicate id reported", result["duplicate_source_id"]
-              == "podcast_transcript_alpha_ep001")
+              == "clean_text_alpha_ep001")
         check("registry unchanged", sorted(p.name for p in reg.iterdir()) == before_reg)
         check("jobs unchanged", sorted(p.name for p in jobs.iterdir()) == before_jobs)
     finally:
@@ -126,11 +121,11 @@ def _():
     root, raw, reg, jobs, saved = fixture()
     try:
         raw_file = make_raw(raw, "con.txt", b"content")
-        si.register_source(str(raw_file), "podcast_transcript", "ja", "Con Teppei", "ep051")
-        sid = "podcast_transcript_con-teppei_ep051"
+        si.register_source(str(raw_file), "clean_text", "ja", "Con Teppei", "ep051")
+        sid = "clean_text_con-teppei_ep051"
         reg_snapshot = (reg / f"{sid}.json").read_bytes()
         job_snapshot = (jobs / f"{sid}.cleaning_job.json").read_bytes()
-        result = si.register_source(str(raw_file), "podcast_transcript", "ja", "Con Teppei", "ep051")
+        result = si.register_source(str(raw_file), "clean_text", "ja", "Con Teppei", "ep051")
         check("action already_complete", result["action"] == "already_complete")
         check("registry unchanged", (reg / f"{sid}.json").read_bytes() == reg_snapshot)
         check("job unchanged", (jobs / f"{sid}.cleaning_job.json").read_bytes() == job_snapshot)
@@ -143,11 +138,11 @@ def _():
     root, raw, reg, jobs, saved = fixture()
     try:
         raw_file = make_raw(raw, "con.txt", b"content")
-        si.register_source(str(raw_file), "podcast_transcript", "ja", "Con Teppei", "ep051")
-        sid = "podcast_transcript_con-teppei_ep051"
+        si.register_source(str(raw_file), "clean_text", "ja", "Con Teppei", "ep051")
+        sid = "clean_text_con-teppei_ep051"
         reg_snapshot = (reg / f"{sid}.json").read_bytes()
         (jobs / f"{sid}.cleaning_job.json").unlink()
-        result = si.register_source(str(raw_file), "podcast_transcript", "ja", "Con Teppei", "ep051")
+        result = si.register_source(str(raw_file), "clean_text", "ja", "Con Teppei", "ep051")
         check("action resumed", result["action"] == "resumed")
         check("registry unchanged", (reg / f"{sid}.json").read_bytes() == reg_snapshot)
         job_file = jobs / f"{sid}.cleaning_job.json"
@@ -164,8 +159,8 @@ def _():
     try:
         raw_file = make_raw(raw, "con.txt", b"content")
         cases = [
-            ("podcast_transcript", "ja", "", "ep051"),      # empty title
-            ("podcast_transcript", "", "Con", "ep051"),     # empty language
+            ("clean_text", "ja", "", "ep051"),      # empty title
+            ("clean_text", "", "Con", "ep051"),     # empty language
             ("mystery", "ja", "Con", "ep051"),              # bad source type
         ]
         for st, lang, title, seq in cases:
@@ -178,7 +173,7 @@ def _():
         # missing file
         raised = False
         try:
-            si.register_source(str(raw / "missing.txt"), "podcast_transcript",
+            si.register_source(str(raw / "missing.txt"), "clean_text",
                                "ja", "Con", "ep051")
         except si.SourceIntakeError:
             raised = True
@@ -187,7 +182,7 @@ def _():
         bad = make_raw(raw, "video.mp4", b"x")
         raised = False
         try:
-            si.register_source(str(bad), "podcast_transcript", "ja", "Con", "ep051")
+            si.register_source(str(bad), "clean_text", "ja", "Con", "ep051")
         except si.SourceIntakeError:
             raised = True
         check("rejects invalid extension", raised)
@@ -218,11 +213,11 @@ def _():
         si.SOURCE_REGISTRY = reg
         si.CLEANING_JOBS = jobs
         si.LOG_SOURCE_INTAKE = logs
-        resolver.SOURCE_TYPE_RAW_DIR = {"podcast_transcript": str(raw_dir)}
+        resolver.SOURCE_TYPE_RAW_DIR = {"clean_text": str(raw_dir)}
         try:
-            si.register_source(str(raw_file), "podcast_transcript",
+            si.register_source(str(raw_file), "clean_text",
                                "ja", "Con Teppei", "ep051")
-            sid = "podcast_transcript_con-teppei_ep051"
+            sid = "clean_text_con-teppei_ep051"
             artifacts.append((
                 (reg / f"{sid}.json").read_bytes(),
                 (jobs / f"{sid}.cleaning_job.json").read_bytes(),

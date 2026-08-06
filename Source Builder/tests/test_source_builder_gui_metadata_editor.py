@@ -6,7 +6,7 @@ GUI-level tests for the Source Builder metadata editor window:
 
 - window opens from the app,
 - window is centred over the parent,
-- tabs are present (Collections / Source Types / Origins),
+- tabs are present (Collections / Origins),
 - refreshing after a metadata save updates Source Builder dropdowns.
 
 These tests build the actual Tk window. Config files are redirected to a
@@ -57,11 +57,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (conf_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript", "cij_transcript",
+        "source_types": ["clean_text", "cij_transcript",
                          "subtitle", "article"],
     }), encoding="utf-8")
     (conf_dir / "origins.json").write_text(json.dumps({
@@ -114,7 +114,7 @@ def make_visible_app(restore):
     return root, app
 
 
-@test("metadata editor window opens with three tabs")
+@test("metadata editor window opens with two tabs")
 def _():
     restore = sandbox()
     try:
@@ -134,8 +134,8 @@ def _():
             notebook = notebooks[0]
             tabs = [notebook.tab(tab_id, "text") for tab_id in notebook.tabs()]
             check("collections tab", "Collections" in tabs)
-            check("source types tab", "Source Types" in tabs)
             check("origins tab", "Origins" in tabs)
+            check("no source types tab", "Source Types" not in tabs)
         finally:
             root.destroy()
     finally:
@@ -187,18 +187,18 @@ def _():
         try:
             # Only processable source types are shown in the GUI; origins
             # exclude format-id values (none here).
-            check("source types before",
-                  app.source_type_combo.cget("values")
-                  == ("podcast_transcript",))
+            check("source type before",
+                  app.source_type_var.get() == "clean_text")
+            check("source type display before",
+                  app.source_type_display_var.get() == "clean_text")
             check("origins before",
                   app.origin_combo.cget("values")
                   == ("con_teppei_podcast", "nhk_news"))
 
-            # Add a processable source type (anime_subtitle has a profile) +
-            # a non-processable one, plus a new origin, then refresh.
-            metadata_editor.add_source_type(
-                "anime_subtitle", "Anime Subtitle", path=metadata_editor.CONFIG_DIR /
-                metadata_editor.FILES["source_types"])
+            # Add a non-processable source type plus a new origin, then
+            # refresh. Source types added through the editor never gain a
+            # processing profile, so clean_text (the single processable
+            # type) stays the fixed source type.
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
@@ -208,9 +208,9 @@ def _():
             app._refresh_metadata()
 
             check("processable type shown",
-                  "Anime Subtitle" in app.source_type_combo.cget("values"))
-            check("non-processable type hidden",
-                  "Video" not in app.source_type_combo.cget("values"))
+                  app.source_type_var.get() == "clean_text")
+            check("non-processable type not shown",
+                  app.source_type_display_var.get() != "Video")
             check("origins after",
                   "NHK Radio" in app.origin_combo.cget("values"))
             check("collections unchanged",
@@ -263,12 +263,9 @@ def _():
             root.geometry("+100+200")
             root.update()
             app._open_metadata_editor()
-            editor = [w for w in root.winfo_children()
-                      if isinstance(w, tk.Toplevel)
-                      and w.title() == "Edit Metadata"][0]
             import metadata_editor_gui
             # Build the collections tab's Add fields exactly as the tab does.
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            source_types = ["clean_text", "subtitle", "article"]
             fields = [
                 ("collection_id", "Collection ID", "entry"),
                 ("display_name", "Display Name", "entry"),
@@ -373,9 +370,9 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             # The dialog returns entered fields; the tab's add fn writes them.
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            source_types = ["clean_text", "subtitle", "article"]
             result = {
                 "collection_id": "nhk_b", "display_name": "NHK B",
                 "default_source_type": "article"}
@@ -407,8 +404,8 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            metadata_editor_gui.MetadataEditorWindow(app)
+            source_types = ["clean_text", "subtitle", "article"]
             # Blank display name must be rejected by the data layer.
             try:
                 metadata_editor.add_collection(
@@ -433,8 +430,8 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            metadata_editor_gui.MetadataEditorWindow(app)
+            source_types = ["clean_text", "subtitle", "article"]
             try:
                 metadata_editor.add_collection(
                     "teppei_beginner", "Dup",
@@ -459,7 +456,7 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
@@ -543,7 +540,7 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             fields = [
                 ("collection_id", "Collection ID", "entry"),
                 ("display_name", "Display Name", "entry"),
@@ -572,7 +569,6 @@ def _():
     try:
         root, app = make_visible_app(restore)
         try:
-            import tkinter.ttk as ttk
             import metadata_editor_gui
             me = metadata_editor_gui.MetadataEditorWindow(app)
             root.update()
@@ -1035,7 +1031,7 @@ def _():
                     result["error"] = "Add dialog not found"
                     return
                 d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
+                combo = find_combo_by_values(d, ("clean_text",))
                 result["combo_found"] = combo is not None
                 if combo is not None:
                     result["values"] = tuple(combo.cget("values"))
@@ -1052,7 +1048,7 @@ def _():
             check("source type combo present",
                   result.get("combo_found") is True)
             values = result.get("values", ())
-            check("processable type offered", "podcast_transcript" in values)
+            check("processable type offered", "clean_text" in values)
             check("known non-processable cij_transcript excluded",
                   "cij_transcript" not in values)
             check("subtitle excluded", "subtitle" not in values)
@@ -1090,7 +1086,7 @@ def _():
                     result["error"] = "Edit dialog not found"
                     return
                 d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
+                combo = find_combo_by_values(d, ("clean_text",))
                 if combo is None:
                     result["error"] = "source type combo not found"
                     return
@@ -1340,11 +1336,11 @@ def _():
                     result["error"] = "Add dialog not found"
                     return
                 d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
+                combo = find_combo_by_values(d, ("clean_text",))
                 result["combo_found"] = combo is not None
                 if combo is not None:
                     result["displayed_values"] = tuple(combo.cget("values"))
-                    combo.set("podcast_transcript")
+                    combo.set("clean_text")
                 fill_dialog_entries(d, ["nhk_st", "NHK ST"])
                 save = find_button_in(d, "Save")
                 if save:
@@ -1358,12 +1354,12 @@ def _():
             check("no error", "error" not in result)
             check("source type combo present", result.get("combo_found") is True)
             check("displayed values unchanged",
-                  result.get("displayed_values") == ("podcast_transcript",))
+                  result.get("displayed_values") == ("clean_text",))
             collections = metadata_editor.load_collections()
             by_id = {c["collection_id"]: c for c in collections}
             check("collection added", "nhk_st" in by_id)
             check("default persisted",
-                  by_id["nhk_st"]["default_source_type"] == "podcast_transcript")
+                  by_id["nhk_st"]["default_source_type"] == "clean_text")
             check("sequencing default still episodic",
                   by_id["nhk_st"]["sequencing"] == "episodic")
         finally:

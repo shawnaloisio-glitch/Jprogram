@@ -8,7 +8,7 @@ GUI-level tests for processable source-type filtering in the Source Builder:
   PROCESSING_PROFILE,
 - unsupported source types are hidden,
 - an unprocessable source_type cannot save (plain-language message),
-- a valid podcast_transcript / user_transcription still creates a package,
+- a valid clean_text / user_transcription still creates a package,
 - Import Material still works.
 
 These tests build the actual Tk window (withdrawn) with a sandboxed Config
@@ -58,8 +58,8 @@ def sandbox():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps({
         "source_types": [
-            {"source_type_id": "podcast_transcript",
-             "display_name": "podcast_transcript"},
+            {"source_type_id": "clean_text",
+             "display_name": "clean_text"},
             {"source_type_id": "cij_transcript",
              "display_name": "CIJ Transcripts"},
             {"source_type_id": "article", "display_name": "article"},
@@ -109,16 +109,22 @@ def make_app(restore):
     return root, app
 
 
-@test("source type dropdown only shows processable choices")
+@test("source type display always shows the single processable type")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            values = app.source_type_combo.cget("values")
-            check("only podcast_transcript shown", values == ("podcast_transcript",))
-            check("cij_transcript hidden", "cij_transcript" not in values)
-            check("article hidden", "article" not in values)
+            # The source type is a static display showing the one processable
+            # type from Config; source_type_var always holds its raw id.
+            check("source type is clean_text",
+                  app.source_type_var.get() == "clean_text")
+            check("display shows clean_text",
+                  app.source_type_display_var.get() == "clean_text")
+            check("cij_transcript not shown",
+                  app.source_type_display_var.get() != "CIJ Transcripts")
+            check("article not shown",
+                  app.source_type_display_var.get() != "article")
         finally:
             root.destroy()
     finally:
@@ -171,7 +177,7 @@ def _():
         restore()
 
 
-@test("valid podcast_transcript / user_transcription still saves a package")
+@test("valid clean_text / user_transcription still saves a package")
 def _():
     restore = sandbox()
     try:
@@ -179,7 +185,7 @@ def _():
         try:
             app.collection_var.set("my_collection")
             app.episode_var.set("1")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("user_transcription")
             app.text_area.insert("1.0", "これはテストです。\n")
             app._on_text_changed()
@@ -192,7 +198,7 @@ def _():
             check("package exists", package_path.is_file())
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package source type",
-                  data["source_type"] == "podcast_transcript")
+                  data["source_type"] == "clean_text")
             check("package origin", data["origin"] == "user_transcription")
             check("package has profile", data["cleaning_profile"] is not None)
         finally:

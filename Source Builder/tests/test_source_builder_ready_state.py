@@ -58,7 +58,7 @@ def ev(engine, **overrides):
         "collection_id": "teppei_beginner",
         "source_name": "",
         "episode": "1",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "origin": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
     }
@@ -168,7 +168,7 @@ def _():
     root, sources, saved = setup()
     try:
         controller.create_collection_source(
-            "teppei_beginner", 1, "podcast_transcript",
+            "teppei_beginner", 1, "clean_text",
             "con_teppei_podcast", "ja", "existing\n")
         result = ev(controller.ReadyStateEngine(), episode="1")
         check("state", result["state"] == "INCOMPLETE")
@@ -227,7 +227,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",
@@ -253,7 +253,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",
@@ -277,7 +277,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",
@@ -299,7 +299,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "5",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0005.txt",
@@ -358,7 +358,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",
@@ -384,7 +384,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",
@@ -408,7 +408,7 @@ def _():
             "collection_id": "teppei_beginner",
             "source_name": "",
             "episode": "1",
-            "source_type": "podcast_transcript",
+            "source_type": "clean_text",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "filename": "teppei_beginner_ep0001.txt",

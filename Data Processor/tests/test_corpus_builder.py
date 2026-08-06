@@ -254,7 +254,6 @@ def _():
     # Clean source sentence contains punctuation; parser word surfaces omit
     # it. The new flow canonicalize() -> validate_parser_output() -> build
     # must complete and write canonical JSONL.
-    import parser_normalizer as pn
 
     source_id = SOURCE_ID
     clean_text = "こんにちは。\n\nさようなら。\n"

@@ -104,7 +104,7 @@ def _():
 @test("product constants remain under PROJECT_ROOT")
 def _():
     for name in ("ANALYSIS", "DATA_PROCESSOR", "PROMPTS",
-                 "SUBTITLE_CLEANER", "TRANSCRIPT_CLEANER"):
+                 "TRANSCRIPT_CLEANER"):
         value = getattr(paths, name)
         check(f"{name} under PROJECT_ROOT",
               value.is_relative_to(paths.PROJECT_ROOT))

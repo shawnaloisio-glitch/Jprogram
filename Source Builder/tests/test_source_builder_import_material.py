@@ -14,7 +14,6 @@ Run:
     python "Source Builder/tests/test_source_builder_import_material.py"
 """
 
-import json
 import pathlib
 import sys
 import tempfile
@@ -24,9 +23,9 @@ SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
 sys.path.insert(0, str(SOURCE_BUILDER))
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "Subtitle Importer"))
+sys.path.insert(0, str(PROJECT_ROOT / "Production Manager"))
 
 import import_material
-import processing_tab
 
 TESTS = []
 

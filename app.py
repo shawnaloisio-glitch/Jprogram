@@ -147,7 +147,7 @@ class ApplicationShell:
 
 def main():
     root = tk.Tk()
-    app = ApplicationShell(root)
+    ApplicationShell(root)
     root.mainloop()
     return 0
 

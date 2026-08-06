@@ -56,7 +56,6 @@ def setup():
         "CORPUS_RESULTS": root / "Corpus Results",
         "JSONL": root / "jsonl",
         "DATA_PROCESSOR": root / "Data Processor",
-        "SUBTITLE_CLEANER": root / "Subtitle Cleaner",
         "TRANSCRIPT_CLEANER": root / "Transcript Cleaner",
         "LOG_PRODUCTION_MANAGER": root / "Logs" / "Production Manager",
     }
@@ -67,8 +66,6 @@ def setup():
     for script in ("job builder.py", "request builder.py",
                    "deepseek_client.py", "corpus_builder.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
-    (dirs["SUBTITLE_CLEANER"] / "clean_subtitles.py").write_text(
-        "", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
 
@@ -83,7 +80,7 @@ def restore(saved):
         setattr(pm, name, value)
 
 
-def add_cleaning_job(dirs, sid=SID, source_type="podcast_transcript"):
+def add_cleaning_job(dirs, sid=SID, source_type="clean_text"):
     write_json(dirs["CLEANING_JOBS"] / f"{sid}.cleaning_job.json", {
         "schema_version": "1",
         "source_id": sid,
@@ -159,18 +156,6 @@ def _():
             cmd = pm.build_command(stage, SID)
             check(f"{stage} script", cmd[1].endswith(script_name))
             check(f"{stage} args", cmd[2:] == ["--source", SID])
-    finally:
-        restore(saved)
-
-
-@test("1b. clean picks subtitle cleaner for anime_subtitle")
-def _():
-    root, dirs, saved = setup()
-    try:
-        add_cleaning_job(dirs, source_type="anime_subtitle")
-        cmd = pm.build_command("clean", SID)
-        check("uses subtitle cleaner",
-              str(dirs["SUBTITLE_CLEANER"]) in cmd[1])
     finally:
         restore(saved)
 

@@ -35,13 +35,10 @@ import quick_presets
 import recent_sources
 import source_package
 
-# Human-friendly labels for dynamic "Create Next ..." button text.
+# Human-friendly labels for the dynamic "Add Another ..." button text.
+# Only source types still present in Config/source_types.json are listed.
 SOURCE_TYPE_LABELS = {
-    "podcast_transcript": "Transcript",
-    "subtitle": "Subtitle",
-    "article": "Article",
-    "manga_text": "Manga Text",
-    "book_text": "Book Text",
+    "clean_text": "Clean Text",
 }
 
 
@@ -197,15 +194,15 @@ class SourceBuilderApp:
         if hasattr(root, "title"):
             root.title("Source Builder")
 
+        self.source_type_var = tk.StringVar()
         self._load_config()
 
         self.identity_var = tk.StringVar(value="collection")
         self.collection_var = tk.StringVar()
         self.source_name_var = tk.StringVar()
-        self.source_type_var = tk.StringVar()
         self.origin_var = tk.StringVar()
-        # Display-only vars bound to the combos; they hold the friendly
-        # display names while source_type_var/origin_var keep the raw ids.
+        # Display-only var bound to the static source type display; it holds
+        # the friendly display name while source_type_var keeps the raw id.
         self.source_type_display_var = tk.StringVar()
         self.origin_display_var = tk.StringVar()
         self.episode_var = tk.StringVar()
@@ -241,7 +238,6 @@ class SourceBuilderApp:
         self.source_types = []
         self.origins = []
         self.source_type_label_map = {}
-        self.source_type_id_map = {}
         self.origin_label_map = {}
         self.origin_id_map = {}
         try:
@@ -251,26 +247,34 @@ class SourceBuilderApp:
             self.origins = config_loader.load_origins()
             self._build_vocab_maps()
             self.config_error = None
+            # The source type is a fixed, single value from the Config
+            # vocabulary. The GUI offers no way to change it, so
+            # source_type_var always follows the Config (never hardcoded);
+            # downstream save logic reads it unchanged.
+            if self.source_types:
+                self.source_type_var.set(self.source_types[0])
+            else:
+                self.source_type_var.set("")
         except config_loader.ConfigError as exc:
             self.config_error = str(exc)
 
     def _build_vocab_maps(self):
         """Build the id<->display-label maps for the source type and origin
-        combos.
+        fields.
 
         self.source_types / self.origins stay the raw id lists used for
         membership and logic; these maps are used only to show friendly
-        display names in the combos. Source type labels are limited to the
-        processable subset, exactly like the id list the combo offers.
+        display names in the form. Source type labels are limited to the
+        processable subset, exactly like the id list.
         """
         self.source_type_label_map = {}
-        self.source_type_id_map = {}
+        self.origin_label_map = {}
+        self.origin_id_map = {}
         for entry in config_loader.load_source_types_full():
             vid = entry["source_type_id"]
             if vid in self.source_types:
                 label = entry["display_name"]
                 self.source_type_label_map[vid] = label
-                self.source_type_id_map[label] = vid
         self.origin_label_map = {}
         self.origin_id_map = {}
         for entry in config_loader.load_origins_full():
@@ -364,14 +368,15 @@ class SourceBuilderApp:
 
         # Shared metadata
         ttk.Label(body, text="Source type:").grid(row=row, column=0, sticky="w")
-        self.source_type_combo = ttk.Combobox(
+        self.source_type_display = ttk.Label(
             body, textvariable=self.source_type_display_var,
-            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
-        self.source_type_combo.grid(row=row, column=1, sticky="w")
-        self._wire_label_combo(
-            self.source_type_combo, self.source_type_var,
-            self.source_type_display_var, "source_type_label_map",
-            "source_type_id_map")
+            font=self.combo_font, anchor="w", padding=(6, 6))
+        self.source_type_display.grid(row=row, column=1, sticky="w")
+        # Static display only: there is a single real source type from the
+        # Config vocabulary, so it cannot be changed. The display follows
+        # source_type_var, which holds the raw id for downstream save logic.
+        self.source_type_var.trace_add("write", self._sync_source_type_display)
+        self._sync_source_type_display()
         row += 1
 
         ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
@@ -620,12 +625,6 @@ class SourceBuilderApp:
         """Show the display label for the current origin id."""
         raw = self.origin_var.get()
         self.origin_display_var.set(self.origin_label_map.get(raw, raw))
-
-    def _on_source_type_selected(self, event=None):
-        """Translate the picked source type label back into its id."""
-        self._apply_label_to_id(
-            self.source_type_display_var, self.source_type_id_map,
-            self.source_type_var)
 
     def _on_origin_selected(self, event=None):
         """Translate the picked origin label back into its id."""
@@ -1191,13 +1190,18 @@ class SourceBuilderApp:
         row += 1
 
         ttk.Label(body, text="Source Type:").grid(row=row, column=0, sticky="w")
-        source_type_combo = ttk.Combobox(
-            body, textvariable=source_type_display_var,
-            state="readonly", width=30)
-        source_type_combo.grid(row=row, column=1, sticky="w")
-        self._wire_label_combo(
-            source_type_combo, source_type_var, source_type_display_var,
-            "source_type_label_map", "source_type_id_map")
+        source_type_display = ttk.Label(
+            body, textvariable=source_type_display_var, anchor="w")
+        source_type_display.grid(row=row, column=1, sticky="w")
+        # Static display only: the single real source type cannot be changed
+        # here either. The display follows whatever id the loaded preset
+        # holds in source_type_var.
+        def _sync_source_type_editor_display(*args):
+            source_type_display_var.set(
+                self.source_type_label_map.get(source_type_var.get(),
+                                               source_type_var.get()))
+        source_type_var.trace_add("write", _sync_source_type_editor_display)
+        _sync_source_type_editor_display()
         row += 1
 
         ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
@@ -1331,8 +1335,6 @@ class SourceBuilderApp:
         """Update combobox value lists from the freshly loaded config."""
         self.collection_combo.configure(
             values=[c["collection_id"] for c in self.collections])
-        self.source_type_combo.configure(
-            values=[self.source_type_label_map[st] for st in self.source_types])
         self.origin_combo.configure(
             values=[self.origin_label_map[o] for o in self.origins])
         # The vocabulary may have changed; re-show the current ids' labels.
@@ -1347,7 +1349,7 @@ class SourceBuilderApp:
 
 def main():
     root = tk.Tk()
-    app = SourceBuilderApp(root)
+    SourceBuilderApp(root)
     root.mainloop()
     return 0
 

@@ -87,7 +87,7 @@ def _():
     restore = patch_collections_config([
         {"collection_id": "teppei_beginner",
          "name": "Con Teppei for Beginner",
-         "source_type": "podcast_transcript",
+         "source_type": "clean_text",
          "sequencing": "auto"},
     ])
     try:
@@ -96,7 +96,7 @@ def _():
         item = items[0]
         check("collection_id", item["collection_id"] == "teppei_beginner")
         check("name", item["name"] == "Con Teppei for Beginner")
-        check("source_type", item["source_type"] == "podcast_transcript")
+        check("source_type", item["source_type"] == "clean_text")
         check("sequencing", item["sequencing"] == "auto")
     finally:
         restore()
@@ -174,12 +174,12 @@ def _():
     restore = patch_collections_config([
         {"collection_id": "teppei_beginner",
          "name": "Con Teppei for Beginner",
-         "source_type": "podcast_transcript"},
+         "source_type": "clean_text"},
     ])
     try:
         check("resolved",
               config_loader.default_source_type_for_collection(
-                  "teppei_beginner") == "podcast_transcript")
+                  "teppei_beginner") == "clean_text")
         check("unknown collection",
               config_loader.default_source_type_for_collection(
                   "missing") is None)
@@ -202,7 +202,7 @@ def _():
 @test("load_source_types_full: returns id + display_name pairs in order")
 def _():
     restore = patch_vocab_config(
-        [{"source_type_id": "podcast_transcript",
+        [{"source_type_id": "clean_text",
           "display_name": "Podcast Transcript"},
          {"source_type_id": "cij_transcript",
           "display_name": "CIJ Transcripts"}],
@@ -211,7 +211,7 @@ def _():
         entries = config_loader.load_source_types_full()
         check("order",
               [e["source_type_id"] for e in entries]
-              == ["podcast_transcript", "cij_transcript"])
+              == ["clean_text", "cij_transcript"])
         check("display name 1",
               entries[0]["display_name"] == "Podcast Transcript")
         check("display name 2",
@@ -239,7 +239,7 @@ def _():
 @test("full loaders fall back to the id when display_name is absent")
 def _():
     restore = patch_vocab_config(
-        ["podcast_transcript",
+        ["clean_text",
          {"source_type_id": "article"},
          {"source_type_id": "manga_text", "display_name": ""}],
         ["con_teppei_podcast",
@@ -248,7 +248,7 @@ def _():
     try:
         st = config_loader.load_source_types_full()
         check("plain string fallback",
-              st[0]["display_name"] == "podcast_transcript")
+              st[0]["display_name"] == "clean_text")
         check("missing display fallback", st[1]["display_name"] == "article")
         check("empty display fallback",
               st[2]["display_name"] == "manga_text")
@@ -266,12 +266,12 @@ def _():
 @test("id-only loaders are unchanged by the full loaders")
 def _():
     restore = patch_vocab_config(
-        [{"source_type_id": "podcast_transcript",
+        [{"source_type_id": "clean_text",
           "display_name": "Podcast Transcript"}],
         [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"}])
     try:
         check("source types ids",
-              config_loader.load_source_types() == ["podcast_transcript"])
+              config_loader.load_source_types() == ["clean_text"])
         check("origins ids",
               config_loader.load_origins() == ["cijsub"])
     finally:

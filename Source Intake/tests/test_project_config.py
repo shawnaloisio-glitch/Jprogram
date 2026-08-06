@@ -44,24 +44,18 @@ def raises_value_error(fn):
 @test("source types constant")
 def _():
     check("is a frozenset", isinstance(pc.SOURCE_TYPES, frozenset))
-    check("contains anime_subtitle", "anime_subtitle" in pc.SOURCE_TYPES)
-    check("contains podcast_transcript", "podcast_transcript" in pc.SOURCE_TYPES)
+    check("contains clean_text", "clean_text" in pc.SOURCE_TYPES)
 
 
 @test("cleaning profiles constant")
 def _():
     check("is a frozenset", isinstance(pc.CLEANING_PROFILES, frozenset))
-    check("contains subtitle_standard_v1", "subtitle_standard_v1" in pc.CLEANING_PROFILES)
     check("contains transcript_standard_v1", "transcript_standard_v1" in pc.CLEANING_PROFILES)
 
 
 @test("processing profiles mapping")
 def _():
-    check("anime_subtitle maps", pc.PROCESSING_PROFILES["anime_subtitle"] == {
-        "cleaning_profile": "subtitle_standard_v1",
-        "cleaner": "clean_subtitles",
-    })
-    check("podcast_transcript maps", pc.PROCESSING_PROFILES["podcast_transcript"] == {
+    check("clean_text maps", pc.PROCESSING_PROFILES["clean_text"] == {
         "cleaning_profile": "transcript_standard_v1",
         "cleaner": "clean_transcript",
     })
@@ -72,14 +66,12 @@ def _():
 
 @test("cleaner versions")
 def _():
-    check("subtitle version", pc.CLEANER_VERSIONS["subtitle_standard_v1"] == "1.0")
     check("transcript version", pc.CLEANER_VERSIONS["transcript_standard_v1"] == "1.0")
 
 
 @test("raw directory mapping")
 def _():
-    check("anime_subtitle raw dir", pc.SOURCE_TYPE_RAW_DIR["anime_subtitle"] == "Raw Subtitles")
-    check("podcast_transcript raw dir", pc.SOURCE_TYPE_RAW_DIR["podcast_transcript"] == "Raw Transcripts")
+    check("clean_text raw dir", pc.SOURCE_TYPE_RAW_DIR["clean_text"] == "Raw Transcripts")
 
 
 @test("cleaned artifact extension and default language")
@@ -103,13 +95,13 @@ def _():
 @test("unknown source type rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_source_intake_config(
-        source_types=frozenset({"anime_subtitle"}),
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        source_types=frozenset({"clean_text"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         processing_profiles={
-            "mystery": {"cleaning_profile": "subtitle_standard_v1", "cleaner": "c"},
+            "mystery": {"cleaning_profile": "transcript_standard_v1", "cleaner": "c"},
         },
-        cleaner_versions={"subtitle_standard_v1": "1.0"},
-        source_type_raw_dir={"anime_subtitle": "Raw Subtitles"},
+        cleaner_versions={"transcript_standard_v1": "1.0"},
+        source_type_raw_dir={"clean_text": "Raw Transcripts"},
     ))
     check("raises ValueError", raised)
 
@@ -117,13 +109,13 @@ def _():
 @test("unknown cleaning profile rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_source_intake_config(
-        source_types=frozenset({"anime_subtitle"}),
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        source_types=frozenset({"clean_text"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         processing_profiles={
-            "anime_subtitle": {"cleaning_profile": "bogus_profile", "cleaner": "c"},
+            "clean_text": {"cleaning_profile": "bogus_profile", "cleaner": "c"},
         },
-        cleaner_versions={"subtitle_standard_v1": "1.0"},
-        source_type_raw_dir={"anime_subtitle": "Raw Subtitles"},
+        cleaner_versions={"transcript_standard_v1": "1.0"},
+        source_type_raw_dir={"clean_text": "Raw Transcripts"},
     ))
     check("raises ValueError", raised)
 
@@ -131,13 +123,13 @@ def _():
 @test("profile without a version rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_source_intake_config(
-        source_types=frozenset({"anime_subtitle"}),
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        source_types=frozenset({"clean_text"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         processing_profiles={
-            "anime_subtitle": {"cleaning_profile": "subtitle_standard_v1", "cleaner": "c"},
+            "clean_text": {"cleaning_profile": "transcript_standard_v1", "cleaner": "c"},
         },
         cleaner_versions={},
-        source_type_raw_dir={"anime_subtitle": "Raw Subtitles"},
+        source_type_raw_dir={"clean_text": "Raw Transcripts"},
     ))
     check("raises ValueError", raised)
 
@@ -145,12 +137,12 @@ def _():
 @test("source type without a raw directory rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_source_intake_config(
-        source_types=frozenset({"anime_subtitle"}),
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        source_types=frozenset({"clean_text"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         processing_profiles={
-            "anime_subtitle": {"cleaning_profile": "subtitle_standard_v1", "cleaner": "c"},
+            "clean_text": {"cleaning_profile": "transcript_standard_v1", "cleaner": "c"},
         },
-        cleaner_versions={"subtitle_standard_v1": "1.0"},
+        cleaner_versions={"transcript_standard_v1": "1.0"},
         source_type_raw_dir={},
     ))
     check("raises ValueError", raised)
@@ -159,13 +151,13 @@ def _():
 @test("cleaning profile without a version in the set rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_source_intake_config(
-        source_types=frozenset({"anime_subtitle"}),
-        cleaning_profiles=frozenset({"subtitle_standard_v1", "new_profile"}),
+        source_types=frozenset({"clean_text"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1", "new_profile"}),
         processing_profiles={
-            "anime_subtitle": {"cleaning_profile": "subtitle_standard_v1", "cleaner": "c"},
+            "clean_text": {"cleaning_profile": "transcript_standard_v1", "cleaner": "c"},
         },
-        cleaner_versions={"subtitle_standard_v1": "1.0"},
-        source_type_raw_dir={"anime_subtitle": "Raw Subtitles"},
+        cleaner_versions={"transcript_standard_v1": "1.0"},
+        source_type_raw_dir={"clean_text": "Raw Transcripts"},
     ))
     check("raises ValueError", raised)
 
@@ -187,20 +179,6 @@ def _():
 def _():
     for profile in pc.CLEANING_PROFILES:
         check(f"table for {profile}", profile in pc.CLEANING_TRANSFORMS)
-
-
-@test("subtitle_standard_v1 transformation flags")
-def _():
-    transforms = pc.CLEANING_TRANSFORMS["subtitle_standard_v1"]
-    check("strip_bom", transforms["strip_bom"] is True)
-    check("trim_lines", transforms["trim_lines"] is True)
-    check("remove_subtitle_numbers",
-          transforms["remove_subtitle_numbers"] is True)
-    check("remove_timecodes", transforms["remove_timecodes"] is True)
-    check("collapse_blank_lines",
-          transforms["collapse_blank_lines"] is True)
-    check("collapse_repeated_spaces",
-          transforms["collapse_repeated_spaces"] is False)
 
 
 @test("transcript_standard_v1 transformation flags")
@@ -232,9 +210,9 @@ def _():
 @test("cleaning transform table with non-bool value rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_cleaning_transforms(
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         cleaning_transforms={
-            "subtitle_standard_v1": {"strip_bom": "yes"},
+            "transcript_standard_v1": {"strip_bom": "yes"},
         },
     ))
     check("raises ValueError", raised)
@@ -243,9 +221,9 @@ def _():
 @test("cleaning transform table for unknown profile rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_cleaning_transforms(
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         cleaning_transforms={
-            "subtitle_standard_v1": {"strip_bom": True},
+            "transcript_standard_v1": {"strip_bom": True},
             "mystery_profile": {"strip_bom": True},
         },
     ))
@@ -255,7 +233,7 @@ def _():
 @test("cleaning transform missing table for profile rejected")
 def _():
     raised = raises_value_error(lambda: pc.validate_cleaning_transforms(
-        cleaning_profiles=frozenset({"subtitle_standard_v1"}),
+        cleaning_profiles=frozenset({"transcript_standard_v1"}),
         cleaning_transforms={},
     ))
     check("raises ValueError", raised)

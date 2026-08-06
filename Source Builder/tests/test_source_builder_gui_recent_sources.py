@@ -50,11 +50,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -75,7 +75,7 @@ def sandbox():
 def fill_and_save(app, ep):
     app.collection_var.set("teppei_beginner")
     app.episode_var.set(str(ep))
-    app.source_type_var.set("podcast_transcript")
+    app.source_type_var.set("clean_text")
     app.origin_var.set("con_teppei_podcast")
     app.text_area.insert("1.0", f"エピソード{ep}の本文。\n")
     app._on_text_changed()
@@ -249,7 +249,7 @@ def _():
         try:
             fill_and_save(app, 65)
             for item in list_items(app):
-                check("no source_id", "podcast_transcript_teppei-beginner_ep065"
+                check("no source_id", "clean_text_teppei-beginner_ep065"
                       not in item)
                 check("no path", "Sources" not in item and "\\" not in item)
                 check("no json", ".json" not in item)
@@ -288,12 +288,12 @@ def _():
     try:
         root = tk.Tk()
         root.withdraw()
-        app = gui.SourceBuilderApp(root)
+        gui.SourceBuilderApp(root)
         try:
             # Create 12 sources via the controller (bypassing GUI) then refresh.
             for ep in range(1, 13):
                 controller.create_collection_source(
-                    "teppei_beginner", ep, "podcast_transcript",
+                    "teppei_beginner", ep, "clean_text",
                     "con_teppei_podcast", f"x{ep}\n")
                 pkg_path = source_package.package_path_for(
                     controller.source_path("teppei_beginner", ep))

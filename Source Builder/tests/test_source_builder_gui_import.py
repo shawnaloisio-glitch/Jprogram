@@ -57,11 +57,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -209,7 +209,7 @@ def _():
                            _var(f"{a}"), _var())
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("70")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
             app._on_metadata_changed()
             app.on_save()
@@ -235,7 +235,7 @@ def _():
         try:
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("71")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
             app.text_area.insert("1.0", "直接入力の本文。\n")
             app._on_text_changed()

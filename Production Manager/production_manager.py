@@ -26,7 +26,6 @@ Supported states:
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime
@@ -51,7 +50,6 @@ from paths import (
     REQUESTS,
     RESPONSES,
     SOURCE_REGISTRY,
-    SUBTITLE_CLEANER,
     TRANSCRIPT_CLEANER,
 )
 
@@ -217,8 +215,6 @@ def _cleaner_script(source_id):
             f"{source_type!r}"
         )
     cleaner = profile.get("cleaner")
-    if cleaner == "clean_subtitles":
-        return SUBTITLE_CLEANER / "clean_subtitles.py"
     if cleaner == "clean_transcript":
         return TRANSCRIPT_CLEANER / "clean_transcript.py"
     raise ManagerError(f"cannot determine cleaner: unknown cleaner {cleaner!r}")
@@ -573,9 +569,6 @@ def state_for(source_id):
           and evidence["responses_count"] < evidence["requests_count"]):
         state = "api_processing"
     # Requests created: requests exist but the API stage has not started.
-    elif evidence["requests_count"] > 0:
-        state = "requests_created"
-    # Requests created: requests exist, no API started.
     elif evidence["requests_count"] > 0:
         state = "requests_created"
     # Jobs created: job result success (or job files exist).

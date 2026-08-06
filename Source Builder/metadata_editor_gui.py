@@ -5,8 +5,8 @@ metadata_editor_gui.py
 Japanese Corpus Pipeline - Source Builder metadata editor window.
 
 A child window opened from Source Builder -> Edit Metadata... It manages the
-controlled vocabularies (Collections, Source Types, Origins) that populate
-Source Builder dropdowns and Quick Presets.
+controlled vocabularies (Collections, Origins) that populate Source Builder
+dropdowns and Quick Presets.
 
 This window only presents and drives metadata_editor.py; it contains no
 business logic of its own.
@@ -54,7 +54,7 @@ def _raw_value(field, display):
 
 
 class MetadataEditorWindow:
-    """Tabs: Collections / Source Types / Origins."""
+    """Tabs: Collections / Origins."""
 
     def __init__(self, parent_app):
         self.parent_app = parent_app
@@ -69,7 +69,6 @@ class MetadataEditorWindow:
         self.notebook.pack(fill="both", expand=True)
 
         self._build_collections_tab()
-        self._build_source_types_tab()
         self._build_origins_tab()
 
         ttk.Button(self.window, text="Close",
@@ -318,29 +317,6 @@ class MetadataEditorWindow:
             [("col_id", "Collection ID"), ("display_name", "Display Name"),
              ("default", "Default Source Type")],
             display, metadata_editor.load_collections, add, edit, fields,
-            helper_text=helper)
-
-    def _build_source_types_tab(self):
-        def display(item):
-            return (item["source_type_id"], item["display_name"])
-
-        def add(**kw):
-            return metadata_editor.add_source_type(kw["source_type_id"],
-                                                   kw["display_name"])
-
-        def edit(original_id, **kw):
-            return metadata_editor.edit_source_type(
-                original_id, kw["display_name"])
-
-        fields = [
-            ("source_type_id", "Source Type ID", "entry"),
-            ("display_name", "Display Name", "entry"),
-        ]
-        helper = "Internal identifier used by presets and validation."
-        self._build_tree_tab(
-            "Source Types",
-            [("col_id", "Source Type ID"), ("display_name", "Display Name")],
-            display, metadata_editor.load_source_types, add, edit, fields,
             helper_text=helper)
 
     def _build_origins_tab(self):

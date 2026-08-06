@@ -64,7 +64,7 @@ def make_app(restore):
 def fill_and_save(app, collection_id="teppei_beginner", episode="1"):
     app.collection_var.set(collection_id)
     app.episode_var.set(episode)
-    app.source_type_var.set("podcast_transcript")
+    app.source_type_var.set("clean_text")
     app.origin_var.set("con_teppei_podcast")
     app.text_area.insert("1.0", "こんにちは。\n")
     app._on_text_changed()

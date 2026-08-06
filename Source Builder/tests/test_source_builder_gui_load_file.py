@@ -226,7 +226,7 @@ def _():
             # Fill metadata; only source text remains missing.
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("1")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
             check("still incomplete without text",
                   app._current_state == "INCOMPLETE")

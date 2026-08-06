@@ -30,7 +30,7 @@ def valid_entry(source_id, sha256):
         "source_id": source_id,
         "original_filename": f"{source_id}.txt",
         "sha256": sha256,
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "format": "txt",
         "language": "ja",
         "cleaning_profile": "transcript_standard_v1",

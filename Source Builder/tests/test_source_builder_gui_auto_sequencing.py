@@ -57,16 +57,16 @@ def sandbox():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "auto_series", "name": "Auto Series",
-             "source_type": "podcast_transcript", "sequencing": "auto"},
+             "source_type": "clean_text", "sequencing": "auto"},
             {"collection_id": "episodic_series", "name": "Episodic Series",
-             "source_type": "podcast_transcript", "sequencing": "episodic"},
+             "source_type": "clean_text", "sequencing": "episodic"},
             {"collection_id": "unspecified_series",
              "name": "Unspecified Series",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript"],
+        "source_types": ["clean_text"],
     }), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps({
         "origins": ["con_teppei_podcast"],
@@ -208,7 +208,7 @@ def _():
 
             for episode in (1, 2, 3):
                 controller.create_collection_source(
-                    "auto_series", episode, "podcast_transcript",
+                    "auto_series", episode, "clean_text",
                     "con_teppei_podcast", "こんにちは。\n")
             app.collection_var.set("episodic_series")
             app.collection_var.set("auto_series")
@@ -228,7 +228,7 @@ def _():
         try:
             app.collection_var.set("auto_series")
             check("starts at 1", app.episode_var.get() == "1")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
             app.text_area.insert("1.0", "こんにちは。\n")
             app._on_text_changed()
@@ -236,7 +236,7 @@ def _():
 
             # A source (episode 1) lands in the folder after selection.
             controller.create_collection_source(
-                "auto_series", 1, "podcast_transcript",
+                "auto_series", 1, "clean_text",
                 "con_teppei_podcast", "先に作られた。\n")
             app.on_save()
 
@@ -263,7 +263,7 @@ def _():
             app.collection_var.set("episodic_series")
             check("episode shown", is_visible(app.episode_label))
             app.episode_var.set("7")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
             app.text_area.insert("1.0", "こんにちは。\n")
             app._on_text_changed()

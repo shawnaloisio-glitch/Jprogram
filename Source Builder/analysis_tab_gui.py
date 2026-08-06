@@ -16,7 +16,6 @@ internal folders.
 
 import os
 import tkinter as tk
-from pathlib import Path
 from tkinter import messagebox, ttk
 
 import processing_tab
@@ -128,7 +127,7 @@ class AnalysisTabWindow:
                 "Analysis complete",
                 f"Analysis complete for {row['label']}.",
                 parent=self.window)
-        except processing_tab.ProcessingTabError as exc:
+        except processing_tab.ProcessingTabError:
             self.status_var.set("Analysis could not be completed")
             self.run_button.configure(state="normal")
             messagebox.showerror(

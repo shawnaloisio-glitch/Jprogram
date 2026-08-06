@@ -32,7 +32,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "Production Manager"))
 
 import tkinter as tk
-import tkinter.ttk as ttk
 
 import config_loader
 import controller
@@ -62,11 +61,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -89,10 +88,10 @@ def sandbox():
 def make_source(package_spec):
     if package_spec[0] == "collection":
         return controller.create_collection_source(
-            package_spec[1], package_spec[2], "podcast_transcript",
+            package_spec[1], package_spec[2], "clean_text",
             "con_teppei_podcast", "こんにちは。\n")
     return controller.create_standalone_source(
-        package_spec[1], "podcast_transcript", "nhk_news", "天気です。\n")
+        package_spec[1], "clean_text", "nhk_news", "天気です。\n")
 
 
 TESTS = []

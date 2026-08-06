@@ -1,8 +1,8 @@
 {
   "source_types": [
     {
-      "source_type_id": "podcast_transcript",
-      "display_name": "podcast_transcript"
+      "source_type_id": "clean_text",
+      "display_name": "clean_text"
     }
   ]
 }

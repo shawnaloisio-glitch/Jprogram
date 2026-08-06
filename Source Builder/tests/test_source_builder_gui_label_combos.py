@@ -2,10 +2,11 @@
 """
 test_source_builder_gui_label_combos.py
 
-GUI-level tests for friendly display names in the Source Builder Source type /
-Origin dropdowns:
+GUI-level tests for friendly display names in the Source Builder:
 
-- the combos show display names, not raw ids,
+- the source type is a static display (single real type, not a dropdown);
+  it shows the display label while the id var keeps the raw id,
+- the Origin dropdown shows display names, not raw ids,
 - the id vars keep holding raw ids through every round trip,
 - a saved source persists the raw ids (never the display labels),
 - display names that equal the id still show the id, and unknown/legacy ids
@@ -60,18 +61,17 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
-    # podcast_transcript (processable, label != id), anime_subtitle
-    # (processable, label == id), article (non-processable, hidden).
+    # clean_text (the only processable type; label != id), article
+    # (non-processable, label == id, hidden from the dropdown).
     (config_dir / "source_types.json").write_text(json.dumps({
         "source_types": [
-            {"source_type_id": "podcast_transcript",
-             "display_name": "Podcast Transcript"},
-            {"source_type_id": "anime_subtitle",
-             "display_name": "anime_subtitle"},
-            {"source_type_id": "article", "display_name": "Article"},
+            {"source_type_id": "clean_text",
+             "display_name": "Clean Text"},
+            {"source_type_id": "article",
+             "display_name": "article"},
         ],
     }), encoding="utf-8")
     # cijsub (label != id), nhk_news (label == id).
@@ -138,17 +138,29 @@ def find_combo_by_values(widget, values):
     return None
 
 
-@test("main form combos show display names, not raw ids")
+def find_label_by_text(widget, text):
+    """Return the first ttk.Label whose shown text matches exactly."""
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Label) and child.cget("text") == text:
+            return child
+        found = find_label_by_text(child, text)
+        if found is not None:
+            return found
+    return None
+
+
+@test("source type shows its display label; origin combo shows display names")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            st_values = app.source_type_combo.cget("values")
-            check("processable labels shown",
-                  st_values == ("Podcast Transcript", "anime_subtitle"))
-            check("raw id hidden", "podcast_transcript" not in st_values)
-            check("non-processable hidden", "Article" not in st_values)
+            check("processable label shown",
+                  app.source_type_display.cget("text") == "Clean Text")
+            check("source type id from config",
+                  app.source_type_var.get() == "clean_text")
+            check("non-processable not shown",
+                  app.source_type_display_var.get() != "article")
 
             og_values = app.origin_combo.cget("values")
             check("origin labels shown",
@@ -160,21 +172,21 @@ def _():
         restore()
 
 
-@test("programmatic id set shows the matching label in the combo")
+@test("programmatic id set shows the matching label in the display")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
             # Same pattern settings/snapshot/preset restore use.
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("cijsub")
             check("source type label shown",
-                  app.source_type_display_var.get() == "Podcast Transcript")
-            check("source type combo shows label",
-                  app.source_type_combo.get() == "Podcast Transcript")
+                  app.source_type_display_var.get() == "Clean Text")
+            check("source type display shows label",
+                  app.source_type_display.cget("text") == "Clean Text")
             check("source type id retained",
-                  app.source_type_var.get() == "podcast_transcript")
+                  app.source_type_var.get() == "clean_text")
             check("origin label shown",
                   app.origin_display_var.get() == "CiJapanese Subs")
             check("origin combo shows label",
@@ -187,20 +199,16 @@ def _():
         restore()
 
 
-@test("label selection maps back to the raw id in the id var")
+@test("origin label selection maps back to the raw id in the id var")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            # Simulate picking a label from the dropdown (the
+            # Simulate picking a label from the origin dropdown (the
             # <<ComboboxSelected>> handler reads the shown label and maps it
-            # back to the id).
-            app.source_type_combo.set("anime_subtitle")
-            app._on_source_type_selected()
-            check("source type id from label",
-                  app.source_type_var.get() == "anime_subtitle")
-
+            # back to the id). The source type is a static display now, so
+            # there is nothing to select for it.
             app.origin_combo.set("CiJapanese Subs")
             app._on_origin_selected()
             check("origin id from label",
@@ -220,13 +228,13 @@ def _():
         # Pre-seed the settings file exactly as a prior session would have
         # written it: raw ids.
         gui_settings.save_settings(
-            {"source_type": "podcast_transcript", "origin": "cijsub"})
+            {"source_type": "clean_text", "origin": "cijsub"})
         root, app = make_app(restore)
         try:
             check("source type id restored",
-                  app.source_type_var.get() == "podcast_transcript")
+                  app.source_type_var.get() == "clean_text")
             check("source type label shown",
-                  app.source_type_combo.get() == "Podcast Transcript")
+                  app.source_type_display.cget("text") == "Clean Text")
             check("origin id restored",
                   app.origin_var.get() == "cijsub")
             check("origin label shown",
@@ -245,7 +253,7 @@ def _():
         try:
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("70")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("cijsub")
             app.text_area.insert("1.0", "こんにちは。\n元気です。\n")
             app._on_text_changed()
@@ -256,17 +264,17 @@ def _():
             package_path = source_package.package_path_for(app._saved_path)
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package source type is the raw id",
-                  data["source_type"] == "podcast_transcript")
+                  data["source_type"] == "clean_text")
             check("package origin is the raw id",
                   data["origin"] == "cijsub")
             check("no display label leaked into source type",
-                  data["source_type"] != "Podcast Transcript")
+                  data["source_type"] != "Clean Text")
             check("no display label leaked into origin",
                   data["origin"] != "CiJapanese Subs")
             # Settings persisted during the save also hold raw ids.
             persisted = gui_settings.load_settings()
             check("settings source type raw",
-                  persisted["source_type"] == "podcast_transcript")
+                  persisted["source_type"] == "clean_text")
             check("settings origin raw",
                   persisted["origin"] == "cijsub")
         finally:
@@ -281,10 +289,14 @@ def _():
     try:
         root, app = make_app(restore)
         try:
-            app.source_type_var.set("anime_subtitle")
+            # article is configured with display_name == id and is not
+            # processable, so it is not offered in the dropdown; setting the
+            # id directly still shows the id (label-map fallback), exactly
+            # like a processable type whose display name equals its id.
+            app.source_type_var.set("article")
             app.origin_var.set("nhk_news")
             check("source type shows id",
-                  app.source_type_combo.get() == "anime_subtitle")
+                  app.source_type_display.cget("text") == "article")
             check("origin shows id",
                   app.origin_combo.get() == "nhk_news")
         finally:
@@ -302,7 +314,7 @@ def _():
             app.source_type_var.set("obsolete_type")
             app.origin_var.set("stale_origin")
             check("unknown source type shows as-is",
-                  app.source_type_combo.get() == "obsolete_type")
+                  app.source_type_display.cget("text") == "obsolete_type")
             check("unknown origin shows as-is",
                   app.origin_combo.get() == "stale_origin")
             check("unknown id retained",
@@ -315,27 +327,23 @@ def _():
         restore()
 
 
-@test("preset editor combos show labels and store raw ids")
+@test("preset editor shows labels and stores raw ids")
 def _():
     restore = sandbox()
     try:
         quick_presets.save_slot(
             1, "Subs Preset", "standalone",
-            source_type="podcast_transcript", origin="cijsub")
+            source_type="clean_text", origin="cijsub")
         root, app = make_visible_app(restore)
         try:
             app._open_preset_editor()
             editor = [w for w in root.winfo_children()
                       if isinstance(w, tk.Toplevel)][0]
-            st_combo = find_combo_by_values(
-                editor, ("Podcast Transcript", "anime_subtitle"))
+            st_label = find_label_by_text(editor, "Clean Text")
             og_combo = find_combo_by_values(
                 editor, ("CiJapanese Subs", "nhk_news"))
-            check("source type combo shows labels", st_combo is not None)
+            check("source type display shows label", st_label is not None)
             check("origin combo shows labels", og_combo is not None)
-            if st_combo is not None:
-                check("source type label loaded",
-                      st_combo.get() == "Podcast Transcript")
             if og_combo is not None:
                 check("origin label loaded",
                       og_combo.get() == "CiJapanese Subs")
@@ -352,26 +360,22 @@ def _():
         root, app = make_app(restore)
         try:
             # Rename an existing entry's display name and refresh, as the
-            # metadata editor flow does. The combo must show the new label
-            # and still translate a selection back to the raw id.
+            # metadata editor flow does. The static source type display must
+            # show the new label while keeping the raw id.
             metadata_editor.edit_source_type(
-                "podcast_transcript", "Podcasts",
+                "clean_text", "Podcasts",
                 path=config_loader.CONFIG_DIR / "source_types.json")
             app._refresh_metadata()
-            check("new label in values",
-                  "Podcasts" in app.source_type_combo.cget("values"))
+            check("new label shown",
+                  app.source_type_display_var.get() == "Podcasts")
             check("old label gone",
-                  "Podcast Transcript"
-                  not in app.source_type_combo.cget("values"))
+                  app.source_type_display_var.get() != "Clean Text")
 
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             check("programmatic id shows new label",
-                  app.source_type_combo.get() == "Podcasts")
-
-            app.source_type_combo.set("Podcasts")
-            app._on_source_type_selected()
-            check("selection maps back to the raw id",
-                  app.source_type_var.get() == "podcast_transcript")
+                  app.source_type_display.cget("text") == "Podcasts")
+            check("raw id retained after refresh",
+                  app.source_type_var.get() == "clean_text")
         finally:
             root.destroy()
     finally:
