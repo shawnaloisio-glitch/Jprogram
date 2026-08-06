@@ -4,9 +4,9 @@ test_source_builder_gui_processable.py
 
 GUI-level tests for processable source-type filtering in the Source Builder:
 
-- the Source Type dropdown only shows source types with an active
-  PROCESSING_PROFILE,
-- unsupported source types are hidden,
+- the source type is always the single processable type from Config
+  (no visible field; source_type_var tracks the raw id),
+- unsupported source types are never used,
 - an unprocessable source_type cannot save (plain-language message),
 - a valid clean_text / user_transcription still creates a package,
 - Import Material still works.
@@ -49,6 +49,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -78,11 +79,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -109,22 +111,16 @@ def make_app(restore):
     return root, app
 
 
-@test("source type display always shows the single processable type")
+@test("source type is always the single processable type from Config")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            # The source type is a static display showing the one processable
-            # type from Config; source_type_var always holds its raw id.
+            # The source type has no visible field; source_type_var always
+            # holds the one processable type from Config.
             check("source type is clean_text",
                   app.source_type_var.get() == "clean_text")
-            check("display shows clean_text",
-                  app.source_type_display_var.get() == "clean_text")
-            check("cij_transcript not shown",
-                  app.source_type_display_var.get() != "CIJ Transcripts")
-            check("article not shown",
-                  app.source_type_display_var.get() != "article")
         finally:
             root.destroy()
     finally:

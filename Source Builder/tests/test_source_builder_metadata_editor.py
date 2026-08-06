@@ -27,6 +27,7 @@ SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
 sys.path.insert(0, str(SOURCE_BUILDER))
 
 import metadata_editor
+import paths
 
 
 def temp_config_dir():
@@ -561,6 +562,32 @@ def _():
 # ============================================================
 # Origins: add / edit / delete validation
 # ============================================================
+
+@test("origins: missing workspace file loads empty list")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = missing
+    try:
+        check("loads empty", metadata_editor.load_origins() == [])
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
+
+@test("origins: add creates the file from an empty workspace")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    origins_file = tmp / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = origins_file
+    try:
+        metadata_editor.add_origin("nhk_radio", "NHK Radio")
+        check("file created", origins_file.is_file())
+        reloaded = metadata_editor.load_origins()
+        check("added", [o["origin_id"] for o in reloaded] == ["nhk_radio"])
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
 
 @test("origins: add")
 def _():

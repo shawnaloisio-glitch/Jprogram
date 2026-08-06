@@ -24,7 +24,7 @@ Canonical on-disk forms (preserving the existing top-level structure):
 - Config\\source_types.json:
     {"source_types": [{"source_type_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
-- Config\\origins.json:
+- Workspace Config\\origins.json (customer data, like collections):
     {"origins": [{"origin_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
 """
@@ -63,14 +63,17 @@ class MetadataError(Exception):
 def _config_path(name, path=None):
     """Return the config path for a named vocabulary.
 
-    Collections are customer/runtime configuration and resolve to
-    paths.COLLECTIONS_CONFIG (workspace) when no explicit path is given.
-    source_types / origins remain repository product configuration.
+    Collections and origins are customer/runtime configuration and resolve
+    to the workspace (paths.COLLECTIONS_CONFIG / paths.ORIGINS_CONFIG) when
+    no explicit path is given. source_types remains repository product
+    configuration.
     """
     if path is not None:
         return Path(path)
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
+    if name == "origins":
+        return paths.ORIGINS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -80,6 +83,8 @@ def _sibling_path(path, name):
         return Path(path).with_name(FILES[name])
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
+    if name == "origins":
+        return paths.ORIGINS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 

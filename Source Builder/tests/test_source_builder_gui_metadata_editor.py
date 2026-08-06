@@ -49,6 +49,7 @@ def sandbox():
     saved_config_dir = metadata_editor.CONFIG_DIR
     saved_loader_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
+    saved_origins_config = paths.ORIGINS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     conf_dir = tmp / "Config"
@@ -74,6 +75,7 @@ def sandbox():
     metadata_editor.CONFIG_DIR = conf_dir
     config_loader.CONFIG_DIR = conf_dir
     paths.COLLECTIONS_CONFIG = conf_dir / "collections.json"
+    paths.ORIGINS_CONFIG = conf_dir / "origins.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -82,6 +84,7 @@ def sandbox():
         metadata_editor.CONFIG_DIR = saved_config_dir
         config_loader.CONFIG_DIR = saved_loader_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
+        paths.ORIGINS_CONFIG = saved_origins_config
 
     return restore
 
@@ -185,12 +188,10 @@ def _():
     try:
         root, app = make_app(restore)
         try:
-            # Only processable source types are shown in the GUI; origins
+            # Only processable source types are used by the GUI; origins
             # exclude format-id values (none here).
             check("source type before",
                   app.source_type_var.get() == "clean_text")
-            check("source type display before",
-                  app.source_type_display_var.get() == "clean_text")
             check("origins before",
                   app.origin_combo.cget("values")
                   == ("con_teppei_podcast", "nhk_news"))
@@ -207,10 +208,8 @@ def _():
                 metadata_editor.FILES["origins"])
             app._refresh_metadata()
 
-            check("processable type shown",
+            check("processable type kept",
                   app.source_type_var.get() == "clean_text")
-            check("non-processable type not shown",
-                  app.source_type_display_var.get() != "Video")
             check("origins after",
                   "NHK Radio" in app.origin_combo.cget("values"))
             check("collections unchanged",

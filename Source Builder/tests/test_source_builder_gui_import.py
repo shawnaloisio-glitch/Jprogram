@@ -49,6 +49,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -70,11 +71,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 

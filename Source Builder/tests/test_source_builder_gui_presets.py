@@ -43,6 +43,7 @@ def sandbox():
     saved_presets = quick_presets.PRESETS_PATH
     saved_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
+    saved_origins_config = paths.ORIGINS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -64,6 +65,7 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -71,6 +73,7 @@ def sandbox():
         quick_presets.PRESETS_PATH = saved_presets
         config_loader.CONFIG_DIR = saved_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
+        paths.ORIGINS_CONFIG = saved_origins_config
 
     return restore
 

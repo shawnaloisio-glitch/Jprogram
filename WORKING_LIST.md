@@ -19,6 +19,10 @@ to dig through conversation history.
 
 ## Open
 
+### Forward-looking note, not scoped yet (2026-08-06)
+
+- [ ] **Possible future need: metadata for organizing processor/analysis output data**, distinct from `origin` (which is shifting toward a general-purpose descriptive tag now that it no longer drives any pipeline routing — see the `origin`-to-workspace item below). Raised by Owner while discussing `origin`'s changing role; expected to become concrete once the deterministic-parser work is far enough along that real processor/analysis data organization becomes a live problem, not before. Not a task yet — just don't lose the thought.
+
 ### Remaining ruff findings, deferred to the deterministic-parser work (2026-08-06)
 
 - [ ] **12 `ruff` findings remain in Frozen Components** (`corpus_builder.py` x8, `deepseek_client.py` x1, `parser_normalizer.py` x2, `Analysis/tests/test_sentence_metrics.py` x1) — all in files the parser rewrite will touch anyway, so deliberately not cleaned up now; fold into that work instead of a separate pass. **Caution for whoever does that work:** `corpus_builder.py`'s flagged "unused" re-exports from `parser_normalizer` are not all actually unused — `test_corpus_builder.py` calls `cb.restore_sentence_text`, `cb.canonical_sentence_texts`, and `cb._expected_content` through the module alias, relying on the re-export block that exists specifically for backward compatibility. Confirmed via direct grep; ruff's static analysis can't see this since it only checks within-file usage. The bare `import parser_normalizer` (separate from the `from parser_normalizer import (...)` block) is genuinely unused and safe to drop on its own. Not yet checked: whether `CANONICAL_LINE_SEPARATOR`, `recompute_character_spans`, `recompute_chunk_text`, or `_is_section_marker_line` (the other 4 named re-exports) have any external callers — verify before removing any of them, same way the first 3 were checked.

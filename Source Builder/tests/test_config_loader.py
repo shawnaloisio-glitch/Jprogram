@@ -50,19 +50,21 @@ def patch_collections_config(collections):
 
 
 def patch_vocab_config(source_types, origins):
-    """Point config_loader.CONFIG_DIR at a sandbox; return restore fn."""
-    saved = config_loader.CONFIG_DIR
+    """Point config_loader.CONFIG_DIR and paths.ORIGINS_CONFIG at a sandbox."""
+    saved = (config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG)
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "source_types.json").write_text(
         json.dumps({"source_types": source_types}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(
+    origins_file = config_dir / "origins.json"
+    origins_file.write_text(
         json.dumps({"origins": origins}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
+    paths.ORIGINS_CONFIG = origins_file
 
     def restore():
-        config_loader.CONFIG_DIR = saved
+        config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG = saved
 
     return restore
 
@@ -152,6 +154,19 @@ def _():
         check("empty", config_loader.load_collections() == [])
     finally:
         paths.COLLECTIONS_CONFIG = saved
+
+
+@test("load_origins: missing origins file loads empty")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = missing
+    try:
+        check("load_origins empty", config_loader.load_origins() == [])
+        check("load_origins_full empty",
+              config_loader.load_origins_full() == [])
+    finally:
+        paths.ORIGINS_CONFIG = saved
 
 
 @test("load_collections: ordering preserved")

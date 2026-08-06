@@ -81,9 +81,11 @@ DIAGNOSTICS = WORKSPACE_ROOT / "Diagnostics"
 
 INTAKE = WORKSPACE_ROOT / "Intake"
 
-# Customer/runtime configuration (workspace). Collections are customer data;
-# source_types.json / origins.json remain repository product configuration.
+# Customer/runtime configuration (workspace). Collections and origins are
+# customer data; only source_types.json remains repository product config.
 COLLECTIONS_CONFIG = WORKSPACE_ROOT / "Config" / "collections.json"
+
+ORIGINS_CONFIG = WORKSPACE_ROOT / "Config" / "origins.json"
 
 
 # --------------------------------------------------

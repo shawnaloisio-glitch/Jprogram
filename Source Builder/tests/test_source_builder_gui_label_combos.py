@@ -4,10 +4,11 @@ test_source_builder_gui_label_combos.py
 
 GUI-level tests for friendly display names in the Source Builder:
 
-- the source type is a static display (single real type, not a dropdown);
-  it shows the display label while the id var keeps the raw id,
+- the source type has no visible field anymore: it is tracked internally as
+  a raw id from Config (single real value), which downstream save logic
+  persists raw (never the display label),
 - the Origin dropdown shows display names, not raw ids,
-- the id vars keep holding raw ids through every round trip,
+- the origin id var keeps holding the raw id through every round trip,
 - a saved source persists the raw ids (never the display labels),
 - display names that equal the id still show the id, and unknown/legacy ids
   display as-is without blanking or crashing.
@@ -53,6 +54,7 @@ def sandbox():
         config_loader.CONFIG_DIR,
         metadata_editor.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -88,11 +90,13 @@ def sandbox():
     config_loader.CONFIG_DIR = config_dir
     metadata_editor.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         metadata_editor.CONFIG_DIR, paths.COLLECTIONS_CONFIG) = saved
+         metadata_editor.CONFIG_DIR, paths.COLLECTIONS_CONFIG,
+         paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -138,29 +142,14 @@ def find_combo_by_values(widget, values):
     return None
 
 
-def find_label_by_text(widget, text):
-    """Return the first ttk.Label whose shown text matches exactly."""
-    for child in widget.winfo_children():
-        if isinstance(child, ttk.Label) and child.cget("text") == text:
-            return child
-        found = find_label_by_text(child, text)
-        if found is not None:
-            return found
-    return None
-
-
-@test("source type shows its display label; origin combo shows display names")
+@test("source type id comes from config; origin combo shows display names")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            check("processable label shown",
-                  app.source_type_display.cget("text") == "Clean Text")
             check("source type id from config",
                   app.source_type_var.get() == "clean_text")
-            check("non-processable not shown",
-                  app.source_type_display_var.get() != "article")
 
             og_values = app.origin_combo.cget("values")
             check("origin labels shown",
@@ -172,7 +161,7 @@ def _():
         restore()
 
 
-@test("programmatic id set shows the matching label in the display")
+@test("programmatic id set keeps the raw source type id and origin label")
 def _():
     restore = sandbox()
     try:
@@ -181,10 +170,6 @@ def _():
             # Same pattern settings/snapshot/preset restore use.
             app.source_type_var.set("clean_text")
             app.origin_var.set("cijsub")
-            check("source type label shown",
-                  app.source_type_display_var.get() == "Clean Text")
-            check("source type display shows label",
-                  app.source_type_display.cget("text") == "Clean Text")
             check("source type id retained",
                   app.source_type_var.get() == "clean_text")
             check("origin label shown",
@@ -207,7 +192,7 @@ def _():
         try:
             # Simulate picking a label from the origin dropdown (the
             # <<ComboboxSelected>> handler reads the shown label and maps it
-            # back to the id). The source type is a static display now, so
+            # back to the id). The source type has no visible field, so
             # there is nothing to select for it.
             app.origin_combo.set("CiJapanese Subs")
             app._on_origin_selected()
@@ -221,7 +206,7 @@ def _():
         restore()
 
 
-@test("persisted settings restore shows labels while ids are restored")
+@test("persisted settings restore keeps the raw source type id and origin label")
 def _():
     restore = sandbox()
     try:
@@ -233,8 +218,6 @@ def _():
         try:
             check("source type id restored",
                   app.source_type_var.get() == "clean_text")
-            check("source type label shown",
-                  app.source_type_display.cget("text") == "Clean Text")
             check("origin id restored",
                   app.origin_var.get() == "cijsub")
             check("origin label shown",
@@ -289,14 +272,9 @@ def _():
     try:
         root, app = make_app(restore)
         try:
-            # article is configured with display_name == id and is not
-            # processable, so it is not offered in the dropdown; setting the
-            # id directly still shows the id (label-map fallback), exactly
-            # like a processable type whose display name equals its id.
-            app.source_type_var.set("article")
+            # nhk_news is configured with display_name == id and is shown
+            # as-is in the origin dropdown.
             app.origin_var.set("nhk_news")
-            check("source type shows id",
-                  app.source_type_display.cget("text") == "article")
             check("origin shows id",
                   app.origin_combo.get() == "nhk_news")
         finally:
@@ -305,7 +283,7 @@ def _():
         restore()
 
 
-@test("unknown stored id displays as-is without blanking or crashing")
+@test("unknown stored ids display as-is without blanking or crashing")
 def _():
     restore = sandbox()
     try:
@@ -313,12 +291,10 @@ def _():
         try:
             app.source_type_var.set("obsolete_type")
             app.origin_var.set("stale_origin")
-            check("unknown source type shows as-is",
-                  app.source_type_display.cget("text") == "obsolete_type")
+            check("unknown source type id retained",
+                  app.source_type_var.get() == "obsolete_type")
             check("unknown origin shows as-is",
                   app.origin_combo.get() == "stale_origin")
-            check("unknown id retained",
-                  app.source_type_var.get() == "obsolete_type")
             check("unknown origin id retained",
                   app.origin_var.get() == "stale_origin")
         finally:
@@ -327,7 +303,7 @@ def _():
         restore()
 
 
-@test("preset editor shows labels and stores raw ids")
+@test("preset editor origin combo shows labels and stores raw ids")
 def _():
     restore = sandbox()
     try:
@@ -339,43 +315,12 @@ def _():
             app._open_preset_editor()
             editor = [w for w in root.winfo_children()
                       if isinstance(w, tk.Toplevel)][0]
-            st_label = find_label_by_text(editor, "Clean Text")
             og_combo = find_combo_by_values(
                 editor, ("CiJapanese Subs", "nhk_news"))
-            check("source type display shows label", st_label is not None)
             check("origin combo shows labels", og_combo is not None)
             if og_combo is not None:
                 check("origin label loaded",
                       og_combo.get() == "CiJapanese Subs")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("vocabulary reload keeps the label mapping fresh")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_app(restore)
-        try:
-            # Rename an existing entry's display name and refresh, as the
-            # metadata editor flow does. The static source type display must
-            # show the new label while keeping the raw id.
-            metadata_editor.edit_source_type(
-                "clean_text", "Podcasts",
-                path=config_loader.CONFIG_DIR / "source_types.json")
-            app._refresh_metadata()
-            check("new label shown",
-                  app.source_type_display_var.get() == "Podcasts")
-            check("old label gone",
-                  app.source_type_display_var.get() != "Clean Text")
-
-            app.source_type_var.set("clean_text")
-            check("programmatic id shows new label",
-                  app.source_type_display.cget("text") == "Podcasts")
-            check("raw id retained after refresh",
-                  app.source_type_var.get() == "clean_text")
         finally:
             root.destroy()
     finally:

@@ -100,7 +100,7 @@ def _():
         check("load file button", hasattr(sb, "load_button"))
         check("collection combo", hasattr(sb, "collection_combo"))
         check("episode entry", hasattr(sb, "episode_entry"))
-        check("source type display", hasattr(sb, "source_type_display"))
+        check("source type var", hasattr(sb, "source_type_var"))
         check("origin combo", hasattr(sb, "origin_combo"))
     finally:
         root.destroy()
