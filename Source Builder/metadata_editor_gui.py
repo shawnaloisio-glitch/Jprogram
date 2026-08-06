@@ -279,34 +279,22 @@ class MetadataEditorWindow:
     # ============================================================
 
     def _build_collections_tab(self):
-        source_types = [s["source_type_id"]
-                        for s in metadata_editor.load_source_types()]
-        processable_source_types = [
-            s for s in source_types if metadata_editor.is_processable(s)]
-
         def display(item):
-            return (item["collection_id"], item["display_name"],
-                    item.get("default_source_type") or "")
+            return (item["collection_id"], item["display_name"])
 
         def add(**kw):
             return metadata_editor.add_collection(
                 kw["collection_id"], kw["display_name"],
-                default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types,
                 sequencing=kw.get("sequencing") or None)
 
         def edit(original_id, **kw):
             return metadata_editor.edit_collection(
                 original_id, kw["display_name"],
-                default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types,
                 sequencing=kw.get("sequencing") or None)
 
         fields = [
             ("collection_id", "Collection ID (folder name)", "entry"),
             ("display_name", "Display Name", "entry"),
-            ("default_source_type", "Default Source Type", "combo",
-             processable_source_types),
             ("sequencing", "Sequencing", "combo",
              metadata_editor.SEQUENCING_VALUES, SEQUENCING_LABELS),
         ]
@@ -314,8 +302,7 @@ class MetadataEditorWindow:
                   "prefix. Choose carefully. It cannot be changed later.")
         self._build_tree_tab(
             "Collections",
-            [("col_id", "Collection ID"), ("display_name", "Display Name"),
-             ("default", "Default Source Type")],
+            [("col_id", "Collection ID"), ("display_name", "Display Name")],
             display, metadata_editor.load_collections, add, edit, fields,
             helper_text=helper)
 

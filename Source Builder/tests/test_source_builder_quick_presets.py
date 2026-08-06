@@ -24,8 +24,6 @@ PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
 sys.path.insert(0, str(SOURCE_BUILDER))
 
-import config_loader
-import paths
 import quick_presets
 
 SAMPLE_CONFIG = {
@@ -38,32 +36,6 @@ SAMPLE_CONFIG = {
 def temp_path():
     root = pathlib.Path(tempfile.mkdtemp())
     return root / "quick_presets.json"
-
-
-def sandbox():
-    """Redirect Config into a temp dir with a seeded collections.json."""
-    saved_config_dir = config_loader.CONFIG_DIR
-    saved_collections_config = paths.COLLECTIONS_CONFIG
-
-    tmp = pathlib.Path(tempfile.mkdtemp())
-    config_dir = tmp / "Config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / "collections.json").write_text(json.dumps({
-        "collections": [
-            {"collection_id": "teppei_beginner",
-             "name": "Con Teppei for Beginner",
-             "source_type": "clean_text"},
-        ]
-    }), encoding="utf-8")
-
-    config_loader.CONFIG_DIR = config_dir
-    paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
-
-    def restore():
-        config_loader.CONFIG_DIR = saved_config_dir
-        paths.COLLECTIONS_CONFIG = saved_collections_config
-
-    return restore
 
 
 TESTS = []
@@ -215,12 +187,6 @@ def _():
 # Preset population (one-shot)
 # ============================================================
 
-def default_source_type(collection_id):
-    if collection_id == "teppei_beginner":
-        return "clean_text"
-    return None
-
-
 @test("population: collection preset populates known values")
 def _():
     preset = {
@@ -228,9 +194,7 @@ def _():
         "identity_type": "collection", "collection_id": "teppei_beginner",
         "source_type": "clean_text", "origin": "con_teppei_podcast",
     }
-    updates = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
+    updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity", updates["identity_type"] == "collection")
     check("collection", updates["collection_id"] == "teppei_beginner")
     check("source type", updates["source_type"] == "clean_text")
@@ -259,26 +223,11 @@ def _():
         "collection_id": "unknown_collection", "source_type": "not_a_type",
         "origin": "not_an_origin",
     }
-    updates = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
+    updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity still set", updates["identity_type"] == "collection")
     check("unknown collection dropped", "collection_id" not in updates)
     check("unknown source type dropped", "source_type" not in updates)
     check("unknown origin dropped", "origin" not in updates)
-
-
-@test("population: source_type falls back to collection default")
-def _():
-    preset = {
-        "slot": 1, "display_name": "Teppei", "identity_type": "collection",
-        "collection_id": "teppei_beginner",
-        "source_type": "", "origin": "con_teppei_podcast",
-    }
-    updates = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
-    check("fallback applied", updates["source_type"] == "clean_text")
 
 
 @test("population: None preset yields empty updates")
@@ -301,19 +250,13 @@ def _():
         "identity_type": "collection", "collection_id": "teppei_beginner",
         "source_type": "clean_text", "origin": "con_teppei_podcast",
     }
-    first = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
-    second = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
+    first = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
+    second = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identical outputs", first == second)
     check("output is a fresh dict", first is not second)
     # Mutating one call must not affect another (no shared state).
     first["source_type"] = "mutated"
-    third = quick_presets.preset_population(
-        preset, **SAMPLE_CONFIG,
-        collection_default_source_type=default_source_type)
+    third = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("no shared state", third["source_type"] == "clean_text")
 
 
@@ -336,20 +279,6 @@ def _():
     slots = quick_presets.empty_slots()
     check("six slots", list(slots.keys()) == [1, 2, 3, 4, 5, 6])
     check("all None", all(v is None for v in slots.values()))
-
-
-# ============================================================
-# Resolve through existing Config tables
-# ============================================================
-
-@test("default_source_type_for_collection resolves via config")
-def _():
-    restore = sandbox()
-    try:
-        st = config_loader.default_source_type_for_collection("teppei_beginner")
-        check("resolved", st == "clean_text")
-    finally:
-        restore()
 
 
 def main():

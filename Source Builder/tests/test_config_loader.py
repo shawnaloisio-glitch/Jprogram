@@ -4,12 +4,11 @@ test_config_loader.py
 
 Deterministic tests for the Source Builder config loader:
 
-- load_collections returns collection_id / name / source_type / sequencing,
+- load_collections returns collection_id / name / sequencing,
 - sequencing defaults to "episodic" when a collection does not declare it,
 - explicit "auto" / "episodic" values are read back,
 - empty and missing collection configs load as empty lists,
-- collection ordering is preserved,
-- default_source_type_for_collection resolves through the loaded data.
+- collection ordering is preserved.
 
 Config is redirected to a sandboxed directory; the real workspace Config
 file is never touched.
@@ -84,12 +83,11 @@ def check(name, cond, detail=""):
         raise AssertionError(f"{name} failed. {detail}")
 
 
-@test("load_collections: returns the four canonical fields")
+@test("load_collections: returns the canonical fields")
 def _():
     restore = patch_collections_config([
         {"collection_id": "teppei_beginner",
          "name": "Con Teppei for Beginner",
-         "source_type": "clean_text",
          "sequencing": "auto"},
     ])
     try:
@@ -98,7 +96,6 @@ def _():
         item = items[0]
         check("collection_id", item["collection_id"] == "teppei_beginner")
         check("name", item["name"] == "Con Teppei for Beginner")
-        check("source_type", item["source_type"] == "clean_text")
         check("sequencing", item["sequencing"] == "auto")
     finally:
         restore()
@@ -114,6 +111,7 @@ def _():
         items = config_loader.load_collections()
         check("one collection", len(items) == 1)
         check("default sequencing", items[0]["sequencing"] == "episodic")
+        check("legacy source_type ignored", "source_type" not in items[0])
     finally:
         restore()
 
@@ -180,24 +178,6 @@ def _():
         items = config_loader.load_collections()
         check("order",
               [c["collection_id"] for c in items] == ["b", "a", "c"])
-    finally:
-        restore()
-
-
-@test("default_source_type_for_collection resolves via loaded data")
-def _():
-    restore = patch_collections_config([
-        {"collection_id": "teppei_beginner",
-         "name": "Con Teppei for Beginner",
-         "source_type": "clean_text"},
-    ])
-    try:
-        check("resolved",
-              config_loader.default_source_type_for_collection(
-                  "teppei_beginner") == "clean_text")
-        check("unknown collection",
-              config_loader.default_source_type_for_collection(
-                  "missing") is None)
     finally:
         restore()
 

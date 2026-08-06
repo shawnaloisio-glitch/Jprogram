@@ -69,8 +69,7 @@ def load_collections():
     separate from the repository product configuration.
 
     Returns a list of collection dicts:
-        [{"collection_id": str, "name": str, "source_type": str,
-          "sequencing": str}, ...]
+        [{"collection_id": str, "name": str, "sequencing": str}, ...]
 
     "sequencing" is "episodic" or "auto", defaulting to "episodic" when a
     collection does not declare it.
@@ -99,7 +98,6 @@ def load_collections():
             result.append({
                 "collection_id": collection_id,
                 "name": item.get("name", collection_id),
-                "source_type": item.get("source_type"),
                 "sequencing": item.get("sequencing", "episodic"),
             })
     return result
@@ -242,18 +240,6 @@ def _vocab_full(item, key):
     return {key: vid, "display_name": display_name}
 
 
-def default_source_type_for_collection(collection_id):
-    """
-    Return the default source_type for a collection, or None.
-
-    Uses the collection's declared source_type when present.
-    """
-    for collection in load_collections():
-        if collection["collection_id"] == collection_id:
-            return collection.get("source_type")
-    return None
-
-
 __all__ = [
     "CONFIG_DIR",
     "CONFIG_FILES",
@@ -266,5 +252,4 @@ __all__ = [
     "load_origins",
     "load_source_types_full",
     "load_origins_full",
-    "default_source_type_for_collection",
 ]

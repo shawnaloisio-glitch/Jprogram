@@ -84,8 +84,6 @@ def _():
     check("one collection", len(items) == 1)
     check("id", items[0]["collection_id"] == "teppei_beginner")
     check("display name", items[0]["display_name"] == "Con Teppei for Beginner")
-    check("default source type",
-          items[0]["default_source_type"] == "clean_text")
 
 
 @test("collections: missing file loads empty")
@@ -104,7 +102,7 @@ def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     items = metadata_editor.add_collection(
-        "nhk_beginner", "NHK Beginner", default_source_type="article",
+        "nhk_beginner", "NHK Beginner",
         path=conf_path(conf_dir, "collections"))
     check("two collections", len(items) == 2)
     check("added id", items[1]["collection_id"] == "nhk_beginner")
@@ -112,8 +110,6 @@ def _():
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
     check("persisted", len(reloaded) == 2)
-    check("persisted default",
-          reloaded[1]["default_source_type"] == "article")
 
 
 @test("collections: add duplicate rejected")
@@ -165,33 +161,17 @@ def _():
         check("display message", "display_name is required" in str(exc))
 
 
-@test("collections: add unknown default source type rejected")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    try:
-        metadata_editor.add_collection(
-            "new_col", "New", default_source_type="nope",
-            path=conf_path(conf_dir, "collections"),
-            source_type_ids=["clean_text", "subtitle", "article"])
-        check("unknown default rejected", False)
-    except metadata_editor.MetadataError as exc:
-        check("source type message", "not a known source type" in str(exc))
-
-
-@test("collections: edit display name and default")
+@test("collections: edit display name")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     metadata_editor.edit_collection(
         "teppei_beginner", "Renamed",
-        default_source_type="subtitle",
         path=conf_path(conf_dir, "collections"))
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
     check("id unchanged", reloaded[0]["collection_id"] == "teppei_beginner")
     check("display changed", reloaded[0]["display_name"] == "Renamed")
-    check("default changed", reloaded[0]["default_source_type"] == "subtitle")
 
 
 @test("collections: id is immutable after creation")
@@ -513,49 +493,14 @@ def _():
         check("reference message", "referenced by a preset" in str(exc))
 
 
-@test("source types: delete default of a collection with sources blocked")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    # teppei_beginner uses clean_text as its default.
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    folder = sources_root / "collections" / "teppei_beginner"
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "teppei_beginner_ep0001.txt").write_text("x\n",
-                                                       encoding="utf-8")
-    try:
-        metadata_editor.delete_source_type(
-            "clean_text",
-            path=conf_path(conf_dir, "source_types"),
-            sources_root=sources_root)
-        check("default delete blocked", False)
-    except metadata_editor.MetadataError as exc:
-        check("default message", "default source type" in str(exc))
-
-
-@test("source types: delete default of a source-less collection allowed")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    # teppei_beginner declares clean_text but has no source files.
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    remaining = metadata_editor.delete_source_type(
-        "clean_text",
-        path=conf_path(conf_dir, "source_types"),
-        sources_root=sources_root)
-    check("deleted when no source files", len(remaining) == 2)
-
-
 @test("source types: delete unused allowed")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     metadata_editor.add_source_type(
         "unused_type", "Unused", path=conf_path(conf_dir, "source_types"))
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
     remaining = metadata_editor.delete_source_type(
-        "unused_type", path=conf_path(conf_dir, "source_types"),
-        sources_root=sources_root)
+        "unused_type", path=conf_path(conf_dir, "source_types"))
     check("unused deleted", len(remaining) == 3)
 
 
@@ -680,8 +625,7 @@ def _():
     write_initial(conf_dir)
     items = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
-    items.append({"collection_id": "x", "display_name": "X",
-                  "default_source_type": None})
+    items.append({"collection_id": "x", "display_name": "X"})
     metadata_editor.save_collections(items, conf_path(conf_dir, "collections"))
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))

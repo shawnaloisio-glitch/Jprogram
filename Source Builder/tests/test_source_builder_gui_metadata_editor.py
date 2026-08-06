@@ -264,12 +264,9 @@ def _():
             app._open_metadata_editor()
             import metadata_editor_gui
             # Build the collections tab's Add fields exactly as the tab does.
-            source_types = ["clean_text", "subtitle", "article"]
             fields = [
                 ("collection_id", "Collection ID", "entry"),
                 ("display_name", "Display Name", "entry"),
-                ("default_source_type", "Default Source Type", "combo",
-                 source_types),
             ]
             result = {}
 
@@ -371,14 +368,10 @@ def _():
             import metadata_editor_gui
             metadata_editor_gui.MetadataEditorWindow(app)
             # The dialog returns entered fields; the tab's add fn writes them.
-            source_types = ["clean_text", "subtitle", "article"]
             result = {
-                "collection_id": "nhk_b", "display_name": "NHK B",
-                "default_source_type": "article"}
+                "collection_id": "nhk_b", "display_name": "NHK B"}
             metadata_editor.add_collection(
-                result["collection_id"], result["display_name"],
-                default_source_type=result.get("default_source_type") or None,
-                source_type_ids=source_types)
+                result["collection_id"], result["display_name"])
             app._refresh_metadata()
             collections = metadata_editor.load_collections()
             check("collection added",
@@ -386,8 +379,6 @@ def _():
                   == ["teppei_beginner", "nhk_b"])
             check("display name stored",
                   collections[1]["display_name"] == "NHK B")
-            check("default stored",
-                  collections[1]["default_source_type"] == "article")
             check("app dropdown refreshed",
                   "nhk_b" in app.collection_combo.cget("values"))
         finally:
@@ -404,13 +395,11 @@ def _():
         try:
             import metadata_editor_gui
             metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["clean_text", "subtitle", "article"]
             # Blank display name must be rejected by the data layer.
             try:
                 metadata_editor.add_collection(
                     "new_col", "   ", path=metadata_editor.CONFIG_DIR /
-                    metadata_editor.FILES["collections"],
-                    source_type_ids=source_types)
+                    metadata_editor.FILES["collections"])
                 check("blank rejected", False)
             except metadata_editor.MetadataError as exc:
                 check("blank message", "display_name is required" in str(exc))
@@ -430,13 +419,11 @@ def _():
         try:
             import metadata_editor_gui
             metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["clean_text", "subtitle", "article"]
             try:
                 metadata_editor.add_collection(
                     "teppei_beginner", "Dup",
                     path=metadata_editor.CONFIG_DIR /
-                    metadata_editor.FILES["collections"],
-                    source_type_ids=source_types)
+                    metadata_editor.FILES["collections"])
                 check("duplicate rejected", False)
             except metadata_editor.MetadataError as exc:
                 check("duplicate message", "already exists" in str(exc))
@@ -1008,130 +995,6 @@ def _():
         restore()
 
 
-@test("add dialog Default Source Type combo only offers processable types")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def inspect_and_cancel():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("clean_text",))
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["values"] = tuple(combo.cget("values"))
-                cancel = find_button_in(d, "Cancel")
-                if cancel:
-                    cancel.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, inspect_and_cancel)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("source type combo present",
-                  result.get("combo_found") is True)
-            values = result.get("values", ())
-            check("processable type offered", "clean_text" in values)
-            check("known non-processable cij_transcript excluded",
-                  "cij_transcript" not in values)
-            check("subtitle excluded", "subtitle" not in values)
-            check("article excluded", "article" not in values)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("edit dialog pre-fills and saves a legacy non-processable default")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            metadata_editor.add_collection(
-                "cijapanese", "CI Japanese",
-                default_source_type="cij_transcript")
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
-            result = {}
-
-            def drive_edit():
-                result["row_selected"] = select_tree_row_by_id(
-                    tab, "cijapanese")
-                edit_button.invoke()
-
-            def inspect_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Edit"]
-                if not tops:
-                    result["error"] = "Edit dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("clean_text",))
-                if combo is None:
-                    result["error"] = "source type combo not found"
-                    return
-                result["displayed"] = combo.get()
-                result["offered"] = tuple(combo.cget("values"))
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            def verify_no_error_dialog():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)]
-                result["error_dialog"] = any(
-                    w.title() == "Cannot edit" for w in tops)
-                result["edit_dialog_closed"] = not any(
-                    w.title() == "Edit" for w in tops)
-
-            root.after(100, drive_edit)
-            root.after(250, inspect_and_save)
-            root.after(400, verify_no_error_dialog)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("legacy row selected", result.get("row_selected") is True)
-            check("legacy value pre-filled",
-                  result.get("displayed") == "cij_transcript")
-            check("legacy value not offered for new picks",
-                  "cij_transcript" not in result.get("offered", ()))
-            check("saved without error dialog",
-                  result.get("error_dialog") is False)
-            check("edit dialog closed after save",
-                  result.get("edit_dialog_closed") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection still present", "cijapanese" in by_id)
-            check("legacy default preserved",
-                  by_id["cijapanese"]["default_source_type"] == "cij_transcript")
-            check("display name preserved",
-                  by_id["cijapanese"]["display_name"] == "CI Japanese")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
 # ============================================================
 # Sequencing display labels
 # ============================================================
@@ -1307,60 +1170,6 @@ def _():
             check("combo present (auto)", result.get("combo_found") is True)
             check("auto pre-fills Auto label",
                   result.get("displayed") == SEQUENCING_LABELS["auto"])
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("Default Source Type combo values and save behavior are unchanged")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("clean_text",))
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["displayed_values"] = tuple(combo.cget("values"))
-                    combo.set("clean_text")
-                fill_dialog_entries(d, ["nhk_st", "NHK ST"])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, fill_and_save)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("source type combo present", result.get("combo_found") is True)
-            check("displayed values unchanged",
-                  result.get("displayed_values") == ("clean_text",))
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection added", "nhk_st" in by_id)
-            check("default persisted",
-                  by_id["nhk_st"]["default_source_type"] == "clean_text")
-            check("sequencing default still episodic",
-                  by_id["nhk_st"]["sequencing"] == "episodic")
         finally:
             root.destroy()
     finally:
