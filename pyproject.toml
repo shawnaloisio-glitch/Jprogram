@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# Deliberately conservative: this codebase has never been linted before.
+# Pyflakes (F) catches real bugs (unused imports, undefined names, unused
+# variables) with zero style opinions. Expand later if it proves useful.
+select = ["F"]

@@ -1,0 +1,12 @@
+# Japanese Corpus Pipeline — runtime dependencies
+#
+# Confirmed 2026-08-06 by scanning every import statement in the repo:
+# the pipeline currently uses only the Python standard library (argparse,
+# json, pathlib, sqlite3, tkinter, urllib, etc.) — no third-party runtime
+# dependencies exist yet.
+#
+# This file exists so that changes ahead (e.g. the deterministic-parser
+# branch's GiNZA/SudachiPy work) have a real place to declare new
+# dependencies from the start, instead of drifting undeclared.
+
+# (none yet)
