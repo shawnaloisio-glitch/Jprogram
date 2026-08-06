@@ -22,6 +22,7 @@ import json
 import pathlib
 import sys
 import tempfile
+import threading
 from unittest import mock
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -319,6 +320,58 @@ def _():
             check("status does not imply an instant stop",
                   "finishes" in window.progress_var.get())
             window._reset_busy()
+            window.window.destroy()
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("worker exception surfaces the real message, not a NameError")
+def _():
+    restore = sandbox()
+    try:
+        make_source(("collection", "teppei_beginner", 58))
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            window = processing_tab_gui.ProcessingTabWindow(app)
+            release = threading.Event()
+
+            # Gate the mock so the worker reaches the deferred error
+            # callback only while the Tk main loop is running (cross-thread
+            # window.after requires the main loop to be active).
+            def boom(*args, **kwargs):
+                release.wait(timeout=5)
+                raise RuntimeError("boom")
+
+            shown = []
+            real_show = window._show_run_error
+
+            def show_and_quit(message):
+                shown.append(message)
+                real_show(message)
+                root.after(0, root.quit)
+
+            window._show_run_error = show_and_quit
+
+            with mock.patch.object(
+                    processing_tab, "process_sources",
+                    side_effect=boom) as ps:
+                window._run_sources(window.rows)
+
+            root.after(0, release.set)
+            root.after(5000, root.quit)
+            root.mainloop()
+
+            check("process_sources raised", ps.called)
+            check("_show_run_error got the real exception message",
+                  shown == ["boom"])
+            check("error label shows the real exception message",
+                  window.error_label.cget("text") == "boom")
+            check("status indicates the error",
+                  window.progress_var.get() == "Finished with an error.")
             window.window.destroy()
         finally:
             root.destroy()

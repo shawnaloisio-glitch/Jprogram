@@ -120,17 +120,6 @@ RESPONSES = WORKSPACE_ROOT / "responses"
 
 
 # --------------------------------------------------
-# API
-# --------------------------------------------------
-#
-# Temporary compatibility constant. Key loading now prefers the
-# DEEPSEEK_API_KEY environment variable; this file fallback remains until
-# the final secret-migration step.
-
-API_KEY = PROJECT_ROOT / "api_key.txt"
-
-
-# --------------------------------------------------
 # Log Folders (workspace)
 # --------------------------------------------------
 

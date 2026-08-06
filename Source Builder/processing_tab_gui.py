@@ -228,8 +228,8 @@ class ProcessingTabWindow:
                     on_progress=self._on_progress)
                 self.window.after(0, lambda: self._apply_results(results))
             except Exception as exc:
-                self.window.after(
-                    0, lambda: self._show_run_error(str(exc)))
+                msg = str(exc)
+                self.window.after(0, lambda: self._show_run_error(msg))
             finally:
                 self.window.after(0, self._reset_busy)
 
