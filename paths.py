@@ -81,6 +81,8 @@ DIAGNOSTICS = WORKSPACE_ROOT / "Diagnostics"
 
 INTAKE = WORKSPACE_ROOT / "Intake"
 
+RAW_IMPORTS = WORKSPACE_ROOT / "Raw Imports"
+
 # Customer/runtime configuration (workspace). Collections and origins are
 # customer data; only source_types.json remains repository product config.
 COLLECTIONS_CONFIG = WORKSPACE_ROOT / "Config" / "collections.json"
@@ -161,6 +163,7 @@ WORKSPACE_FOLDERS = (
     ANALYSIS_OUTPUTS,
     DIAGNOSTICS,
     INTAKE,
+    RAW_IMPORTS,
     COMPLETED,
     FAILED,
     INDEXES,
@@ -244,6 +247,7 @@ def verify_paths():
         ANALYSIS_OUTPUTS,
         DIAGNOSTICS,
         INTAKE,
+        RAW_IMPORTS,
     ]
 
     missing = [
