@@ -209,6 +209,7 @@ class SourceBuilderApp:
         self.engine = controller.ReadyStateEngine()
         self._current_state = None
         self._load_file_dir = None
+        self._import_material_dir = None
         self._last_loaded_file = None
         self._saved_path = None
 
@@ -817,6 +818,22 @@ class SourceBuilderApp:
             return intake
         return PROJECT_ROOT
 
+    def _import_default_dir(self):
+        """
+        Resolve the Import Material dialog's default folder.
+
+        Priority:
+        1. previously used Import Material folder (session only),
+        2. Raw Imports folder (paths.RAW_IMPORTS),
+        3. project root fallback.
+        """
+        if self._import_material_dir is not None:
+            return self._import_material_dir
+        raw_imports = paths.RAW_IMPORTS
+        if raw_imports.is_dir():
+            return raw_imports
+        return PROJECT_ROOT
+
     def _load_file(self):
         """
         Load a prepared text file into the source text area.
@@ -899,10 +916,14 @@ class SourceBuilderApp:
                   anchor="w").pack(side="left")
 
         def browse():
+            default_dir = self._import_default_dir()
             selected = filedialog.askopenfilenames(
                 parent=dialog, title="Select Material Files",
+                initialdir=default_dir,
                 filetypes=[("All files", "*.*")])
             if selected:
+                # Remember this folder for the rest of the session.
+                self._import_material_dir = Path(selected[0]).parent
                 paths_var.set("; ".join(selected))
         ttk.Button(file_row, text="Browse",
                    command=browse).pack(side="left", padx=(8, 0))

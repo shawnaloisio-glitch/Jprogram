@@ -273,6 +273,89 @@ def _():
         restore()
 
 
+@test("import browse defaults to RAW_IMPORTS then remembers last folder")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            a, b = tmp_files()
+            picked_folder = pathlib.Path(a).parent
+            initialdirs = []
+            result = {"round": 0}
+
+            def fake_askopenfilenames(**kwargs):
+                initialdirs.append(kwargs.get("initialdir"))
+                if len(initialdirs) == 1:
+                    return (str(a), str(b))
+                return ()
+
+            def find_browse():
+                for w in root.winfo_children():
+                    if isinstance(w, tk.Toplevel) \
+                            and w.title() == "Import Material":
+                        button = _find_button(w, "Browse")
+                        if button is not None:
+                            return button
+                return None
+
+            def open_round():
+                app._import_material()
+                if result["round"] >= 2:
+                    root.after(0, root.quit)
+
+            def do_browse_close():
+                button = find_browse()
+                if button is None:
+                    root.after(30, do_browse_close)
+                    return
+                button.invoke()
+                result["round"] += 1
+                for w in root.winfo_children():
+                    if isinstance(w, tk.Toplevel) \
+                            and w.title() == "Import Material":
+                        w.destroy()
+                if result["round"] < 2:
+                    root.after(0, open_round)
+                    root.after(50, do_browse_close)
+
+            with patch.object(gui.filedialog, "askopenfilenames",
+                              side_effect=fake_askopenfilenames):
+                root.after(50, open_round)
+                root.after(100, do_browse_close)
+                root.after(2000, root.quit)
+                root.mainloop()
+
+            expected_default = (paths.RAW_IMPORTS
+                                if paths.RAW_IMPORTS.is_dir()
+                                else gui.PROJECT_ROOT)
+            check("two browse opens", len(initialdirs) == 2)
+            check("fresh default is RAW_IMPORTS or project root",
+                  initialdirs and pathlib.Path(initialdirs[0])
+                  == expected_default,
+                  f"got {initialdirs!r}")
+            check("reopen uses remembered folder",
+                  len(initialdirs) == 2
+                  and pathlib.Path(initialdirs[1]) == picked_folder,
+                  f"got {initialdirs!r}")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+def _find_button(widget, text):
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Button) and child.cget("text") == text:
+            return child
+        found = _find_button(child, text)
+        if found is not None:
+            return found
+    return None
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
