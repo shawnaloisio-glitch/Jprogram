@@ -43,7 +43,10 @@ import sys
 from pathlib import Path
 
 DB_PATH = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
-JPROGRAM_WORKTREE = "C:/Jprogram"
+# OpenCode stores `project.worktree` with forward slashes regardless of OS
+# (see OC_Session_Access_Procedure.md). Computed from this file's own
+# location so a future repo move doesn't require a manual edit here.
+JPROGRAM_WORKTREE = str(Path(__file__).resolve().parent).replace("\\", "/")
 
 
 def _utf8_stdout():

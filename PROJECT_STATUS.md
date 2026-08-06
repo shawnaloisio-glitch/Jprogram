@@ -1,7 +1,7 @@
 # Japanese Corpus Pipeline
 ## Project Status and Continuation Document
 
-**Project root:** `C:\Jprogram`  
+**Project root:** `C:\AI Development Projects\Jprogram`  
 **Current project name:** Japanese Corpus Pipeline  
 **Project version:** 1.0  
 **Status:** Active development  
@@ -123,7 +123,7 @@ Do not assume the user knows where a block belongs.
 The project currently uses this general structure:
 
 ```text
-C:\Jprogram\
+C:\AI Development Projects\Jprogram\
 │
 ├── Analysis\
 │
@@ -238,7 +238,7 @@ There are both project-root and Data Processor request-related locations in the 
 The working Request Builder currently writes its generated requests to:
 
 ```text
-C:\Jprogram\Data Processor\requests
+C:\AI Development Projects\Jprogram\Data Processor\requests
 ```
 
 Do not casually change this structure. Verify existing code and paths before making architectural changes.
@@ -262,9 +262,9 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 This is necessary because shared modules such as:
 
 ```text
-C:\Jprogram\common.py
-C:\Jprogram\paths.py
-C:\Jprogram\project_config.py
+C:\AI Development Projects\Jprogram\common.py
+C:\AI Development Projects\Jprogram\paths.py
+C:\AI Development Projects\Jprogram\project_config.py
 ```
 
 are located in the project root.
@@ -332,7 +332,7 @@ Warnings : 0
 Errors   : 0
 
 Report written:
-  C:\Jprogram\Diagnostics\Project_Audit_2026-07-31_09-04-53.txt
+  C:\AI Development Projects\Jprogram\Diagnostics\Project_Audit_2026-07-31_09-04-53.txt
 ```
 
 This is important because substantial manual folder and file creation has occurred during development.
@@ -422,13 +422,13 @@ Con-Teppei for Beginner 51-100
 The current output location is:
 
 ```text
-C:\Jprogram\Data Processor\requests
+C:\AI Development Projects\Jprogram\Data Processor\requests
 ```
 
 The Request Builder also writes logs to:
 
 ```text
-C:\Jprogram\Logs\Request Builder
+C:\AI Development Projects\Jprogram\Logs\Request Builder
 ```
 
 The Request Builder has been polished enough that it is now considered a working pipeline stage.
@@ -440,7 +440,7 @@ The Request Builder has been polished enough that it is now considered a working
 The project has:
 
 ```text
-C:\Jprogram\Prompts\parser_prompt.md
+C:\AI Development Projects\Jprogram\Prompts\parser_prompt.md
 ```
 
 At the current documented point, this file is only a placeholder containing:
@@ -512,7 +512,7 @@ Do not over-engineer a custom caching layer unless a later requirement demonstra
 The file already exists:
 
 ```text
-C:\Jprogram\Data Processor\deepseek_client.py
+C:\AI Development Projects\Jprogram\Data Processor\deepseek_client.py
 ```
 
 We began implementing it incrementally.
@@ -757,10 +757,11 @@ Both currently produce one job and one request because each is well below the cu
 
 # 22. Important Naming Note
 
-The physical project directory is still:
+The physical project directory is still named `Jprogram` (moved 2026-08-06 to
+live alongside sibling projects; its own directory name is unchanged):
 
 ```text
-C:\Jprogram
+C:\AI Development Projects\Jprogram
 ```
 
 The project has NOT been physically renamed to:
@@ -844,7 +845,7 @@ Do not divert development into GUI work at this stage.
 The project is currently paused immediately before the next test of:
 
 ```text
-C:\Jprogram\Data Processor\deepseek_client.py
+C:\AI Development Projects\Jprogram\Data Processor\deepseek_client.py
 ```
 
 The latest change was adding the established project-root import mechanism:
@@ -1082,7 +1083,7 @@ These decisions were settled before the parser contract was frozen.
 
 # 33. Parser Output Specification (TASK 14)
 
-`C:\Jprogram\PARSER_OUTPUT_SPEC.md` was created and is the frozen contract between the DeepSeek Parser, the Response Validator, the Corpus Builder, and the Analyzer.
+`C:\AI Development Projects\Jprogram\PARSER_OUTPUT_SPEC.md` was created and is the frozen contract between the DeepSeek Parser, the Response Validator, the Corpus Builder, and the Analyzer.
 
 - Exactly one valid JSON object per job: `source_name`, `job_number`, `sentences`.
 - Sentence: `sentence_index` (job-local, 0-based), `text`, `words`, `chunks`, `expressions`.
@@ -1095,7 +1096,7 @@ These decisions were settled before the parser contract was frozen.
 
 # 34. Parser Prompt (TASK 15)
 
-`C:\Jprogram\Prompts\parser_prompt.md` was created (replacing the placeholder) and is frozen.
+`C:\AI Development Projects\Jprogram\Prompts\parser_prompt.md` was created (replacing the placeholder) and is frozen.
 
 - Instructs DeepSeek to transform each ~10,000-character job into exactly the PARSER_OUTPUT_SPEC JSON structure.
 - Output contract: exactly one valid JSON object; no Markdown fences, prose, comments, multiple objects, or JSONL.

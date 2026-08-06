@@ -32,7 +32,7 @@ Use the existing **Analysis** convention. Do **not** introduce a new Analyzer fo
 Approved structure:
 
 ```
-C:\Jprogram\Analysis\
+C:\AI Development Projects\Jprogram\Analysis\
 ├── analyzer modules
 └── outputs\
 ```
