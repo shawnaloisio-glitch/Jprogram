@@ -149,9 +149,12 @@ def _():
         try:
             root.update_idletasks()
             root.update()
-            gap = (app.episode_label.winfo_y()
-                   - app.collection_label.winfo_y())
-            check("compact gap", gap < 80)
+            gap_c_o = (app.origin_label.winfo_y()
+                       - app.collection_label.winfo_y())
+            check("compact gap collection-origin", gap_c_o < 80)
+            gap_o_e = (app.episode_label.winfo_y()
+                       - app.origin_label.winfo_y())
+            check("compact gap origin-episode", gap_o_e < 80)
             check("text area expanded", app.text_area.winfo_height() > 60)
         finally:
             root.destroy()

@@ -332,6 +332,19 @@ class SourceBuilderApp:
         self._collection_row = row
         row += 1
 
+        # Shared metadata
+        self.origin_label = ttk.Label(body, text="Origin:")
+        self.origin_label.grid(row=row, column=0, sticky="w")
+        self.origin_combo = ttk.Combobox(
+            body, textvariable=self.origin_display_var,
+            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
+        self.origin_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.origin_combo, self.origin_var, self.origin_display_var,
+            "origin_label_map", "origin_id_map")
+        row += 1
+
+        # Episode (collection mode field)
         self.episode_label = ttk.Label(body, text="Episode:")
         self.episode_label.grid(row=row, column=0, sticky="w")
         self.episode_entry = ttk.Entry(body, textvariable=self.episode_var,
@@ -349,17 +362,6 @@ class SourceBuilderApp:
                                            font=self.combo_font)
         self.source_name_entry.grid(row=row, column=1, sticky="w")
         self._source_name_row = row
-        row += 1
-
-        # Shared metadata
-        ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
-        self.origin_combo = ttk.Combobox(
-            body, textvariable=self.origin_display_var,
-            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
-        self.origin_combo.grid(row=row, column=1, sticky="w")
-        self._wire_label_combo(
-            self.origin_combo, self.origin_var, self.origin_display_var,
-            "origin_label_map", "origin_id_map")
         row += 1
 
         ttk.Separator(body, orient="horizontal").grid(
@@ -1055,8 +1057,6 @@ class SourceBuilderApp:
             [c["collection_id"] for c in self.collections],
             self.source_types,
             self.origins,
-            collection_default_source_type=config_loader
-            .default_source_type_for_collection,
         )
         if not updates:
             self.status_var.set("Preset has no valid values to apply.")
