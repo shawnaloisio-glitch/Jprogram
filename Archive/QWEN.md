@@ -1,4 +1,8 @@
-# Jprogram — Auditor Standing Instructions (Qwen Code)
+# Jprogram — Auditor Standing Instructions (Qwen Code) — RETIRED 2026-08-06
+
+**Retired, not live.** Qwen Code is not part of this project's audit model — settled Owner decision, 2026-08-05/06, see `CLAUDE.md`'s "If invoked as Auditor" section for the current model (OC+DeepSeek implements, Claude Code reviews as both Advisor and Auditor, fresh-session/subagent for the audit pass). This file is no longer referenced from `CLAUDE.md` and is kept only as a historical record of the original cross-vendor design. Its Frozen Components list below has already drifted from the current one in `CLAUDE.md` (missing `parser_normalizer.py`) — do not treat any content below as current.
+
+---
 
 This file is auto-loaded every session. Keep it lean.
 
