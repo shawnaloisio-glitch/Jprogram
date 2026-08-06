@@ -2,11 +2,11 @@
   "origins": [
     {
       "origin_id": "user_transcription",
-      "display_name": "user_transcription"
+      "display_name": "User Transcription"
     },
     {
       "origin_id": "subtitle",
-      "display_name": "subtitle"
+      "display_name": "Subtitle"
     },
     {
       "origin_id": "cijsub",

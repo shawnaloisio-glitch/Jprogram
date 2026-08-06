@@ -121,7 +121,7 @@ def _add_warning(warnings, code, message, sentence_index=None,
 # never include the punctuation that separates them (PARSER_OUTPUT_SPEC §3);
 # punctuation preservation in sentence text is enforced by the canonicalizer's
 # source-reconstruction gate, not by word-surface partition.
-_PUNCTUATION = frozenset("。、，．！？!?…；：,.;:()（）「」『』")
+_PUNCTUATION = frozenset("。、，．！？!?…；：,.;:()（）「」『』\u301C\uFF5E\u30FB\u2015\u2014")
 
 # A separator is whitespace or punctuation; both are excluded from word
 # surfaces and must be ignored when comparing surfaces against sentence text.

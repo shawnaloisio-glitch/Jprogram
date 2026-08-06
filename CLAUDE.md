@@ -2,6 +2,8 @@
 
 This file is auto-loaded every session. Keep it lean — it is not a place for explanation, only for rules. Session-specific state (current architecture, next task, open items) lives in `JPROGRAM_SESSION_BOOTSTRAP.md` — **read that file at the start of every session, in addition to this one.**
 
+Jprogram is the first stage of a multi-project pipeline (Jprogram → Language Coach → LANGZ). For what the downstream projects consume from Jprogram and expect in return, see `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md` — only relevant when a task touches that boundary, not routine reading.
+
 ## Your role: Advisor (default) or Auditor (only if Owner explicitly says so at session start)
 
 **Unless Owner tells you otherwise at the start of the session, you are Advisor.** The rules below this line apply to Advisor. If Owner explicitly starts the session by saying you are Auditor for this session, skip to the "If invoked as Auditor" section instead — the two roles have different default permissions and you should not blend them.
@@ -91,7 +93,7 @@ Log every trigger decision (Yes or No) in the Audit Log at `Audits/Trigger_Log/`
 Do not treat changes to these as routine — any touch to these files is an automatic audit trigger:
 - Parser: `Prompts/parser_prompt.md`, `PARSER_OUTPUT_SPEC.md`
 - Validator: `Data Processor/response_validator.py`
-- Builder: `Data Processor/corpus_builder.py`, the canonical JSONL format
+- Builder: `Data Processor/corpus_builder.py` and `Data Processor/parser_normalizer.py` (the actual canonicalization / exact-reconstruction integrity-gate logic — `canonicalize`, `verify_source_reconstruction`, `restore_sentence_text`, span/chunk recomputation — now lives in `parser_normalizer.py`; `corpus_builder.py` re-exports it, so both must be frozen), the canonical JSONL format
 - Analysis: all `Analysis/` modules, `ANALYZER_ARCHITECTURE.md`
 - Transport: `Data Processor/deepseek_client.py`
 
