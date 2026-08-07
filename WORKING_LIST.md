@@ -19,6 +19,90 @@ to dig through conversation history.
 
 ## Open
 
+### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
+
+Found via a real "Failed" processing run on `con_teppei_beginner_ep002`
+("Con-Teppei Beginner — Episode 2"), diagnosed from the app's own
+Troubleshooting-data dump. Root cause traced by directly re-running the
+real `response_validator.validate_response` (passed clean, 160 sentences,
+no errors) and the real `parser_normalizer.verify_source_reconstruction`
+(failed at char 1716) against the dumped source/response — not guessed.
+
+**Root cause:** `Transcript Cleaner/clean_transcript.py`'s
+`join_transcript_lines()` docstring assumes "each non-blank line is one
+utterance (one sentence for the parser)" but never enforces it — it just
+blank-line-separates whatever lines the raw input already has. The parser
+splits at every sentence-final `。！？` regardless of line breaks. When a
+raw line has two sentences on it (`通りません。はい。` in the real source —
+plausible for any hand-typed/pasted `clean_text` source, not a fluke),
+the parser correctly produces two sentences, but reconstruction inserts a
+`\n\n` between them that was never in the actual cleaned source →
+mismatch, "1 job(s) failed" in the app.
+
+**Owner-confirmed:** this is a Cleaner bug, not a `parser_normalizer.py`
+issue — the Frozen reconstruction gate is behaving correctly by rejecting
+the mismatch; the Cleaner should not have produced a false "one line = one
+sentence" contract in the first place. `parser_normalizer.py`/
+`corpus_builder.py` (Frozen) do not need to change.
+
+**Blast radius checked:** only this 1 line across all 4 currently-cleaned
+real/test sources — low current impact, but the gap is structural and can
+recur for any hand-typed content.
+
+**Fix mechanism identified, not yet built:** `Data Processor/
+deterministic_parser.py` already has a pure, deterministic `_split_line()`
+implementing exactly the boundary rule needed (sentence-final punctuation
+marks a boundary, stays attached to the preceding sentence). Reusing this
+in the Cleaner — rather than writing separate splitting logic that could
+drift out of agreement with the parser's actual behavior — closes the gap
+permanently instead of patching this one instance.
+
+- [ ] **Decide + scope the actual fix**: extract `_split_line` into a
+  shared utility both `clean_transcript.py` and `deterministic_parser.py`
+  import (respects "one program = one task" better), vs. duplicating the
+  logic in the Cleaner with strong shared test coverage pinning the two
+  implementations identical. Neither file touched is Frozen (Transcript
+  Cleaner isn't on the list at all; `deterministic_parser.py` isn't either
+  — see the aside below), so this is normal-friction Advisor/OC work, not
+  an automatic-Yes audit trigger — though still a judgment-call Yes given
+  it's a real correctness gap in evidence-preservation. Not drafted yet;
+  pick up fresh next session.
+- [ ] **Aside, unrelated, not urgent:** `CLAUDE.md`'s Frozen Components
+  list only names `Data Processor/deepseek_client.py` under "Transport" —
+  `deterministic_parser.py`/`deterministic_parser_client.py` aren't listed,
+  even though Session 9 confirmed the deterministic parser is now the live
+  "api" stage. Possible staleness in the Frozen list itself; separate
+  decision from the Cleaner fix above.
+
+### Episode/season identity redesign — small follow-ups (2026-08-07)
+
+Main redesign landed and audited clean on `master` (`f482aaa`, `f53990f`):
+episode is now a hidden, always-auto-incrementing system identifier;
+Episode#/Season# are new optional, purely cosmetic metadata fields. Three
+small items remain from that work, all low priority:
+
+- [ ] **`Index/index_builder.py`'s `collections` table still reads a
+  `sequencing` column** that `config_loader.load_collections()` no longer
+  returns (removed in `f482aaa`), so every row now gets `NULL` instead of
+  `"episodic"`/`"auto"`. This is the one known, deliberately deferred test
+  failure (`Index/tests/test_index_builder.py`, confirmed by a fresh-subagent
+  Auditor pass 2026-08-07). The Index is CLI-only and not wired into any
+  pipeline stage, so not urgent — but the column itself should probably just
+  be dropped from the schema, not patched to read something else, since
+  sequencing no longer exists as a concept anywhere.
+- [ ] **`Source Builder/controller.py`'s `collision_exists()` is now dead
+  code** — its only caller (the collection-mode "Filename already exists"
+  check in `ReadyStateEngine._first_blocking_reason`) was correctly removed
+  in `f482aaa`, since the hidden auto-increment structurally can't collide.
+  Still correct and tested, just orphaned (flagged by the same Auditor pass).
+  Safe to delete along with its `__all__` export and test coverage whenever
+  `controller.py` is touched next.
+- [ ] **`Source Builder/diagnostics.py`** still has a one-line
+  `identity["episode"] = package.get("episode")` reference in its identity
+  dump — harmless (episode still exists as a hidden field on every package),
+  just worth a look for whether the dump should also surface the new
+  `episode_number`/`season_number` fields now that they exist.
+
 ### Piece B GUI wiring deferred — structure built first, UI later (2026-08-07)
 
 - [x] **Material Level / Style / Duration: wired into the Source Builder GUI — done and re-verified (2026-08-07), after one real revert in between.** Built once (`b150f43`), silently dropped when the `reconcile-deterministic-parser` merge took `gui.py`/`metadata_editor_gui.py` wholesale from a branch that predated this work (caught by a fresh Auditor pass, not by Advisor's own review — see the git-management lesson in `CLAUDE.md`'s wrap-up section), then re-applied on `master` against the post-reconciliation file structure (Source Type gone, Origin now precedes Episode — not a restore of the old commit, the surrounding code had genuinely moved). Current state: Material Level (mandatory dropdown) and Style (optional dropdown, leading "(none)" entry) on the main capture form via `_wire_label_combo()`; optional numeric Duration field, validated at save; a Styles tab in `metadata_editor_gui.py` (Add/Edit only, no Delete, autoincrement id hidden on Add / locked on Edit via a small `add_hidden_keys` mechanism). Independently verified: 66/66 repo-wide test files re-run, zero failures. Still open, not addressed by any of this: whether Material Level ever gets its own small Edit-only admin surface, or stays a hand-edited `project_config.py` constant — low priority, expected to change close to never.

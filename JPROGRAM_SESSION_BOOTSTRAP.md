@@ -261,15 +261,93 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-07) — Updated after Session 9
+## 14. Session Wrap-Up (2026-08-07) — Updated after Session 10
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "Session 8"
-version (dropped entirely — its architecture thinking got built and
-shipped this session, so the narrative is obsolete; git history and
-`Audits/Trigger_Log/` hold the detail if ever needed). If anything
-below conflicts with an older section elsewhere in this file, this
-section wins — last refreshed 2026-08-07, end of session 9.
+not appended to indefinitely.** This update supersedes the "Session 9"
+version (dropped entirely — the season/episode redesign it scoped as
+"next immediate task" got fully built, audited, and shipped this session,
+so that narrative is obsolete; git history and `Audits/Trigger_Log/` hold
+the detail if ever needed). If anything below conflicts with an older
+section elsewhere in this file, this section wins — last refreshed
+2026-08-07, end of session 10.
+
+### Current phase — the season/episode identity redesign shipped, audited clean, and pushed
+
+Two commits on `master`, both independently evaluated against raw diffs
+and full-suite test runs, then given a genuinely fresh-subagent Auditor
+pass before push (no cross-vendor auditor available, per standing
+decision):
+- `f482aaa` — data layer: episode becomes a hidden, always-auto-incrementing
+  system identifier (reuses the existing `next_auto_sequence` mechanism
+  unchanged); the per-collection episodic/auto sequencing choice is retired
+  entirely (`SEQUENCING_VALUES`, the config field, the GUI dropdown all
+  removed); Source Package schema bumps v3→v4 to add two new, fully
+  optional, purely cosmetic fields — `episode_number`/`season_number` —
+  with zero identity or uniqueness role.
+- `f53990f` — GUI layer: the Episode field is now unconditionally hidden
+  for every collection (no more visibility branching); a user-typed episode
+  value is never honored (this closes a real gap the first commit alone
+  left open — confirmed by test before the fix, a typed `63` produced
+  `ep001`); Episode#/Season# added to the form (Episode# suggests
+  previous+1 after each save, Season# is retained unchanged, both start at
+  `"1"` on a fresh session, neither is per-collection).
+
+Auditor's findings: both commits do exactly what they claim, 65/66 tests
+pass (the one failure is the deliberately deferred `Index/index_builder.py`
+sequencing-column gap — see `WORKING_LIST.md`), scope discipline clean on
+both commits, no Frozen Component touched. Two trivial follow-ups now
+tracked in `WORKING_LIST.md`: `controller.py`'s `collision_exists()` is
+dead code, and `diagnostics.py` has one stale episode-only reference.
+Pushed to `origin/master` same session.
+
+### Real process lesson from this session
+
+**A background OC session was not actually stopped by two different
+methods in a row — closing its tab, then its own in-app Stop control —
+each time causing a real file race against a freshly-dispatched session
+on the same files.** Both incidents were caught (the second only because
+a system-level file-change reminder surfaced unexpected content) and the
+working tree was manually reconciled — via `git checkout` back to a known
+commit plus hand-reapplication of an already-evaluated diff, verified
+byte-identical before re-committing — before anything was trusted enough
+to commit. New standing memory:
+`feedback_oc_session_stop_unreliable.md` — verify via Windows Task
+Manager, not the app's own stop/close controls, before trusting the
+working tree after any "I stopped it" report.
+
+### Branch-divergence check (per `CLAUDE.md`'s standing wrap-up rule)
+
+`git branch -a` shows only `master` (local and remote) — no other
+branches exist. Nothing to flag.
+
+### Next immediate task
+
+**A real "Failed" processing run surfaced a genuine Cleaner bug after this
+section was first written** (see `WORKING_LIST.md`'s top entry, added
+same session): two sentences sharing one raw source line breaks exact
+reconstruction, root-caused directly via the real `response_validator`/
+`parser_normalizer` functions against the app's own diagnostic dump, not
+guessed. Owner-confirmed as a Cleaner-side issue, not a Frozen-component
+problem. Fix mechanism identified (reuse `deterministic_parser.py`'s
+`_split_line`) but not yet built or scoped into a Coder command — this is
+the most concrete next task, pick it up first.
+
+The three small episode/season follow-ups (Index's sequencing column,
+`collision_exists()` cleanup, `diagnostics.py`'s stale reference) remain
+open too, still none urgent.
+Processing tab's fate (removed vs. kept as a simpler status panel, now
+that the deterministic parser doesn't need DeepSeek-era rate scheduling)
+is still open and undecided, raised but deliberately not resolved this
+session. Everything else carried forward unchanged from Session 9's list
+(Domain/Topic still loose, the SQLite index still unwired, Import
+Material's folder default not type-specific, Material Level's admin
+surface undecided, the Session 7 backlog) — see `WORKING_LIST.md` and git
+history directly rather than trusting a stale summary here.
+
+---
+
+## 14a. Prior wrap-up (Session 9) — kept for reference only, superseded above
 
 ### Current phase — the data-management architecture from Session 8 got built, shipped, and the two long-diverged branches got reconciled
 
