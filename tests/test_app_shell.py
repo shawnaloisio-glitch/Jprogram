@@ -20,6 +20,7 @@ import importlib
 import pathlib
 import sys
 import tempfile
+from contextlib import contextmanager
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -29,6 +30,7 @@ import tkinter.ttk as ttk
 from unittest import mock
 
 import app
+import controller
 
 
 TESTS = []
@@ -51,6 +53,24 @@ def make_shell():
     root.withdraw()
     shell = app.ApplicationShell(root)
     return root, shell
+
+
+@contextmanager
+def _inject_material_level():
+    """Temporary: the GUI has no material-level field yet (WORKING_LIST
+    follow-up), so GUI saves pass no value. Inject a valid level so the
+    save -> package flow still tests end-to-end until the field lands."""
+    original = controller.create_collection_source
+
+    def patched(*args, **kwargs):
+        kwargs.setdefault("material_level", 1)
+        return original(*args, **kwargs)
+
+    controller.create_collection_source = patched
+    try:
+        yield
+    finally:
+        controller.create_collection_source = original
 
 
 @test("shell window launches and builds")
@@ -125,7 +145,8 @@ def _():
             sb.origin_var.set("con_teppei_podcast")
             sb.text_area.insert("1.0", "第六十三回のテストです。\n")
             sb._on_text_changed()
-            sb.on_save()
+            with _inject_material_level():
+                sb.on_save()
             check("saved state", sb._current_state == "SAVED")
             check("saved path set", sb._saved_path is not None)
             canonical = sb._saved_path
