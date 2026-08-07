@@ -392,12 +392,11 @@ def edit_collection(original_id, display_name, default_source_type=None,
 
 
 def collection_has_sources(collection_id, sources_root=None):
-    """Return True when a collection's canonical folder holds source files."""
+    """Return True when any flat root source file belongs to this collection."""
     root = Path(sources_root) if sources_root else paths.SOURCES
-    directory = root / "collections" / collection_id
-    if not directory.is_dir():
+    if not root.is_dir():
         return False
-    return any(p.is_file() for p in directory.iterdir())
+    return any(root.glob(f"{collection_id}_ep*.txt"))
 
 
 def delete_collection(collection_id, path=None, presets=None,

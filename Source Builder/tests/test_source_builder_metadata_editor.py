@@ -365,10 +365,9 @@ def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    folder = sources_root / "collections" / "teppei_beginner"
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "teppei_beginner_ep0001.txt").write_text("x\n",
-                                                       encoding="utf-8")
+    sources_root.mkdir(parents=True, exist_ok=True)
+    (sources_root / "teppei_beginner_ep0001.txt").write_text("x\n",
+                                                             encoding="utf-8")
     try:
         metadata_editor.delete_collection(
             "teppei_beginner", path=conf_path(conf_dir, "collections"),
@@ -376,6 +375,42 @@ def _():
         check("source-referenced delete blocked", False)
     except metadata_editor.MetadataError as exc:
         check("source message", "existing source files" in str(exc))
+
+
+@test("collection_has_sources matches the collection's own filename pattern")
+def _():
+    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
+    sources_root.mkdir(parents=True, exist_ok=True)
+    check("no sources", metadata_editor.collection_has_sources(
+        "teppei_beginner", sources_root) is False)
+    (sources_root / "nhk_weather.txt").write_text("x\n", encoding="utf-8")
+    (sources_root / "other_ep0001.txt").write_text("x\n", encoding="utf-8")
+    check("unrelated files ignored", metadata_editor.collection_has_sources(
+        "teppei_beginner", sources_root) is False)
+    (sources_root / "teppei_beginner_ep0001.txt").write_text("x\n",
+                                                             encoding="utf-8")
+    check("own file detected", metadata_editor.collection_has_sources(
+        "teppei_beginner", sources_root) is True)
+
+
+@test("collections: delete only blocked by the collection's own files")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    metadata_editor.add_collection(
+        "other_col", "Other", path=conf_path(conf_dir, "collections"))
+    # Unrelated flat-root files must not make this collection look
+    # source-backed.
+    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
+    sources_root.mkdir(parents=True, exist_ok=True)
+    (sources_root / "nhk_weather.txt").write_text("x\n", encoding="utf-8")
+    (sources_root / "other_ep0001.txt").write_text("x\n", encoding="utf-8")
+    remaining = metadata_editor.delete_collection(
+        "other_col", path=conf_path(conf_dir, "collections"),
+        sources_root=sources_root)
+    check("unrelated files do not block delete", len(remaining) == 1)
+    check("right one remains",
+          remaining[0]["collection_id"] == "teppei_beginner")
 
 
 @test("collections: delete missing rejected")
@@ -518,10 +553,9 @@ def _():
     write_initial(conf_dir)
     # teppei_beginner uses podcast_transcript as its default.
     sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    folder = sources_root / "collections" / "teppei_beginner"
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "teppei_beginner_ep0001.txt").write_text("x\n",
-                                                       encoding="utf-8")
+    sources_root.mkdir(parents=True, exist_ok=True)
+    (sources_root / "teppei_beginner_ep0001.txt").write_text("x\n",
+                                                             encoding="utf-8")
     try:
         metadata_editor.delete_source_type(
             "podcast_transcript",

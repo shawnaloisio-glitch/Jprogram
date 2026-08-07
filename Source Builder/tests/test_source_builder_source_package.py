@@ -83,8 +83,8 @@ def _():
             "con_teppei_podcast", "こんにちは。\n")
         check("save success", result["success"] is True)
         check("no package error", "package_error" not in result)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.txt"
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+        canonical = sources / "teppei_beginner_ep0058.txt"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         check("canonical exists", canonical.is_file())
         check("package exists", package_path.is_file())
         data = json.loads(package_path.read_text(encoding="utf-8"))
@@ -100,7 +100,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
             "con_teppei_podcast", "こんにちは。\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         for field in REQUIRED_FIELDS:
             check(f"field {field} present",
@@ -128,7 +128,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
             "con_teppei_podcast", "text\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("source_id",
               data["source_id"] == "podcast_transcript_teppei-beginner_ep058")
@@ -148,8 +148,8 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
             "con_teppei_podcast", text)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.txt"
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+        canonical = sources / "teppei_beginner_ep0058.txt"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("sha256", data["sha256"] == sha256_of(text))
         check("canonical_path", data["canonical_path"] == str(canonical))
@@ -166,7 +166,7 @@ def _():
             "nhk_weather", "article", "nhk_news", "天気です。\n")
         check("save success", result["success"] is True)
         check("no package error", "package_error" not in result)
-        package_path = sources / "standalone" / "nhk_weather.source.json"
+        package_path = sources / "nhk_weather.source.json"
         check("package exists", package_path.is_file())
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("source_name", data["source_name"] == "nhk_weather")
@@ -174,7 +174,7 @@ def _():
         check("no collection_id", "collection_id" not in data)
         check("no episode", "episode" not in data)
         check("canonical_path",
-              data["canonical_path"] == str(sources / "standalone" / "nhk_weather.txt"))
+              data["canonical_path"] == str(sources / "nhk_weather.txt"))
     finally:
         restore(saved)
 
@@ -186,7 +186,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 1, "podcast_transcript",
             "con_teppei_podcast", "a\n")
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0001.txt"
+        canonical = sources / "teppei_beginner_ep0001.txt"
         package_path = source_package.package_path_for(canonical)
         check("package beside source",
               package_path.parent == canonical.parent)
@@ -204,7 +204,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 2, "podcast_transcript",
             "con_teppei_podcast", "b\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0002.source.json"
+        package_path = sources / "teppei_beginner_ep0002.source.json"
         check("no .tmp", not package_path.with_name(
             package_path.name + ".tmp").exists())
     finally:
@@ -235,7 +235,7 @@ def _():
             "teppei_beginner", 3, "podcast_transcript",
             "con_teppei_podcast", "keepme\n")
         check("save success", result["success"] is True)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0003.txt"
+        canonical = sources / "teppei_beginner_ep0003.txt"
         check("canonical intact",
               canonical.read_text(encoding="utf-8") == "keepme\n")
     finally:
@@ -250,7 +250,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 4, "podcast_transcript",
             "con_teppei_podcast", text)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0004.txt"
+        canonical = sources / "teppei_beginner_ep0004.txt"
         check("text unchanged", canonical.read_text(encoding="utf-8") == text)
     finally:
         restore(saved)

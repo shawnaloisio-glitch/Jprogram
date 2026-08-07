@@ -59,13 +59,8 @@ def recent_packages(sources_root=None, limit=MAX_RECENT):
         root = _controller.SOURCES_ROOT
 
     items = []  # (package, mtime)
-    for pattern in ("collections", "standalone"):
-        base = root / pattern
-        if not base.is_dir():
-            continue
-        search = base.rglob("*.source.json") if pattern == "collections" \
-            else base.glob("*.source.json")
-        for package_file in search:
+    if root.is_dir():
+        for package_file in root.glob("*.source.json"):
             entry = _read_package(package_file)
             if entry is not None:
                 items.append(entry)

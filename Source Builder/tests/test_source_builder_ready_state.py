@@ -424,22 +424,11 @@ def _():
 # Open Folder path resolution
 # ============================================================
 
-@test("open folder path: collection")
+@test("open folder path: both modes resolve to the flat Sources root")
 def _():
     root, sources, saved = setup()
     try:
-        folder = controller.collection_dir("teppei_beginner")
-        check("path", folder == sources / "collections" / "teppei_beginner")
-    finally:
-        restore(saved)
-
-
-@test("open folder path: standalone")
-def _():
-    root, sources, saved = setup()
-    try:
-        folder = controller.standalone_dir()
-        check("path", folder == sources / "standalone")
+        check("path", controller.SOURCES_ROOT == sources)
     finally:
         restore(saved)
 

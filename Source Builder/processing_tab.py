@@ -10,8 +10,7 @@ source_ids, artifact paths, JSON files, folders, or individual pipeline
 stages to the user.
 
 Responsibilities ONLY:
-- enumerate source packages (Sources\\collections\\*\\*.source.json and
-  Sources\\standalone\\*.source.json),
+- enumerate source packages (Sources\\*.source.json),
 - build human labels (collection display name + episode / standalone name),
 - map Production Manager state to one simple status label,
 - run the existing pipeline sequentially for selected sources,
@@ -116,15 +115,8 @@ def discover_packages(sources_root=None):
         import controller as _controller
         root = _controller.SOURCES_ROOT
     packages = []
-    for pattern in ("collections", "standalone"):
-        base = root / pattern
-        if not base.is_dir():
-            continue
-        # Collection packages live one level deep (<collection>/<file>);
-        # standalone packages live directly in the folder.
-        search = base.rglob("*.source.json") if pattern == "collections" \
-            else base.glob("*.source.json")
-        for package_file in search:
+    if root.is_dir():
+        for package_file in root.glob("*.source.json"):
             try:
                 package = json.loads(package_file.read_text(encoding="utf-8-sig"))
             except (json.JSONDecodeError, OSError, UnicodeDecodeError):

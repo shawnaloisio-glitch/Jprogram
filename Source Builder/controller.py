@@ -38,16 +38,6 @@ class SourceBuilderError(Exception):
     """Raised when a source cannot be validated or created."""
 
 
-def collection_dir(collection_id):
-    """Return the collection storage directory for a collection_id."""
-    return SOURCES_ROOT / "collections" / collection_id
-
-
-def standalone_dir():
-    """Return the standalone storage directory."""
-    return SOURCES_ROOT / "standalone"
-
-
 # ============================================================
 # Filename generation
 # ============================================================
@@ -74,12 +64,12 @@ def generate_standalone_filename(source_name):
 
 def source_path(collection_id, episode):
     """Return the canonical save path for a collection source."""
-    return collection_dir(collection_id) / generate_filename(collection_id, episode)
+    return SOURCES_ROOT / generate_filename(collection_id, episode)
 
 
 def standalone_source_path(source_name):
     """Return the canonical save path for a standalone source."""
-    return standalone_dir() / generate_standalone_filename(source_name)
+    return SOURCES_ROOT / generate_standalone_filename(source_name)
 
 
 # ============================================================
@@ -350,7 +340,7 @@ def next_auto_sequence(collection_id):
     """
     Return the next automatic sequence number for an "auto" collection.
 
-    Scans the collection's folder on every call and returns the maximum
+    Scans the flat Sources root on every call and returns the maximum
     episode number already present (files matching the generate_filename
     pattern "<collection_id>_ep<digits>.txt") plus one. Returns 1 when the
     collection has no matching source files yet. Gaps are never filled;
@@ -361,7 +351,7 @@ def next_auto_sequence(collection_id):
     Input: collection_id (str).
     Output: int (the next sequence number, always >= 1).
     """
-    directory = collection_dir(collection_id)
+    directory = SOURCES_ROOT
     prefix = f"{collection_id}_ep"
     highest = 0
     if directory.is_dir():
@@ -546,8 +536,6 @@ __all__ = [
     "PROJECT_LANGUAGE",
     "READY_STATES",
     "SourceBuilderError",
-    "collection_dir",
-    "standalone_dir",
     "generate_filename",
     "generate_standalone_filename",
     "source_path",

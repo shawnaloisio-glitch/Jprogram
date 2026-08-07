@@ -142,9 +142,9 @@ def _():
     sources_root, restore = setup()
     try:
         make_collection(63, "a\n", "2026-08-01T10:00:00")
-        # Corrupt sidecar in the same folder.
-        folder = sources_root / "collections" / "teppei_beginner"
-        (folder / "bad.source.json").write_text("{ not json", encoding="utf-8")
+        # Corrupt sidecar in the same flat root.
+        (sources_root / "bad.source.json").write_text("{ not json",
+                                                      encoding="utf-8")
         recent = recent_sources.recent_packages(sources_root)
         check("corrupt skipped", len(recent) == 1)
     finally:

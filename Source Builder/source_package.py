@@ -8,11 +8,11 @@ The Source Package is the authoritative identity record for a canonical
 source. It is created only after a successful source save and lives as a
 sidecar beside the canonical text:
 
-    Sources\\collections\\<collection_id>\\<collection_id>_epNNNN.txt
-    Sources\\collections\\<collection_id>\\<collection_id>_epNNNN.source.json
+    Sources\\<collection_id>_epNNNN.txt
+    Sources\\<collection_id>_epNNNN.source.json
 
-    Sources\\standalone\\<source_name>.txt
-    Sources\\standalone\\<source_name>.source.json
+    Sources\\<source_name>.txt
+    Sources\\<source_name>.source.json
 
 The package never modifies the canonical text file. It carries every field a
 future handoff module needs to produce a Source Registry entry and a Cleaning
@@ -56,9 +56,9 @@ def package_path_for(canonical_path):
     Return the sidecar package path for a canonical source file.
 
     Input: canonical_path (str or Path), e.g.
-        Sources\\collections\\teppei_beginner\\teppei_beginner_ep0058.txt
+        Sources\\teppei_beginner_ep0058.txt
     Output: Path with the ".txt" extension replaced by ".source.json", e.g.
-        Sources\\collections\\teppei_beginner\\teppei_beginner_ep0058.source.json
+        Sources\\teppei_beginner_ep0058.source.json
     """
     path = Path(canonical_path)
     return path.with_suffix(PACKAGE_SUFFIX)

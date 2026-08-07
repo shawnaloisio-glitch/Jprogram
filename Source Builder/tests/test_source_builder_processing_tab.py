@@ -167,9 +167,7 @@ def _():
             "con_teppei_podcast", "ok\n")
         # A hand-written sidecar with a non-numeric episode must not crash
         # the sort.
-        bad_dir = sources_root / "collections" / "teppei_beginner"
-        bad_dir.mkdir(parents=True, exist_ok=True)
-        (bad_dir / "teppei_beginner_bad.source.json").write_text(json.dumps({
+        (sources_root / "teppei_beginner_bad.source.json").write_text(json.dumps({
             "source_id": "podcast_transcript_teppei-beginner_bad",
             "collection_id": "teppei_beginner",
             "episode": "abc",
