@@ -32,6 +32,12 @@ Layers:
      word: it always starts a fresh word boundary. It is still a valid
      head in its own right and forward-merges its own following
      助動詞/接続助詞 chain (so きた = one word, lexical くる).
+   - A merge stops before absorbing a bound continuation whose
+     would-be tail is already grammatically complete: if the current
+     group tail's morph Inflection is in terminal form (終止形, the
+     conjugation-form component after the semicolon), the next
+     助動詞/助詞-接続助詞 token starts a fresh word instead (so 決まるです
+     = two words 決まる + です, while 食べました stays one word).
    - Merging never crosses a bunsetu boundary, which guarantees the
      chunk layer stays flat and non-overlapping.
 
@@ -162,6 +168,21 @@ def _is_suru(token):
     return token.tag_ == "動詞-非自立可能" and token.lemma_ == SURU_LEMMA
 
 
+def _is_terminal_form(token):
+    """True if the token's morph Inflection names a terminal (終止形) form.
+
+    The conjugation-form component is the part of the Inflection value
+    after the semicolon, e.g. "五段-ラ行;終止形-一般" -> "終止形-一般".
+    A token already in terminal form is grammatically complete and must
+    not absorb a following bound continuation (助動詞/助詞-接続助詞).
+    """
+    for inf in token.morph.get("Inflection"):
+        form = inf.split(";")[-1].strip()
+        if form.startswith("終止形"):
+            return True
+    return False
+
+
 def _merge_groups(doc, token_bunsetu=None):
     """Apply the deterministic merge rule over a spaCy Doc's raw tokens.
 
@@ -189,6 +210,8 @@ def _merge_groups(doc, token_bunsetu=None):
                 nxt = tokens[j]
                 if token_bunsetu is not None and token_bunsetu[nxt.i] != group_boundary:
                     break
+                if _is_terminal_form(tokens[j - 1]):
+                    break
                 if nxt.tag_ in CONTINUATION_TAGS:
                     j += 1
                     continue
@@ -203,6 +226,8 @@ def _merge_groups(doc, token_bunsetu=None):
             while j < n:
                 nxt = tokens[j]
                 if token_bunsetu is not None and token_bunsetu[nxt.i] != group_boundary:
+                    break
+                if _is_terminal_form(tokens[j - 1]):
                     break
                 if nxt.tag_ in CONTINUATION_TAGS:
                     j += 1
@@ -264,8 +289,8 @@ def _build_chunks(text, words, token_to_word, bunsetu_spans):
         if ws is None:
             continue
         if chunks and chunks[-1][2] > ws:
-            chunks[-1][2] = min(chunks[-1][2], ws)
-            chunks[-1][3] = max(chunks[-1][3], we)
+            chunks[-1][1] = min(chunks[-1][1], ws)
+            chunks[-1][2] = max(chunks[-1][2], we)
         else:
             chunks.append([None, ws, we])
     for c in chunks:

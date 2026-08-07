@@ -242,6 +242,52 @@ def _():
           str(chunks))
 
 
+@test("BUG1: coarsen-into-previous-chunk branch no longer crashes, chunks stay valid")
+def _():
+    result = parse("はい 持ってきた。\n")
+    s = result["sentences"][0]
+    check("words", [w[1] for w in s["words"]] == ["はい", "持ってきた"],
+          str(s["words"]))
+    chunks = s["chunks"]
+    check("chunks cover both words",
+          len(chunks) == 2
+          and chunks[0][1] == "はい" and chunks[0][2] == 0 and chunks[0][3] == 1
+          and chunks[1][1] == "持ってきた" and chunks[1][2] == 1 and chunks[1][3] == 2,
+          str(chunks))
+    prev_end = -1
+    for c in chunks:
+        check("chunk span valid",
+              c[2] >= 0 and c[3] > c[2] and c[3] <= len(s["words"]), str(c))
+        check("chunk ordered", c[2] >= prev_end, str(c))
+        prev_end = c[3]
+
+
+@test("BUG2: 腹が決まるです is 決まる + です, not one merged 決まるです")
+def _():
+    result = parse("腹が決まるです。\n")
+    s = result["sentences"][0]
+    words = s["words"]
+    check("four words", len(words) == 4, str(words))
+    check("surfaces", [w[1] for w in words] == ["腹", "が", "決まる", "です"],
+          str(words))
+    check("lemmas", [w[2] for w in words] == ["腹", "が", "決まる", "です"])
+
+
+@test("BUG2: terminal-form stop applies to 動詞-非自立可能 forward-only heads too")
+def _():
+    result = parse("食べてしまったです。\n\nしているです。\n\n行かないです。\n")
+    sents = result["sentences"]
+    check("しまったです splits",
+          [w[1] for w in sents[0]["words"]] == ["食べて", "しまった", "です"],
+          str(sents[0]["words"]))
+    check("いるです splits",
+          [w[1] for w in sents[1]["words"]] == ["して", "いる", "です"],
+          str(sents[1]["words"]))
+    check("行かないです splits",
+          [w[1] for w in sents[2]["words"]] == ["行かない", "です"],
+          str(sents[2]["words"]))
+
+
 @test("parse_job returns full contract-shaped dict")
 def _():
     result = dp.parse_job("podcast_test_ep001", 3, "犬が走る。\n\n食べています。\n")
