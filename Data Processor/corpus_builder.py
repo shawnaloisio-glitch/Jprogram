@@ -8,10 +8,12 @@ Deterministic stage that turns validated parser responses into the
 canonical sentence-per-line JSONL corpus.
 
 Pipeline flow for one source_id:
-    - load requests from requests\\<source_id>\\, load the matching
+    - load jobs from jobs\\<source_id>\\, load the matching
       raw responses from responses\\<source_id>\\
-    - verify request["source_id"] matches the requested source_id
-    - extract the parser JSON from choices[0].message.content and parse it
+    - verify job["source_id"] matches the requested source_id
+    - extract the parser data from the response (choices[0].message.content
+      for the DeepSeek path; the parsed dict directly for the deterministic
+      path) and parse it
     - validate with response_validator (failures are logged and counted)
     - recompute character spans and chunk text from authoritative surfaces
     - assign canonical global IDs, sections, and provenance
@@ -24,8 +26,8 @@ Frozen architecture (TASK 20 / TASK 21):
       validated but NOT authoritative. Ordered word surfaces are
       authoritative because they exactly partition each sentence.
     - The Response Validator is a gate and never repairs output.
-    - The Corpus Builder deterministically recomputes what the LLM is
-      demonstrably bad at calculating, and the request metadata is the
+    - The Corpus Builder deterministically recomputes what the parser is
+      demonstrably bad at calculating, and the job metadata is the
       authoritative source of identity.
 """
 
@@ -49,7 +51,9 @@ from common import (
 from paths import (
     CORPUS_RESULTS,
     JSONL,
+    JOBS,
     LOG_CORPUS_BUILDER,
+    PROCESSING_RESULTS,
     REQUESTS,
     RESPONSES,
 )
@@ -84,6 +88,7 @@ PROGRAM_VERSION = PROJECT_VERSION
 
 RESPONSE_PREFIX = "response_"
 REQUEST_PREFIX = "request_"
+JOB_PREFIX = "job_"
 
 DEFAULT_SECTION_ID = "default"
 
@@ -393,8 +398,9 @@ def stamp_provenance(sentence, provenance):
     sentence through their composite IDs (which embed the sentence_id),
     so no per-child provenance duplication is added.
 
-    Required provenance fields: source, source_file, job_number, model,
-    prompt_version (all supplied by the pipeline), plus sentence_id and
+    Required provenance fields: source, source_file, job_number, model
+    (all supplied by the pipeline) plus prompt_version (best-effort; None
+    for a producer with no prompt), plus sentence_id and
     sentence_position (the canonical ordinal, equal to the sentence_id).
 
     Raises:
@@ -432,6 +438,14 @@ def stamp_provenance(sentence, provenance):
             if not (isinstance(value, int) and not isinstance(value, bool)):
                 raise CorpusBuilderError(
                     "provenance field 'job_number' must be an integer."
+                )
+        elif field == "prompt_version":
+            # Best-effort: the deterministic producer has no prompt
+            # concept, so its provenance carries prompt_version None.
+            if value is not None and (not isinstance(value, str) or not value):
+                raise CorpusBuilderError(
+                    "provenance field 'prompt_version' must be a "
+                    "non-empty string or None."
                 )
         else:
             if not isinstance(value, str) or not value:
@@ -537,20 +551,39 @@ def write_jsonl_record(record, output_path, state):
 
 
 # ============================================================
-# Request / Response Loading
+# Job / Response Loading
 # ============================================================
 
-def request_files_for(source_id):
-    """Return the sorted request_*.json files for a source_id."""
-    request_dir = REQUESTS / source_id
-    if not request_dir.is_dir():
+def job_files_for(source_id):
+    """Return the sorted job_*.json files for a source_id."""
+    job_dir = JOBS / source_id
+    if not job_dir.is_dir():
         return []
-    return sorted(request_dir.glob(f"{REQUEST_PREFIX}*.json"))
+    return sorted(job_dir.glob(f"{JOB_PREFIX}*.json"))
+
+
+def load_job(job_file):
+    """
+    Load a job JSON file.
+
+    Returns:
+        (job_data, None) or (None, error_message).
+    """
+    try:
+        data = json.loads(job_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError, OSError) as ex:
+        return None, f"job not valid JSON: {ex}"
+    return data, None
+
+
+def request_file_for(source_id, job_number):
+    """Return the deterministic request path for a job_number."""
+    return REQUESTS / source_id / f"{REQUEST_PREFIX}{job_number:06d}.json"
 
 
 def load_request(request_file):
     """
-    Load a request JSON file.
+    Load a request JSON file (optional provenance enrichment only).
 
     Returns:
         (request_data, None) or (None, error_message).
@@ -562,60 +595,70 @@ def load_request(request_file):
     return data, None
 
 
-def extract_job_text(request_data):
+def request_prompt_version(source_id, job_data):
     """
-    Return the job text from request metadata (the user message content).
+    Best-effort prompt_version provenance from a matching request file.
 
-    The user message carries a SOURCE METADATA section followed by the job
-    text under a TEXT: marker. Only the job text is returned (the metadata
-    header is stripped), so source reconstruction and the integrity gate use
-    the exact job text.
-
-    Backward compatible: when no TEXT: marker is present, the full user
-    content is returned (legacy requests).
-
-    Returns:
-        str if present, otherwise None.
+    Request files are optional enrichment only. The DeepSeek path still
+    has them (Request Builder runs there); the deterministic path has no
+    prompt concept and none. Returns the request's prompt_version when a
+    matching, readable request file carries a non-empty string value,
+    otherwise None.
     """
-    try:
-        messages = request_data["messages"]
-        for message in messages:
-            if isinstance(message, dict) and message.get("role") == "user":
-                content = message.get("content")
-                if isinstance(content, str):
-                    return job_text_from_user_content(content)
-    except (KeyError, TypeError):
-        pass
+    job_number = job_data.get("job_number")
+    if not (isinstance(job_number, int) and not isinstance(job_number, bool)):
+        return None
+    request_file = request_file_for(source_id, job_number)
+    if not request_file.is_file():
+        return None
+    request_data, error = load_request(request_file)
+    if error:
+        return None
+    if not isinstance(request_data, dict):
+        return None
+    value = request_data.get("prompt_version")
+    if isinstance(value, str) and value:
+        return value
     return None
 
 
-def job_text_from_user_content(content):
+def model_for_source(source_id):
     """
-    Extract the job text portion of a user message content.
+    Read the actual producer identity for a source from its Processing
+    Result artifact (read once per source; the value is identical for
+    every job in one source's run).
 
-    When the content contains the marker "TEXT:" followed by a newline,
-    everything after the first such marker line is the job text. Otherwise
-    the full content is returned (legacy requests without a metadata
-    section).
+    The processing result's "model" field records which producer actually
+    generated the responses ("deepseek-v4-flash" for the DeepSeek path,
+    "ginza-ja_ginza-5.2.0" for the deterministic path). When the artifact
+    is missing, unreadable, or its "model" field is absent/invalid, the
+    project MODEL_NAME constant is returned as a safe fallback so the
+    corpus still builds.
     """
-    marker = "TEXT:\n"
-    index = content.find(marker)
-    if index == -1:
-        return content
-    return content[index + len(marker):]
+    path = PROCESSING_RESULTS / f"{source_id}.processing_result.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return MODEL_NAME
+    if not isinstance(data, dict):
+        return MODEL_NAME
+    value = data.get("model")
+    if isinstance(value, str) and value:
+        return value
+    return MODEL_NAME
 
 
-def response_path_for(source_id, request_file, request_data):
+def response_path_for(source_id, job_file, job_data):
     """
-    Compute the expected response file path for a request.
+    Compute the expected response file path for a job.
 
-    Uses the request's job_number; falls back to the number embedded in
-    the request filename. The response naming convention is
+    Uses the job's job_number; falls back to the number embedded in
+    the job filename. The response naming convention is
     responses\\<source_id>\\response_<job_number:06d>.json.
     """
-    job_number = request_data.get("job_number")
+    job_number = job_data.get("job_number")
     if not (isinstance(job_number, int) and not isinstance(job_number, bool)):
-        stem = request_file.stem
+        stem = job_file.stem
         digits = stem.rsplit("_", 1)[-1]
         try:
             job_number = int(digits)
@@ -626,7 +669,8 @@ def response_path_for(source_id, request_file, request_data):
 
 def load_response(response_file):
     """
-    Load a raw DeepSeek response JSON file.
+    Load a raw parser response JSON file (either producer's response
+    artifact).
 
     Returns:
         (response_data, None) or (None, error_message).
@@ -642,11 +686,21 @@ def load_response(response_file):
 
 def extract_parser_content(raw_response):
     """
-    Extract the parser JSON string from choices[0].message.content.
+    Extract the parser data from a raw response file, for either producer.
+
+    DeepSeek path: the parser JSON is embedded as a JSON string in
+    choices[0].message.content, which is parsed here.
+
+    Deterministic path: the parser client writes its parsed dict
+    ({"source_name", "job_number", "sentences"}) directly as the response
+    artifact, so the dict itself is the parser data.
 
     Returns:
-        (content, None) or (None, error_message).
+        (parser_data, None) or (None, error_message).
     """
+    if isinstance(raw_response, dict) and isinstance(
+            raw_response.get("sentences"), list):
+        return raw_response, None
     try:
         choices = raw_response["choices"]
         content = choices[0]["message"]["content"]
@@ -654,7 +708,7 @@ def extract_parser_content(raw_response):
         return None, f"parser content missing: {ex}"
     if not isinstance(content, str) or not content:
         return None, "parser content is empty or not a string"
-    return content, None
+    return parse_parser_content(content)
 
 
 def parse_parser_content(content):
@@ -729,9 +783,9 @@ def append_log(log_file, line):
 # Job Processing (framework)
 # ============================================================
 
-def process_job(source_id, request_file, request_data,
+def process_job(source_id, job_file, job_data,
                 response_file, log_file, job_stats, global_index,
-                section_state):
+                section_state, model, prompt_version):
     """
     Process one job through the framework.
 
@@ -742,12 +796,15 @@ def process_job(source_id, request_file, request_data,
     canonical sentence IDs and section assignments remain consistent
     per source.
 
+    model is the per-source producer identity (read once per source).
+    prompt_version is the per-job best-effort provenance enrichment.
+
     Returns:
         (job_result dict, records list, global_index, section_state)
         records is the list of sentence records produced for this job.
     """
     result = {
-        "request_file": request_file.name,
+        "job_file": job_file.name,
         "response_file": response_file.name,
         "loaded": False,
         "parsed": False,
@@ -760,22 +817,15 @@ def process_job(source_id, request_file, request_data,
     raw_response, error = load_response(response_file)
     if error:
         result["errors"].append(error)
-        append_log(log_file, f"{timestamp()} LOAD-FAILED {request_file.name}: {error}")
+        append_log(log_file, f"{timestamp()} LOAD-FAILED {job_file.name}: {error}")
         job_stats["failed"] += 1
         return result, [], global_index, section_state
     result["loaded"] = True
 
-    content, error = extract_parser_content(raw_response)
+    parser_data, error = extract_parser_content(raw_response)
     if error:
         result["errors"].append(error)
-        append_log(log_file, f"{timestamp()} EXTRACT-FAILED {request_file.name}: {error}")
-        job_stats["failed"] += 1
-        return result, [], global_index, section_state
-
-    parser_data, error = parse_parser_content(content)
-    if error:
-        result["errors"].append(error)
-        append_log(log_file, f"{timestamp()} PARSE-FAILED {request_file.name}: {error}")
+        append_log(log_file, f"{timestamp()} EXTRACT-FAILED {job_file.name}: {error}")
         job_stats["failed"] += 1
         return result, [], global_index, section_state
     result["parsed"] = True
@@ -785,12 +835,12 @@ def process_job(source_id, request_file, request_data,
     # normalizer replaces parser sentence text, recomputes spans/chunk
     # text, and verifies reconstruction so the validator validates
     # canonical records.
-    job_text = extract_job_text(request_data)
-    if not job_text:
-        result["errors"].append("job text not found in request")
+    job_text = job_data.get("text")
+    if not isinstance(job_text, str) or not job_text:
+        result["errors"].append("job text not found in job")
         append_log(log_file,
-                   f"{timestamp()} CANONICALIZE-FAILED {request_file.name}: "
-                   f"job text not found in request")
+                   f"{timestamp()} CANONICALIZE-FAILED {job_file.name}: "
+                   f"job text not found in job")
         job_stats["failed"] += 1
         return result, [], global_index, section_state
     try:
@@ -798,18 +848,18 @@ def process_job(source_id, request_file, request_data,
     except CorpusBuilderError as exc:
         result["errors"].append(str(exc))
         append_log(log_file,
-                   f"{timestamp()} CANONICALIZE-FAILED {request_file.name}: {exc}")
+                   f"{timestamp()} CANONICALIZE-FAILED {job_file.name}: {exc}")
         job_stats["failed"] += 1
         return result, [], global_index, section_state
 
-    validation = validate_parser_output(canonicalized, request_data)
+    validation = validate_parser_output(canonicalized, job_data)
     if not validation["valid"]:
         result["errors"].extend(
             e["message"] for e in validation["errors"]
         )
         append_log(
             log_file,
-            f"{timestamp()} VALIDATION-FAILED {request_file.name}: "
+            f"{timestamp()} VALIDATION-FAILED {job_file.name}: "
             f"{len(validation['errors'])} error(s)",
         )
         for error in validation["errors"][:10]:
@@ -821,12 +871,12 @@ def process_job(source_id, request_file, request_data,
 
     # ---- Builder stages (deterministic recomputation) ----
     provenance = {
-        "source_id": request_data.get("source_id"),
-        "source": request_data.get("source_id"),
-        "source_file": request_data.get("source_file"),
-        "job_number": request_data.get("job_number"),
-        "model": MODEL_NAME,
-        "prompt_version": request_data.get("prompt_version"),
+        "source_id": job_data.get("source_id"),
+        "source": job_data.get("source_id"),
+        "source_file": job_data.get("cleaned_artifact"),
+        "job_number": job_data.get("job_number"),
+        "model": model,
+        "prompt_version": prompt_version,
     }
     records = []
 
@@ -845,7 +895,7 @@ def process_job(source_id, request_file, request_data,
 
     append_log(
         log_file,
-        f"{timestamp()} PROCESSED {request_file.name} "
+        f"{timestamp()} PROCESSED {job_file.name} "
         f"sentences={result['sentence_count']}",
     )
     return result, records, global_index, section_state
@@ -857,40 +907,42 @@ def process_job(source_id, request_file, request_data,
 
 def process_source(source_id, log_file, source_stats):
     """
-    Process every request for one source_id through the framework.
+    Process every job for one source_id through the framework.
 
     Returns:
         (source_stats dict, records list)
         records is the accumulated list of sentence records.
     """
-    request_files = request_files_for(source_id)
+    job_files = job_files_for(source_id)
     records = []
     global_index = 0
     section_state = new_section_state()
     expected_parts = []
+    model = model_for_source(source_id)
 
-    for request_file in request_files:
-        request_data, error = load_request(request_file)
+    for job_file in job_files:
+        job_data, error = load_job(job_file)
         if error:
             source_stats["failed"] += 1
-            append_log(log_file, f"{timestamp()} REQUEST-FAILED {request_file.name}: {error}")
+            append_log(log_file, f"{timestamp()} JOB-FAILED {job_file.name}: {error}")
             continue
 
-        # Lineage verification: the request's source_id must match the
+        # Lineage verification: the job's source_id must match the
         # requested source_id (verify over trust).
-        if request_data.get("source_id") != source_id:
+        if job_data.get("source_id") != source_id:
             source_stats["failed"] += 1
-            append_log(log_file, f"{timestamp()} LINEAGE-FAILED {request_file.name}")
+            append_log(log_file, f"{timestamp()} LINEAGE-FAILED {job_file.name}")
             continue
 
-        job_text = extract_job_text(request_data)
-        if job_text is not None:
+        job_text = job_data.get("text")
+        if isinstance(job_text, str):
             expected_parts.append(job_text)
-        response_file = response_path_for(source_id, request_file, request_data)
+        response_file = response_path_for(source_id, job_file, job_data)
+        prompt_version = request_prompt_version(source_id, job_data)
         job_result, job_records, global_index, section_state = process_job(
-            source_id, request_file, request_data,
+            source_id, job_file, job_data,
             response_file, log_file, source_stats,
-            global_index, section_state,
+            global_index, section_state, model, prompt_version,
         )
         if job_result["processed"]:
             records.extend(job_records)
@@ -990,9 +1042,9 @@ def run(source_id):
         write_log("unknown", "FAILED", ["missing source_id"])
         return 1
 
-    request_files = request_files_for(source_id)
-    if not request_files:
-        return fail(source_id, [f"no requests found for {source_id}"])
+    job_files = job_files_for(source_id)
+    if not job_files:
+        return fail(source_id, [f"no jobs found for {source_id}"])
 
     log_file = start_log()
     append_log(log_file, f"Run started: {timestamp()}")
@@ -1084,7 +1136,7 @@ def main(argv=None):
     parser.add_argument(
         "--source",
         required=True,
-        help="source_id of the requests to build a corpus for.",
+        help="source_id of the jobs to build a corpus for.",
     )
     args = parser.parse_args(argv)
     return run(args.source)

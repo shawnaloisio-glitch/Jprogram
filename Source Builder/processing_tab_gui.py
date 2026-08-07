@@ -19,10 +19,8 @@ The window opens centred over the Source Builder window using the same
 child-window placement helper as other dialogs.
 """
 
-import json
 import threading
 import tkinter as tk
-from pathlib import Path
 from tkinter import messagebox, ttk
 
 import diagnostics
@@ -228,8 +226,8 @@ class ProcessingTabWindow:
                     on_progress=self._on_progress)
                 self.window.after(0, lambda: self._apply_results(results))
             except Exception as exc:
-                self.window.after(
-                    0, lambda: self._show_run_error(str(exc)))
+                msg = str(exc)
+                self.window.after(0, lambda: self._show_run_error(msg))
             finally:
                 self.window.after(0, self._reset_busy)
 

@@ -20,7 +20,6 @@ This stage does NOT:
 """
 
 import argparse
-import hashlib
 import json
 import os
 import sys

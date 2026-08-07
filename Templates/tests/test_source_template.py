@@ -97,12 +97,12 @@ def _():
 def _():
     trans = (TEMPLATES / "transcript_template.txt").read_text(encoding="utf-8")
     sub = (TEMPLATES / "subtitle_template.txt").read_text(encoding="utf-8")
-    check("transcript type", "source_type: podcast_transcript" in trans)
-    check("subtitle type", "source_type: anime_subtitle" in sub)
+    check("transcript type", "source_type: clean_text" in trans)
+    check("subtitle type", "source_type: clean_text" in sub)
     # After normalizing the source_type line, the files should be identical.
-    norm_trans = trans.replace("source_type: podcast_transcript",
+    norm_trans = trans.replace("source_type: clean_text",
                                "source_type: <TYPE>")
-    norm_sub = sub.replace("source_type: anime_subtitle",
+    norm_sub = sub.replace("source_type: clean_text",
                            "source_type: <TYPE>")
     check("identical apart from source_type", norm_trans == norm_sub)
 

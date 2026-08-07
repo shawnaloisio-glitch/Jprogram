@@ -18,12 +18,17 @@ Stages, in order:
     2. clean    - Transcript Cleaner (no cost, no network)
     3. jobs     - Job Builder (no cost, no network)
     4. requests - Request Builder (no cost, no network)
-    5. send     - DeepSeek Client -- REAL API CALL, spends real money.
-                  Requires a valid DEEPSEEK_API_KEY environment variable.
-    6. corpus   - Corpus Builder (no cost, no network)
-    7. check    - Run frequency_analyzer / distribution_analyzer /
-                  chunk_analyzer on the real output and compare against
-                  qc_test_001_expected.json.
+     5. send     - DeepSeek Client -- REAL API CALL, spends real money.
+                   Requires a valid DEEPSEEK_API_KEY environment variable.
+     6. parse    - Deterministic Parser Client (GiNZA via the project's
+                   .venv, no cost, no network). Free/local alternative to
+                   "send" for testing the deterministic parser; same
+                   job-in/response-out contract, but deterministic and
+                   offline.
+     7. corpus   - Corpus Builder (no cost, no network)
+     8. check    - Run frequency_analyzer / distribution_analyzer /
+                   chunk_analyzer on the real output and compare against
+                   qc_test_001_expected.json.
 
 Usage:
     python "QC Test Harness/run_qc_pipeline.py" setup
@@ -31,6 +36,7 @@ Usage:
     python "QC Test Harness/run_qc_pipeline.py" jobs
     python "QC Test Harness/run_qc_pipeline.py" requests
     python "QC Test Harness/run_qc_pipeline.py" send      # spends money
+    python "QC Test Harness/run_qc_pipeline.py" parse     # free, no network
     python "QC Test Harness/run_qc_pipeline.py" corpus
     python "QC Test Harness/run_qc_pipeline.py" check
     python "QC Test Harness/run_qc_pipeline.py" all       # runs everything, including send
@@ -40,7 +46,7 @@ source_id + same sha256 -> reports "exists", creates nothing new).
 Re-running "send" is also safe if a response already exists (DeepSeek
 Client resumes rather than re-sending), but if you genuinely want a fresh
 parse, delete the response file under
-responses\\podcast_transcript_qc-test-001\\ first.
+responses\\clean_text_qc-test-001\\ first.
 """
 
 import json
@@ -57,10 +63,10 @@ sys.path.insert(0, str(PROJECT_ROOT / "Source Intake"))
 sys.path.insert(0, str(PROJECT_ROOT / "Analysis"))
 
 SOURCE_NAME = "qc_test_001"
-SOURCE_TYPE = "podcast_transcript"
+SOURCE_TYPE = "clean_text"
 ORIGIN = "qc_test"
 LANGUAGE = "ja"
-SOURCE_ID = "podcast_transcript_qc-test-001"
+SOURCE_ID = "clean_text_qc-test-001"
 
 
 def stage_setup():
@@ -123,6 +129,12 @@ def stage_requests():
 def stage_send():
     print("*** This stage makes a real DeepSeek API call and spends real money. ***")
     return _run([sys.executable, str(PROJECT_ROOT / "Data Processor" / "deepseek_client.py"),
+                 "--source", SOURCE_ID])
+
+
+def stage_parse():
+    venv_python = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+    return _run([str(venv_python), str(PROJECT_ROOT / "Data Processor" / "deterministic_parser_client.py"),
                  "--source", SOURCE_ID])
 
 
@@ -201,6 +213,7 @@ STAGES = {
     "jobs": stage_jobs,
     "requests": stage_requests,
     "send": stage_send,
+    "parse": stage_parse,
     "corpus": stage_corpus,
     "check": stage_check,
 }

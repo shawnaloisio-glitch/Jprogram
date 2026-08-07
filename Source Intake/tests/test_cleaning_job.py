@@ -24,7 +24,7 @@ def job_args():
     return {
         "source_id": "pod_conteppei_ep051",
         "raw_path": "Raw Transcripts/con.txt",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "cleaning_profile": "transcript_standard_v1",
         "cleaner_version": "1.2.0",
         "output_path": "Cleaned Archive/pod_conteppei_ep051.clean.txt",

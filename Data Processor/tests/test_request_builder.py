@@ -546,7 +546,7 @@ def _():
         check("user content matches user_content()",
               user_content == rb.user_content("pod_conteppei_ep051", 1, text))
         check("payload has source_id line",
-              f"source_id: pod_conteppei_ep051" in user_content)
+              "source_id: pod_conteppei_ep051" in user_content)
         check("payload has job_number line", "job_number: 1" in user_content)
     finally:
         restore(saved)

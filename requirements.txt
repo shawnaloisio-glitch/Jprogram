@@ -1,0 +1,28 @@
+# Japanese Corpus Pipeline — runtime dependencies
+#
+# Confirmed 2026-08-06 by scanning every import statement in the repo:
+# the pipeline currently uses only the Python standard library (argparse,
+# json, pathlib, sqlite3, tkinter, urllib, etc.) — no third-party runtime
+# dependencies exist yet.
+#
+# This file exists so that changes ahead (e.g. the deterministic-parser
+# branch's GiNZA/SudachiPy work) have a real place to declare new
+# dependencies from the start, instead of drifting undeclared.
+#
+# GiNZA/SudachiPy stack for the deterministic-parser work
+# (Corpus Change Study, Phase 2). Pinned exact versions confirmed working
+# on Python 3.14.6 in Jprogram/.venv (2026-08-07). Notes:
+#   - click is pinned explicitly because spacy 3.8.13 imports it
+#     unconditionally in spacy/cli/_util.py but omits it from its own
+#     requires_dist metadata (upstream packaging gap).
+#   - ja_ginza's config.cfg ships compound_splitter.split_mode = null,
+#     which spacy 3.8.13's strict config validation rejects on load;
+#     the working invocation is:
+#       spacy.load("ja_ginza", config={"components": {"compound_splitter":
+#       {"split_mode": "A"}}})
+ginza==5.2.0
+ja-ginza==5.2.0
+spacy==3.8.13
+click==8.4.2
+SudachiPy==0.6.11
+SudachiDict-core==20260723

@@ -34,8 +34,6 @@ Data Processor/Request Results/
 Data Processor/Corpus Results/
 Analysis/outputs/
 Diagnostics/
-Raw Subtitles/
-Raw Transcripts/
 Intake/
 
 # ---- Runtime logs (preserve the README only) -------------------
@@ -52,3 +50,6 @@ __pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+
+# ---- Project-local virtual environment --------------------------
+.venv/

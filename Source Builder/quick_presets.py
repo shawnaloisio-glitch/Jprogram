@@ -157,21 +157,17 @@ def _write_presets(presets, path):
             f"cannot write presets: {presets_path}: {exc}") from exc
 
 
-def preset_population(preset, collection_ids, source_types, origins,
-                      collection_default_source_type=None):
+def preset_population(preset, collection_ids, source_types, origins):
     """
     Compute the one-shot field updates a preset applies (pure, testable).
 
     Only values that exist in the given Config vocabularies are applied.
-    If a collection preset carries no source_type, it falls back to the
-    collection's declared default via collection_default_source_type.
 
     Input:
         preset (dict|None),
         collection_ids (list of str),
         source_types (list of str),
-        origins (list of str),
-        collection_default_source_type (callable(str)->str|None, optional).
+        origins (list of str).
 
     Output: dict with any of identity_type, collection_id, source_type,
     origin keys that should be populated. Empty dict when nothing applies.
@@ -191,10 +187,6 @@ def preset_population(preset, collection_ids, source_types, origins,
             updates["collection_id"] = preset["collection_id"]
 
     source_type = preset.get("source_type")
-    if source_type not in source_types and identity_type == "collection":
-        if collection_default_source_type is not None:
-            source_type = collection_default_source_type(
-                preset.get("collection_id") or "")
     if source_type in source_types:
         updates["source_type"] = source_type
 

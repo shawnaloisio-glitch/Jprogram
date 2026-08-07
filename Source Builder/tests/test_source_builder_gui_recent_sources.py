@@ -42,6 +42,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -50,11 +51,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -65,11 +66,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -77,9 +79,8 @@ def sandbox():
 def fill_and_save(app, ep):
     app.collection_var.set("teppei_beginner")
     app.episode_var.set(str(ep))
-    app.source_type_var.set("podcast_transcript")
+    app.source_type_var.set("clean_text")
     app.origin_var.set("con_teppei_podcast")
-    app.material_level_var.set("1")
     app.text_area.insert("1.0", f"エピソード{ep}の本文。\n")
     app._on_text_changed()
     app.on_save()
@@ -150,9 +151,12 @@ def _():
         try:
             root.update_idletasks()
             root.update()
-            gap = (app.episode_label.winfo_y()
-                   - app.collection_label.winfo_y())
-            check("compact gap", gap < 80)
+            gap_c_o = (app.origin_label.winfo_y()
+                       - app.collection_label.winfo_y())
+            check("compact gap collection-origin", gap_c_o < 80)
+            gap_o_e = (app.episode_label.winfo_y()
+                       - app.origin_label.winfo_y())
+            check("compact gap origin-episode", gap_o_e < 80)
             check("text area expanded", app.text_area.winfo_height() > 60)
         finally:
             root.destroy()
@@ -252,7 +256,7 @@ def _():
         try:
             fill_and_save(app, 65)
             for item in list_items(app):
-                check("no source_id", "podcast_transcript_teppei-beginner_ep065"
+                check("no source_id", "clean_text_teppei-beginner_ep065"
                       not in item)
                 check("no path", "Sources" not in item and "\\" not in item)
                 check("no json", ".json" not in item)
@@ -291,12 +295,12 @@ def _():
     try:
         root = tk.Tk()
         root.withdraw()
-        app = gui.SourceBuilderApp(root)
+        gui.SourceBuilderApp(root)
         try:
             # Create 12 sources via the controller (bypassing GUI) then refresh.
             for ep in range(1, 13):
                 controller.create_collection_source(
-                    "teppei_beginner", ep, "podcast_transcript",
+                    "teppei_beginner", ep, "clean_text",
                     "con_teppei_podcast", f"x{ep}\n", material_level=1)
                 pkg_path = source_package.package_path_for(
                     controller.source_path("teppei_beginner", ep))

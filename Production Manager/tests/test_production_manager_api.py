@@ -49,7 +49,6 @@ def setup():
         "CORPUS_RESULTS": root / "Corpus Results",
         "JSONL": root / "jsonl",
         "DATA_PROCESSOR": root / "Data Processor",
-        "SUBTITLE_CLEANER": root / "Subtitle Cleaner",
         "TRANSCRIPT_CLEANER": root / "Transcript Cleaner",
         "LOG_PRODUCTION_MANAGER": root / "Logs" / "Production Manager",
     }
@@ -57,10 +56,9 @@ def setup():
         folder.mkdir(parents=True)
 
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
-    (dirs["SUBTITLE_CLEANER"] / "clean_subtitles.py").write_text(
-        "", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
 
@@ -80,7 +78,7 @@ def add_registered(dirs, sid=SID):
         "schema_version": "1", "source_id": sid,
         "original_filename": "con.txt",
         "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "source_type": "podcast_transcript", "format": "txt",
+        "source_type": "clean_text", "format": "txt",
         "language": "ja", "cleaning_profile": "transcript_standard_v1",
         "cleaner_version": "1.0",
     })
@@ -90,7 +88,7 @@ def add_cleaning_job(dirs, sid=SID):
     write_json(dirs["CLEANING_JOBS"] / f"{sid}.cleaning_job.json", {
         "schema_version": "1", "source_id": sid,
         "raw_path": "Raw Transcripts/con.txt",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "cleaning_profile": "transcript_standard_v1",
         "cleaner_version": "1.0",
         "output_path": f"Cleaned Archive/{sid}.clean.txt",
@@ -262,7 +260,7 @@ def _():
                     "source_name": sid,
                     "messages": [{"role": "system", "content": "p"},
                                  {"role": "user", "content": "こんにちは。"}]})
-            elif stage == "deepseek_client.py":
+            elif stage == "deterministic_parser_client.py":
                 write_json(dirs["PROCESSING_RESULTS"] / f"{sid}.processing_result.json", {
                     "schema_version": "1", "source_id": sid, "model": "m",
                     "requests_processed": 1,
@@ -346,7 +344,6 @@ def _():
 
 @test("8. CLI uses thin wrapper (argparse isolated in main)")
 def _():
-    import inspect
     source = pathlib.Path(PRODUCTION_MANAGER / "production_manager.py").read_text(
         encoding="utf-8")
     # argparse should appear only in the CLI entry section (main).

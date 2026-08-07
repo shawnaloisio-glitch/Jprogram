@@ -556,10 +556,11 @@ while minimizing API cost and maximizing reproducibility.
 
 # AI-Assisted Development
 
-This project is built with AI assistance under an Owner/Advisor/Coder/Auditor protocol. Three files carry standing operating instructions and are auto-loaded by their respective tools — they are not duplicated here:
+This project is built with AI assistance under an Owner/Advisor/Coder/Auditor protocol. Two files carry standing operating instructions and are auto-loaded by their respective tools — they are not duplicated here:
 
-- `CLAUDE.md` — Advisor and Auditor instructions (Claude Code)
-- `QWEN.md` — Auditor instructions for frozen-component-tier review (Qwen Code)
+- `CLAUDE.md` — Advisor and Auditor instructions (Claude Code). Auditor is filled by a fresh Claude Code session/subagent, not a separate vendor — see that file for why.
 - `AGENTS.md` — Coder instructions (OpenCode)
+
+(`QWEN.md`, the original cross-vendor Auditor design, is retired — see `Archive/QWEN.md`.)
 
 Current project state, architecture, and next planned work live in `JPROGRAM_SESSION_BOOTSTRAP.md`, refreshed each session.

@@ -5,8 +5,8 @@ metadata_editor_gui.py
 Japanese Corpus Pipeline - Source Builder metadata editor window.
 
 A child window opened from Source Builder -> Edit Metadata... It manages the
-controlled vocabularies (Collections, Source Types, Origins, Styles) that
-populate Source Builder dropdowns and Quick Presets.
+controlled vocabularies (Collections, Origins) that populate Source Builder
+dropdowns and Quick Presets.
 
 This window only presents and drives metadata_editor.py; it contains no
 business logic of its own.
@@ -54,7 +54,7 @@ def _raw_value(field, display):
 
 
 class MetadataEditorWindow:
-    """Tabs: Collections / Source Types / Origins / Styles."""
+    """Tabs: Collections / Origins."""
 
     def __init__(self, parent_app):
         self.parent_app = parent_app
@@ -69,9 +69,7 @@ class MetadataEditorWindow:
         self.notebook.pack(fill="both", expand=True)
 
         self._build_collections_tab()
-        self._build_source_types_tab()
         self._build_origins_tab()
-        self._build_styles_tab()
 
         ttk.Button(self.window, text="Close",
                    command=self.window.destroy).pack(pady=(8, 8))
@@ -85,8 +83,7 @@ class MetadataEditorWindow:
     # ============================================================
 
     def _build_tree_tab(self, title, columns, display_fn, load_fn,
-                        add_fn, edit_fn, form_fields, helper_text=None,
-                        add_hidden_keys=()):
+                        add_fn, edit_fn, form_fields, helper_text=None):
         """Build a generic tree tab with Add / Edit actions."""
         id_key = form_fields[0][0]  # first field is the id
         frame = ttk.Frame(self.notebook, padding=8)
@@ -110,8 +107,7 @@ class MetadataEditorWindow:
         ttk.Button(actions, text="Add",
                    command=lambda: self._add_action(
                        tree, load_fn, add_fn, form_fields,
-                       display_fn, helper_text,
-                       add_hidden_keys=add_hidden_keys)).pack(side="left")
+                       display_fn, helper_text)).pack(side="left")
         ttk.Button(actions, text="Edit",
                    command=lambda: self._edit_action(
                        tree, load_fn, edit_fn, form_fields,
@@ -141,9 +137,8 @@ class MetadataEditorWindow:
     # ============================================================
 
     def _add_action(self, tree, load_fn, add_fn, form_fields, display_fn,
-                    helper_text=None, add_hidden_keys=()):
-        result = self._open_form("Add", form_fields, helper_text=helper_text,
-                                 add_hidden_keys=add_hidden_keys)
+                    helper_text=None):
+        result = self._open_form("Add", form_fields, helper_text=helper_text)
         if result is None:
             return
         try:
@@ -178,7 +173,7 @@ class MetadataEditorWindow:
     # ============================================================
 
     def _open_form(self, title, fields, original=None, locked_key=None,
-                   helper_text=None, add_hidden_keys=()):
+                   helper_text=None):
         """
         Open a small form dialog for the given fields.
 
@@ -190,9 +185,6 @@ class MetadataEditorWindow:
         locked_key (str|None): when editing, this identifier field is shown
         read-only (with a lock indicator) and is not returned, keeping it
         immutable after creation.
-        add_hidden_keys (iterable of str): fields entirely absent from the
-        Add dialog (e.g. an autoincrement id the user never types); the same
-        fields are shown, locked, when editing.
         helper_text (str|None): explanatory text shown at the bottom of the
         dialog.
         Returns a dict {key: value} or None on cancel.
@@ -211,32 +203,28 @@ class MetadataEditorWindow:
         body.grid(row=0, column=0, sticky="nsew")
 
         combos = {}
-        form_row = 0
-        for field in fields:
+        for row, field in enumerate(fields):
             key, label, kind = field[0], field[1], field[2]
-            if original is None and key in add_hidden_keys:
-                continue
             if original is not None and locked_key == key:
                 label = f"{label} 🔒"
             label_widget = ttk.Label(body, text=label)
-            label_widget.grid(row=form_row, column=0, sticky="w", pady=2)
+            label_widget.grid(row=row, column=0, sticky="w", pady=2)
             labels[key] = label_widget
             if kind == "combo":
                 var = tk.StringVar()
                 combo = ttk.Combobox(body, textvariable=var,
                                      values=_combo_display_values(field),
                                      state="readonly", width=28)
-                combo.grid(row=form_row, column=1, sticky="w", pady=2)
+                combo.grid(row=row, column=1, sticky="w", pady=2)
                 variables[key] = var
                 widgets[key] = combo
                 combos[key] = combo
             else:
                 var = tk.StringVar()
                 entry = ttk.Entry(body, textvariable=var, width=30)
-                entry.grid(row=form_row, column=1, sticky="w", pady=2)
+                entry.grid(row=row, column=1, sticky="w", pady=2)
                 variables[key] = var
                 widgets[key] = entry
-            form_row += 1
 
         # Pre-fill for edit.
         if original is not None:
@@ -247,7 +235,7 @@ class MetadataEditorWindow:
             if locked_key and locked_key in widgets:
                 widgets[locked_key].configure(state="readonly")
 
-        row = form_row
+        row = len(fields)
         if helper_text:
             ttk.Label(body, text=helper_text, foreground="#5a6a7a",
                       wraplength=340, justify="left").grid(
@@ -291,34 +279,22 @@ class MetadataEditorWindow:
     # ============================================================
 
     def _build_collections_tab(self):
-        source_types = [s["source_type_id"]
-                        for s in metadata_editor.load_source_types()]
-        processable_source_types = [
-            s for s in source_types if metadata_editor.is_processable(s)]
-
         def display(item):
-            return (item["collection_id"], item["display_name"],
-                    item.get("default_source_type") or "")
+            return (item["collection_id"], item["display_name"])
 
         def add(**kw):
             return metadata_editor.add_collection(
                 kw["collection_id"], kw["display_name"],
-                default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types,
                 sequencing=kw.get("sequencing") or None)
 
         def edit(original_id, **kw):
             return metadata_editor.edit_collection(
                 original_id, kw["display_name"],
-                default_source_type=kw.get("default_source_type") or None,
-                source_type_ids=source_types,
                 sequencing=kw.get("sequencing") or None)
 
         fields = [
             ("collection_id", "Collection ID (folder name)", "entry"),
             ("display_name", "Display Name", "entry"),
-            ("default_source_type", "Default Source Type", "combo",
-             processable_source_types),
             ("sequencing", "Sequencing", "combo",
              metadata_editor.SEQUENCING_VALUES, SEQUENCING_LABELS),
         ]
@@ -326,32 +302,8 @@ class MetadataEditorWindow:
                   "prefix. Choose carefully. It cannot be changed later.")
         self._build_tree_tab(
             "Collections",
-            [("col_id", "Collection ID"), ("display_name", "Display Name"),
-             ("default", "Default Source Type")],
+            [("col_id", "Collection ID"), ("display_name", "Display Name")],
             display, metadata_editor.load_collections, add, edit, fields,
-            helper_text=helper)
-
-    def _build_source_types_tab(self):
-        def display(item):
-            return (item["source_type_id"], item["display_name"])
-
-        def add(**kw):
-            return metadata_editor.add_source_type(kw["source_type_id"],
-                                                   kw["display_name"])
-
-        def edit(original_id, **kw):
-            return metadata_editor.edit_source_type(
-                original_id, kw["display_name"])
-
-        fields = [
-            ("source_type_id", "Source Type ID", "entry"),
-            ("display_name", "Display Name", "entry"),
-        ]
-        helper = "Internal identifier used by presets and validation."
-        self._build_tree_tab(
-            "Source Types",
-            [("col_id", "Source Type ID"), ("display_name", "Display Name")],
-            display, metadata_editor.load_source_types, add, edit, fields,
             helper_text=helper)
 
     def _build_origins_tab(self):
@@ -376,24 +328,3 @@ class MetadataEditorWindow:
             [("col_id", "Origin ID"), ("display_name", "Display Name")],
             display, metadata_editor.load_origins, add, edit, fields,
             helper_text=helper)
-
-    def _build_styles_tab(self):
-        def display(item):
-            return (item["style_id"], item["display_name"])
-
-        def add(**kw):
-            return metadata_editor.add_style(kw["display_name"])
-
-        def edit(original_id, **kw):
-            return metadata_editor.edit_style(original_id, kw["display_name"])
-
-        fields = [
-            ("style_id", "Style ID", "entry"),
-            ("display_name", "Display Name", "entry"),
-        ]
-        helper = "Style IDs are assigned automatically."
-        self._build_tree_tab(
-            "Styles",
-            [("col_id", "Style ID"), ("display_name", "Display Name")],
-            display, metadata_editor.load_styles, add, edit, fields,
-            helper_text=helper, add_hidden_keys=("style_id",))

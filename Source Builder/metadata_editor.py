@@ -16,15 +16,14 @@ before modification.
 Canonical on-disk forms (preserving the existing top-level structure):
 
 - Config\\collections.json:
-    {"collections": [{"collection_id": str, "name": str, "source_type": str,
+    {"collections": [{"collection_id": str, "name": str,
                       "sequencing": str}]}
-  "name" is the display name; "source_type" is the optional default source
-  type for the collection; "sequencing" is "episodic" or "auto" (default
-  "episodic" when absent).
+  "name" is the display name; "sequencing" is "episodic" or "auto"
+  (default "episodic" when absent).
 - Config\\source_types.json:
     {"source_types": [{"source_type_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
-- Config\\origins.json:
+- Workspace Config\\origins.json (customer data, like collections):
     {"origins": [{"origin_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
 - Config\\styles.json:
@@ -68,14 +67,17 @@ class MetadataError(Exception):
 def _config_path(name, path=None):
     """Return the config path for a named vocabulary.
 
-    Collections are customer/runtime configuration and resolve to
-    paths.COLLECTIONS_CONFIG (workspace) when no explicit path is given.
-    source_types / origins remain repository product configuration.
+    Collections and origins are customer/runtime configuration and resolve
+    to the workspace (paths.COLLECTIONS_CONFIG / paths.ORIGINS_CONFIG) when
+    no explicit path is given. source_types remains repository product
+    configuration.
     """
     if path is not None:
         return Path(path)
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
+    if name == "origins":
+        return paths.ORIGINS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -85,6 +87,8 @@ def _sibling_path(path, name):
         return Path(path).with_name(FILES[name])
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
+    if name == "origins":
+        return paths.ORIGINS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -130,7 +134,7 @@ def load_collections(path=None):
     """
     Load collections as a list of dicts:
         [{"collection_id": str, "display_name": str,
-          "default_source_type": str | None}, ...]
+          "sequencing": str}, ...]
     """
     data = _read_json(_config_path("collections", path))
     if data is None:
@@ -152,7 +156,6 @@ def load_collections(path=None):
             "collection_id": collection_id,
             "display_name": display_name if isinstance(display_name, str)
             else collection_id,
-            "default_source_type": item.get("source_type"),
             "sequencing": item.get("sequencing", "episodic"),
         })
     return result
@@ -286,9 +289,9 @@ def _check_unique(value, existing, original=None, label=None):
     return []
 
 
-def validate_collection(collection_id, display_name, default_source_type,
-                        existing_ids, original_id=None, source_type_ids=None,
-                        sequencing=None, existing_display_names=None,
+def validate_collection(collection_id, display_name, existing_ids,
+                        original_id=None, sequencing=None,
+                        existing_display_names=None,
                         original_display_name=None):
     """Validate a collection entry; return list of errors."""
     errors = validate_id(collection_id, "collection_id")
@@ -299,11 +302,6 @@ def validate_collection(collection_id, display_name, default_source_type,
             else display_name
         errors += _check_unique(normalized, existing_display_names,
                                 original_display_name, label="display name")
-    if default_source_type and source_type_ids is not None:
-        if default_source_type not in source_type_ids:
-            errors.append(
-                f"default source type {default_source_type} is not a known "
-                f"source type")
     if sequencing is not None and sequencing not in SEQUENCING_VALUES:
         errors.append(
             f"sequencing must be 'episodic' or 'auto' (got {sequencing!r})")
@@ -358,7 +356,6 @@ def _raw_collection(item):
     return {
         "collection_id": item["collection_id"],
         "name": item["display_name"],
-        "source_type": item.get("default_source_type") or "",
         "sequencing": item.get("sequencing", "episodic"),
     }
 
@@ -410,30 +407,26 @@ def save_styles(items, path=None):
 # CRUD
 # ============================================================
 
-def add_collection(collection_id, display_name, default_source_type=None,
-                   path=None, source_type_ids=None, sequencing=None):
+def add_collection(collection_id, display_name, path=None, sequencing=None):
     """Add a collection; raises MetadataError on invalid input."""
     items = load_collections(path)
     existing = [c["collection_id"] for c in items]
     existing_names = [c["display_name"] for c in items]
     errors = validate_collection(
-        collection_id, display_name, default_source_type, existing,
-        source_type_ids=source_type_ids, sequencing=sequencing,
+        collection_id, display_name, existing, sequencing=sequencing,
         existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({
         "collection_id": collection_id,
         "display_name": display_name.strip(),
-        "default_source_type": default_source_type or None,
         "sequencing": sequencing if sequencing is not None else "episodic",
     })
     save_collections(items, path)
     return items
 
 
-def edit_collection(original_id, display_name, default_source_type=None,
-                    path=None, source_type_ids=None, sequencing=None):
+def edit_collection(original_id, display_name, path=None, sequencing=None):
     """
     Edit a collection's editable fields by original_id.
 
@@ -446,15 +439,13 @@ def edit_collection(original_id, display_name, default_source_type=None,
             existing_ids = [c["collection_id"] for c in items]
             existing_names = [c["display_name"] for c in items]
             errors = validate_collection(
-                item["collection_id"], display_name, default_source_type,
-                existing_ids, original_id=item["collection_id"],
-                source_type_ids=source_type_ids, sequencing=sequencing,
+                item["collection_id"], display_name, existing_ids,
+                original_id=item["collection_id"], sequencing=sequencing,
                 existing_display_names=existing_names,
                 original_display_name=item["display_name"])
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
-            item["default_source_type"] = default_source_type or None
             if sequencing is not None:
                 item["sequencing"] = sequencing
             break
@@ -536,11 +527,9 @@ def edit_source_type(original_id, display_name, path=None):
     return items
 
 
-def delete_source_type(source_type_id, path=None, presets=None,
-                       sources_root=None):
+def delete_source_type(source_type_id, path=None, presets=None):
     """
-    Delete a source type; blocked when referenced by presets or by existing
-    source files (a collection that has sources using it as its default).
+    Delete a source type; blocked when referenced by presets.
     """
     items = load_source_types(path)
     references = preset_references(presets)
@@ -548,17 +537,6 @@ def delete_source_type(source_type_id, path=None, presets=None,
         raise MetadataError(
             f"source type {source_type_id} is referenced by a preset; "
             f"edit the preset first")
-    # A source type used as the default of a collection with source files
-    # cannot be deleted.
-    collections_path = _sibling_path(path, "collections")
-    for collection in load_collections(collections_path):
-        if collection.get("default_source_type") == source_type_id:
-            if collection_has_sources(collection["collection_id"],
-                                      sources_root):
-                raise MetadataError(
-                    f"source type {source_type_id} is the default source type "
-                    f"of collection {collection['collection_id']} which has "
-                    f"existing source files")
     remaining = [s for s in items if s["source_type_id"] != source_type_id]
     if len(remaining) == len(items):
         raise MetadataError(f"source type not found: {source_type_id}")

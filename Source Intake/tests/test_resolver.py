@@ -27,7 +27,7 @@ def registry_entry():
         "source_id": "pod_conteppei_ep051",
         "original_filename": "con.txt",
         "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "format": "txt",
         "language": "ja",
         "cleaning_profile": "transcript_standard_v1",
@@ -60,9 +60,7 @@ def raises_resolver(fn):
 
 @test("raw_dir_for resolves known types")
 def _():
-    check("anime_subtitle", resolver.raw_dir_for("anime_subtitle")
-          == PROJECT_ROOT / "Raw Subtitles")
-    check("podcast_transcript", resolver.raw_dir_for("podcast_transcript")
+    check("clean_text", resolver.raw_dir_for("clean_text")
           == PROJECT_ROOT / "Raw Transcripts")
 
 
@@ -74,9 +72,7 @@ def _():
 
 @test("cleaning_profile_for resolves known types")
 def _():
-    check("anime_subtitle", resolver.cleaning_profile_for("anime_subtitle")
-          == "subtitle_standard_v1")
-    check("podcast_transcript", resolver.cleaning_profile_for("podcast_transcript")
+    check("clean_text", resolver.cleaning_profile_for("clean_text")
           == "transcript_standard_v1")
 
 
@@ -88,8 +84,6 @@ def _():
 
 @test("cleaner_and_version_for resolves known profiles")
 def _():
-    check("subtitle", resolver.cleaner_and_version_for("subtitle_standard_v1")
-          == ("clean_subtitles", "1.0"))
     check("transcript", resolver.cleaner_and_version_for("transcript_standard_v1")
           == ("clean_transcript", "1.0"))
 
@@ -114,7 +108,7 @@ def _():
     check("source_id", job["source_id"] == "pod_conteppei_ep051")
     check("raw_path", job["raw_path"]
           == str(PROJECT_ROOT / "Raw Transcripts" / "con.txt"))
-    check("source_type", job["source_type"] == "podcast_transcript")
+    check("source_type", job["source_type"] == "clean_text")
     check("cleaning_profile", job["cleaning_profile"] == "transcript_standard_v1")
     check("cleaner_version", job["cleaner_version"] == "1.0")
     check("output_path", job["output_path"]
@@ -160,7 +154,7 @@ def _():
 def _():
     entry = registry_entry()
     check("raw_dir deterministic",
-          resolver.raw_dir_for("anime_subtitle") == resolver.raw_dir_for("anime_subtitle"))
+          resolver.raw_dir_for("clean_text") == resolver.raw_dir_for("clean_text"))
     check("job fields deterministic",
           resolver.cleaning_job_fields(entry) == resolver.cleaning_job_fields(entry))
 

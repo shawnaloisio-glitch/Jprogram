@@ -44,10 +44,10 @@ def make_sources(sources_root):
     """Create sandbox sources: one collection package + one standalone."""
     sources_root.mkdir(parents=True, exist_ok=True)
     result = controller.create_collection_source(
-        "teppei_beginner", 58, "podcast_transcript", "con_teppei_podcast",
+        "teppei_beginner", 58, "clean_text", "con_teppei_podcast",
         "こんにちは。\n", material_level=1)
     standalone = controller.create_standalone_source(
-        "nhk_weather", "podcast_transcript", "nhk_news", "天気です。\n",
+        "nhk_weather", "clean_text", "nhk_news", "天気です。\n",
         material_level=1)
     return result, standalone
 
@@ -83,7 +83,6 @@ def check(name, cond, detail=""):
 
 @test("discover_packages finds collection and standalone packages")
 def _():
-    import config_loader
     root = pathlib.Path(tempfile.mkdtemp())
     sources_root = root / "Sources"
     config_dir = root / "Config"
@@ -91,11 +90,11 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -121,11 +120,11 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -135,7 +134,7 @@ def _():
         # sort would put 10 before 2 and 1000 before 999.
         for ep in (2, 10, 999, 1000):
             controller.create_collection_source(
-                "teppei_beginner", ep, "podcast_transcript",
+                "teppei_beginner", ep, "clean_text",
                 "con_teppei_podcast", f"episode {ep}\n", material_level=1)
         packages = processing_tab.discover_packages(sources_root)
         episodes = [p.get("episode") for p in packages]
@@ -153,23 +152,23 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
         controller.create_collection_source(
-            "teppei_beginner", 3, "podcast_transcript",
+            "teppei_beginner", 3, "clean_text",
             "con_teppei_podcast", "ok\n", material_level=1)
         # A hand-written sidecar with a non-numeric episode must not crash
         # the sort.
         (sources_root / "teppei_beginner_bad.source.json").write_text(json.dumps({
-            "source_id": "podcast_transcript_teppei-beginner_bad",
+            "source_id": "clean_text_teppei-beginner_bad",
             "collection_id": "teppei_beginner",
             "episode": "abc",
         }), encoding="utf-8")
@@ -185,13 +184,13 @@ def _():
 @test("human_label never exposes source_id")
 def _():
     package = {
-        "source_id": "podcast_transcript_teppei-beginner_ep058",
+        "source_id": "clean_text_teppei-beginner_ep058",
         "collection_id": "teppei_beginner",
         "episode": 58,
     }
     label = processing_tab.human_label(package)
     check("label has display text", "Episode 58" in label)
-    check("no source_id", "podcast_transcript_teppei-beginner" not in label)
+    check("no source_id", "clean_text_teppei-beginner" not in label)
 
 
 @test("simple_status maps corpus_available to Complete")
@@ -207,7 +206,7 @@ def _():
     status, message = processing_tab.simple_status(
         {}, {"state": "failed", "failed_stage": "api"})
     check("failed", status == processing_tab.STATUS_FAILED)
-    check("friendly api message", message == "Failed during AI processing")
+    check("friendly api message", message == "Failed during parsing")
 
 
 @test("simple_status maps unregistered to Pending")
@@ -226,7 +225,7 @@ def _():
 @test("friendly_failure_message hides technical stage names")
 def _():
     check("api", processing_tab.friendly_failure_message(
-        {"failed_stage": "api"}) == "Failed during AI processing")
+        {"failed_stage": "api"}) == "Failed during parsing")
     check("corpus", processing_tab.friendly_failure_message(
         {"failed_stage": "corpus"})
         == "Failed while producing the final output")
@@ -380,7 +379,6 @@ def _():
 
 @test("build_dump includes identity, report, artifacts, environment")
 def _():
-    import config_loader
     root = pathlib.Path(tempfile.mkdtemp())
     sources_root = root / "Sources"
     config_dir = root / "Config"
@@ -388,11 +386,11 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -400,7 +398,7 @@ def _():
     try:
         result, _ = make_sources(sources_root)
         source_id = controller.source_id_for(
-            "podcast_transcript", collection_id="teppei_beginner", episode=58)
+            "clean_text", collection_id="teppei_beginner", episode=58)
         package = json.loads(
             source_package.package_path_for(result["path"]).read_text(
                 encoding="utf-8"))
@@ -437,7 +435,6 @@ def _():
 
 @test("run_analysis writes a frequency report from the corpus")
 def _():
-    import config_loader
     root = pathlib.Path(tempfile.mkdtemp())
     sources_root = root / "Sources"
     config_dir = root / "Config"
@@ -445,11 +442,11 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -457,7 +454,7 @@ def _():
     try:
         result, _ = make_sources(sources_root)
         source_id = controller.source_id_for(
-            "podcast_transcript", collection_id="teppei_beginner", episode=58)
+            "clean_text", collection_id="teppei_beginner", episode=58)
         package = json.loads(
             source_package.package_path_for(result["path"]).read_text(
                 encoding="utf-8"))
@@ -500,7 +497,6 @@ def _():
 
 @test("completed_corpora lists only packages with a corpus JSONL")
 def _():
-    import config_loader
     root = pathlib.Path(tempfile.mkdtemp())
     sources_root = root / "Sources"
     config_dir = root / "Config"
@@ -508,11 +504,11 @@ def _():
     (config_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "teppei_beginner", "name": COLLECTION_NAME,
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -521,7 +517,7 @@ def _():
         make_sources(sources_root)
         # Simulate a corpus for the collection package only.
         ep58 = controller.source_id_for(
-            "podcast_transcript", collection_id="teppei_beginner", episode=58)
+            "clean_text", collection_id="teppei_beginner", episode=58)
         jsonl = pathlib.Path(tempfile.mkdtemp()) / f"{ep58}.jsonl"
         jsonl.write_text("", encoding="utf-8")
         with mock.patch.object(processing_tab.pm, "jsonl_path",

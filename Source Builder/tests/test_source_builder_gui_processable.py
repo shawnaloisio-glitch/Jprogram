@@ -4,11 +4,11 @@ test_source_builder_gui_processable.py
 
 GUI-level tests for processable source-type filtering in the Source Builder:
 
-- the Source Type dropdown only shows source types with an active
-  PROCESSING_PROFILE,
-- unsupported source types are hidden,
+- the source type is always the single processable type from Config
+  (no visible field; source_type_var tracks the raw id),
+- unsupported source types are never used,
 - an unprocessable source_type cannot save (plain-language message),
-- a valid podcast_transcript / user_transcription still creates a package,
+- a valid clean_text / user_transcription still creates a package,
 - Import Material still works.
 
 These tests build the actual Tk window (withdrawn) with a sandboxed Config
@@ -49,6 +49,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -58,8 +59,8 @@ def sandbox():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps({
         "source_types": [
-            {"source_type_id": "podcast_transcript",
-             "display_name": "podcast_transcript"},
+            {"source_type_id": "clean_text",
+             "display_name": "clean_text"},
             {"source_type_id": "cij_transcript",
              "display_name": "CIJ Transcripts"},
             {"source_type_id": "article", "display_name": "article"},
@@ -80,11 +81,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -111,16 +113,16 @@ def make_app(restore):
     return root, app
 
 
-@test("source type dropdown only shows processable choices")
+@test("source type is always the single processable type from Config")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            values = app.source_type_combo.cget("values")
-            check("only podcast_transcript shown", values == ("podcast_transcript",))
-            check("cij_transcript hidden", "cij_transcript" not in values)
-            check("article hidden", "article" not in values)
+            # The source type has no visible field; source_type_var always
+            # holds the one processable type from Config.
+            check("source type is clean_text",
+                  app.source_type_var.get() == "clean_text")
         finally:
             root.destroy()
     finally:
@@ -156,7 +158,6 @@ def _():
             app.episode_var.set("1")
             app.source_type_var.set("cij_transcript")
             app.origin_var.set("user_transcription")
-            app.material_level_var.set("1")
             app.text_area.insert("1.0", "これはテストです。\n")
             app._on_text_changed()
             app._refresh_ready_state()
@@ -174,7 +175,7 @@ def _():
         restore()
 
 
-@test("valid podcast_transcript / user_transcription still saves a package")
+@test("valid clean_text / user_transcription still saves a package")
 def _():
     restore = sandbox()
     try:
@@ -182,9 +183,8 @@ def _():
         try:
             app.collection_var.set("my_collection")
             app.episode_var.set("1")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("user_transcription")
-            app.material_level_var.set("1")
             app.text_area.insert("1.0", "これはテストです。\n")
             app._on_text_changed()
             app._refresh_ready_state()
@@ -196,7 +196,7 @@ def _():
             check("package exists", package_path.is_file())
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package source type",
-                  data["source_type"] == "podcast_transcript")
+                  data["source_type"] == "clean_text")
             check("package origin", data["origin"] == "user_transcription")
             check("package has profile", data["cleaning_profile"] is not None)
         finally:

@@ -49,6 +49,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -57,11 +58,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -72,11 +73,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -211,9 +213,8 @@ def _():
                            _var(f"{a}"), _var())
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("70")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
-            app.material_level_var.set("1")
             app._on_metadata_changed()
             app.on_save()
             check("saved", app._current_state == "SAVED")
@@ -238,9 +239,8 @@ def _():
         try:
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("71")
-            app.source_type_var.set("podcast_transcript")
+            app.source_type_var.set("clean_text")
             app.origin_var.set("con_teppei_podcast")
-            app.material_level_var.set("1")
             app.text_area.insert("1.0", "直接入力の本文。\n")
             app._on_text_changed()
             app.on_save()
@@ -273,6 +273,89 @@ def _():
             root.destroy()
     finally:
         restore()
+
+
+@test("import browse defaults to RAW_IMPORTS then remembers last folder")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            a, b = tmp_files()
+            picked_folder = pathlib.Path(a).parent
+            initialdirs = []
+            result = {"round": 0}
+
+            def fake_askopenfilenames(**kwargs):
+                initialdirs.append(kwargs.get("initialdir"))
+                if len(initialdirs) == 1:
+                    return (str(a), str(b))
+                return ()
+
+            def find_browse():
+                for w in root.winfo_children():
+                    if isinstance(w, tk.Toplevel) \
+                            and w.title() == "Import Material":
+                        button = _find_button(w, "Browse")
+                        if button is not None:
+                            return button
+                return None
+
+            def open_round():
+                app._import_material()
+                if result["round"] >= 2:
+                    root.after(0, root.quit)
+
+            def do_browse_close():
+                button = find_browse()
+                if button is None:
+                    root.after(30, do_browse_close)
+                    return
+                button.invoke()
+                result["round"] += 1
+                for w in root.winfo_children():
+                    if isinstance(w, tk.Toplevel) \
+                            and w.title() == "Import Material":
+                        w.destroy()
+                if result["round"] < 2:
+                    root.after(0, open_round)
+                    root.after(50, do_browse_close)
+
+            with patch.object(gui.filedialog, "askopenfilenames",
+                              side_effect=fake_askopenfilenames):
+                root.after(50, open_round)
+                root.after(100, do_browse_close)
+                root.after(2000, root.quit)
+                root.mainloop()
+
+            expected_default = (paths.RAW_IMPORTS
+                                if paths.RAW_IMPORTS.is_dir()
+                                else gui.PROJECT_ROOT)
+            check("two browse opens", len(initialdirs) == 2)
+            check("fresh default is RAW_IMPORTS or project root",
+                  initialdirs and pathlib.Path(initialdirs[0])
+                  == expected_default,
+                  f"got {initialdirs!r}")
+            check("reopen uses remembered folder",
+                  len(initialdirs) == 2
+                  and pathlib.Path(initialdirs[1]) == picked_folder,
+                  f"got {initialdirs!r}")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+def _find_button(widget, text):
+    for child in widget.winfo_children():
+        if isinstance(child, ttk.Button) and child.cget("text") == text:
+            return child
+        found = _find_button(child, text)
+        if found is not None:
+            return found
+    return None
 
 
 def main():

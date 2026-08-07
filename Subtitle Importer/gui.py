@@ -146,7 +146,7 @@ class SubtitleImporterApp:
 
 def main():
     root = tk.Tk()
-    app = SubtitleImporterApp(root)
+    SubtitleImporterApp(root)
     root.mainloop()
     return 0
 

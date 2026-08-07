@@ -27,6 +27,7 @@ SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
 sys.path.insert(0, str(SOURCE_BUILDER))
 
 import metadata_editor
+import paths
 
 
 def temp_config_dir():
@@ -41,11 +42,11 @@ def write_initial(conf_dir):
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (conf_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript", "subtitle", "article"],
+        "source_types": ["clean_text", "subtitle", "article"],
     }), encoding="utf-8")
     (conf_dir / "origins.json").write_text(json.dumps({
         "origins": ["con_teppei_podcast", "nhk_news"],
@@ -83,8 +84,6 @@ def _():
     check("one collection", len(items) == 1)
     check("id", items[0]["collection_id"] == "teppei_beginner")
     check("display name", items[0]["display_name"] == "Con Teppei for Beginner")
-    check("default source type",
-          items[0]["default_source_type"] == "podcast_transcript")
 
 
 @test("collections: missing file loads empty")
@@ -103,7 +102,7 @@ def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     items = metadata_editor.add_collection(
-        "nhk_beginner", "NHK Beginner", default_source_type="article",
+        "nhk_beginner", "NHK Beginner",
         path=conf_path(conf_dir, "collections"))
     check("two collections", len(items) == 2)
     check("added id", items[1]["collection_id"] == "nhk_beginner")
@@ -111,8 +110,6 @@ def _():
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
     check("persisted", len(reloaded) == 2)
-    check("persisted default",
-          reloaded[1]["default_source_type"] == "article")
 
 
 @test("collections: add duplicate rejected")
@@ -164,33 +161,17 @@ def _():
         check("display message", "display_name is required" in str(exc))
 
 
-@test("collections: add unknown default source type rejected")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    try:
-        metadata_editor.add_collection(
-            "new_col", "New", default_source_type="nope",
-            path=conf_path(conf_dir, "collections"),
-            source_type_ids=["podcast_transcript", "subtitle", "article"])
-        check("unknown default rejected", False)
-    except metadata_editor.MetadataError as exc:
-        check("source type message", "not a known source type" in str(exc))
-
-
-@test("collections: edit display name and default")
+@test("collections: edit display name")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     metadata_editor.edit_collection(
         "teppei_beginner", "Renamed",
-        default_source_type="subtitle",
         path=conf_path(conf_dir, "collections"))
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
     check("id unchanged", reloaded[0]["collection_id"] == "teppei_beginner")
     check("display changed", reloaded[0]["display_name"] == "Renamed")
-    check("default changed", reloaded[0]["default_source_type"] == "subtitle")
 
 
 @test("collections: id is immutable after creation")
@@ -233,7 +214,7 @@ def _():
     (conf_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "cij_corpus", "name": "CIJ Corpus",
-             "source_type": "podcast_transcript", "sequencing": "auto"},
+             "source_type": "clean_text", "sequencing": "auto"},
         ]
     }), encoding="utf-8")
     items = metadata_editor.load_collections(conf_path(conf_dir, "collections"))
@@ -291,7 +272,7 @@ def _():
     (conf_dir / "collections.json").write_text(json.dumps({
         "collections": [
             {"collection_id": "cij_corpus", "name": "CIJ Corpus",
-             "source_type": "podcast_transcript", "sequencing": "auto"},
+             "source_type": "clean_text", "sequencing": "auto"},
         ]
     }), encoding="utf-8")
     metadata_editor.edit_collection(
@@ -468,8 +449,8 @@ def _():
     items = metadata_editor.load_source_types(
         conf_path(conf_dir, "source_types"))
     check("three source types", len(items) == 3)
-    check("id", items[0]["source_type_id"] == "podcast_transcript")
-    check("display", items[0]["display_name"] == "podcast_transcript")
+    check("id", items[0]["source_type_id"] == "clean_text")
+    check("display", items[0]["display_name"] == "clean_text")
 
 
 @test("source types: add")
@@ -547,54 +528,46 @@ def _():
         check("reference message", "referenced by a preset" in str(exc))
 
 
-@test("source types: delete default of a collection with sources blocked")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    # teppei_beginner uses podcast_transcript as its default.
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    sources_root.mkdir(parents=True, exist_ok=True)
-    (sources_root / "teppei_beginner_ep0001.txt").write_text("x\n",
-                                                             encoding="utf-8")
-    try:
-        metadata_editor.delete_source_type(
-            "podcast_transcript",
-            path=conf_path(conf_dir, "source_types"),
-            sources_root=sources_root)
-        check("default delete blocked", False)
-    except metadata_editor.MetadataError as exc:
-        check("default message", "default source type" in str(exc))
-
-
-@test("source types: delete default of a source-less collection allowed")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    # teppei_beginner declares podcast_transcript but has no source files.
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
-    remaining = metadata_editor.delete_source_type(
-        "podcast_transcript",
-        path=conf_path(conf_dir, "source_types"),
-        sources_root=sources_root)
-    check("deleted when no source files", len(remaining) == 2)
-
-
 @test("source types: delete unused allowed")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     metadata_editor.add_source_type(
         "unused_type", "Unused", path=conf_path(conf_dir, "source_types"))
-    sources_root = pathlib.Path(tempfile.mkdtemp()) / "Sources"
     remaining = metadata_editor.delete_source_type(
-        "unused_type", path=conf_path(conf_dir, "source_types"),
-        sources_root=sources_root)
+        "unused_type", path=conf_path(conf_dir, "source_types"))
     check("unused deleted", len(remaining) == 3)
 
 
 # ============================================================
 # Origins: add / edit / delete validation
 # ============================================================
+
+@test("origins: missing workspace file loads empty list")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = missing
+    try:
+        check("loads empty", metadata_editor.load_origins() == [])
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
+
+@test("origins: add creates the file from an empty workspace")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    origins_file = tmp / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = origins_file
+    try:
+        metadata_editor.add_origin("nhk_radio", "NHK Radio")
+        check("file created", origins_file.is_file())
+        reloaded = metadata_editor.load_origins()
+        check("added", [o["origin_id"] for o in reloaded] == ["nhk_radio"])
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
 
 @test("origins: add")
 def _():
@@ -687,8 +660,7 @@ def _():
     write_initial(conf_dir)
     items = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
-    items.append({"collection_id": "x", "display_name": "X",
-                  "default_source_type": None})
+    items.append({"collection_id": "x", "display_name": "X"})
     metadata_editor.save_collections(items, conf_path(conf_dir, "collections"))
     reloaded = metadata_editor.load_collections(
         conf_path(conf_dir, "collections"))
@@ -927,7 +899,7 @@ def _():
     write_initial(conf_dir)
     try:
         metadata_editor.add_source_type(
-            "new_type", "podcast_transcript",
+            "new_type", "subtitle",
             path=conf_path(conf_dir, "source_types"))
         check("duplicate display rejected", False)
     except metadata_editor.MetadataError as exc:
@@ -940,7 +912,7 @@ def _():
     write_initial(conf_dir)
     try:
         metadata_editor.edit_source_type(
-            "subtitle", "podcast_transcript",
+            "article", "subtitle",
             path=conf_path(conf_dir, "source_types"))
         check("edit duplicate display rejected", False)
     except metadata_editor.MetadataError as exc:

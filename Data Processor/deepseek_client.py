@@ -42,7 +42,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent / "Data Processor"))
 from datetime import datetime
 
 from paths import (
-    API_KEY,
     LOG_DEEPSEEK_CLIENT,
     PROCESSING_RESULTS,
     REQUESTS,
@@ -152,42 +151,20 @@ def response_path_for(source_id, request_file, request_data):
 # API Key
 # ============================================================
 
-def load_api_key():
-    """
-    Load the DeepSeek API key from the project key file.
-
-    The key is read at runtime and is never printed, logged, or
-    stored in response files.
-
-    Raises:
-        FileNotFoundError if the key file is missing.
-        ValueError if the key file is empty.
-    """
-    if not API_KEY.is_file():
-        raise FileNotFoundError(f"API key file not found: {API_KEY}")
-
-    key = API_KEY.read_text(encoding="utf-8").strip()
-    if not key:
-        raise ValueError(f"API key file is empty: {API_KEY}")
-    return key
-
-
 def _resolve_api_key():
     """
-    Resolve the DeepSeek API key, preferring the environment.
+    Resolve the DeepSeek API key from the DEEPSEEK_API_KEY environment
+    variable.
 
-    Order:
-        1. The DEEPSEEK_API_KEY environment variable when set.
-        2. The existing project key file (paths.API_KEY) otherwise.
-
-    When the environment variable is not set, the behavior is identical
-    to the previous file-only loading (including FileNotFoundError /
-    ValueError from load_api_key).
+    Raises:
+        EnvironmentError when the environment variable is absent or empty.
     """
     env_key = os.environ.get("DEEPSEEK_API_KEY")
-    if env_key:
-        return env_key
-    return load_api_key()
+    if not env_key:
+        raise EnvironmentError(
+            "DEEPSEEK_API_KEY environment variable is not set"
+        )
+    return env_key
 
 
 # ============================================================
@@ -496,7 +473,8 @@ def run(source_id, api_key=None, log_file=None, timestamp_fn=None):
 
     Input:
         source_id (str): authoritative lineage identifier.
-        api_key (str or None): API key; loaded from file when None.
+        api_key (str or None): API key; loaded from the DEEPSEEK_API_KEY
+            environment variable when None.
         log_file (Path or None): run log; created when None.
         timestamp_fn (callable or None): injectable clock for tests.
 
@@ -516,7 +494,7 @@ def run(source_id, api_key=None, log_file=None, timestamp_fn=None):
     if api_key is None:
         try:
             api_key = _resolve_api_key()
-        except (FileNotFoundError, ValueError) as exc:
+        except EnvironmentError as exc:
             return fail(source_id, log_file, [str(exc)])
 
     if log_file is None:

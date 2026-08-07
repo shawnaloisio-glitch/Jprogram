@@ -34,7 +34,6 @@ import gui
 import gui_settings
 import processing_tab
 import quick_presets
-import source_package
 import paths
 
 import analysis_tab_gui
@@ -48,6 +47,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -56,11 +56,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -71,22 +71,23 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
 
 def make_completed_source(ep, jsonl_content="こんにちは。\n"):
     """Create a source package and a fake corpus JSONL for it."""
-    result = controller.create_collection_source(
-        "teppei_beginner", ep, "podcast_transcript", "con_teppei_podcast",
+    controller.create_collection_source(
+        "teppei_beginner", ep, "clean_text", "con_teppei_podcast",
         "本文。\n", material_level=1)
     source_id = controller.source_id_for(
-        "podcast_transcript", collection_id="teppei_beginner", episode=ep)
+        "clean_text", collection_id="teppei_beginner", episode=ep)
     jsonl = pathlib.Path(tempfile.mkdtemp()) / f"{source_id}.jsonl"
     jsonl.write_text(jsonl_content, encoding="utf-8")
     return source_id, jsonl
@@ -174,7 +175,7 @@ def _():
             window = analysis_tab_gui.AnalysisTabWindow(app)
             for row in window.rows:
                 check("no source_id in label",
-                      "podcast_transcript_teppei-beginner_ep" not in row["label"])
+                      "clean_text_teppei-beginner_ep" not in row["label"])
                 check("no path", "Sources" not in row["label"]
                       and "\\" not in row["label"])
                 check("no json", ".json" not in row["label"])

@@ -15,7 +15,6 @@ Run:
 """
 
 import json
-import os
 import pathlib
 import subprocess
 import sys
@@ -23,35 +22,20 @@ import tempfile
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_INTAKE = PROJECT_ROOT / "Source Intake"
-SUBTITLE_CLEANER = PROJECT_ROOT / "Subtitle Cleaner"
 TRANSCRIPT_CLEANER = PROJECT_ROOT / "Transcript Cleaner"
 sys.path.insert(0, str(SOURCE_INTAKE))
-sys.path.insert(0, str(SUBTITLE_CLEANER))
 sys.path.insert(0, str(TRANSCRIPT_CLEANER))
 
-import cleaning_job
-import duplicate_check
 import hashing
-import registry
 import resolver
 import schemas
 import source_intake as si
-import source_id
 
-import clean_subtitles as cs
 import clean_transcript as ct
 
-SRT = (
-    "1\n"
-    "00:00:00,000 --> 00:00:02,000\n"
-    "こんにちは世界\n"
-    "\n"
-    "2\n"
-    "00:00:02,500 --> 00:00:05,000\n"
-    "これはテストです。\n"
-)
-
 TRANSCRIPT = "こんにちは　世界\n\nこれは  テストです。\n"
+
+TRANSCRIPT_ALT = "おはようございます\n\n今日もいい天気です。\n"
 
 
 def fixture():
@@ -61,17 +45,15 @@ def fixture():
     """
     root = pathlib.Path(tempfile.mkdtemp())
 
-    raw_sub = root / "Raw Subtitles"
     raw_trans = root / "Raw Transcripts"
     registry_dir = root / "Source Registry"
     jobs_dir = root / "Cleaning Jobs"
     results_dir = root / "Cleaning Results"
-    logs_sub = root / "Logs" / "Subtitle Cleaner"
     logs_trans = root / "Logs" / "Transcript Cleaner"
     archive = root / "Cleaned Archive"
 
-    for folder in (raw_sub, raw_trans, registry_dir, jobs_dir,
-                   results_dir, logs_sub, logs_trans, archive):
+    for folder in (raw_trans, registry_dir, jobs_dir,
+                   results_dir, logs_trans, archive):
         folder.mkdir(parents=True)
 
     saved = (
@@ -80,9 +62,6 @@ def fixture():
         si.LOG_SOURCE_INTAKE,
         resolver.SOURCE_TYPE_RAW_DIR,
         resolver.CLEANED_ARCHIVE,
-        cs.CLEANING_RESULTS,
-        cs.LOG_SUBTITLE_CLEANER,
-        cs.SOURCE_REGISTRY,
         ct.CLEANING_RESULTS,
         ct.LOG_TRANSCRIPT_CLEANER,
         ct.SOURCE_REGISTRY,
@@ -93,13 +72,9 @@ def fixture():
     si.LOG_SOURCE_INTAKE = root / "Logs" / "Source Intake"
     si.LOG_SOURCE_INTAKE.mkdir(parents=True)
     resolver.SOURCE_TYPE_RAW_DIR = {
-        "anime_subtitle": str(raw_sub),
-        "podcast_transcript": str(raw_trans),
+        "clean_text": str(raw_trans),
     }
     resolver.CLEANED_ARCHIVE = archive
-    cs.CLEANING_RESULTS = results_dir
-    cs.LOG_SUBTITLE_CLEANER = logs_sub
-    cs.SOURCE_REGISTRY = registry_dir
     ct.CLEANING_RESULTS = results_dir
     ct.LOG_TRANSCRIPT_CLEANER = logs_trans
     ct.SOURCE_REGISTRY = registry_dir
@@ -110,8 +85,7 @@ def fixture():
 def restore(saved):
     (si.SOURCE_REGISTRY, si.CLEANING_JOBS,
      si.LOG_SOURCE_INTAKE, resolver.SOURCE_TYPE_RAW_DIR,
-     resolver.CLEANED_ARCHIVE, cs.CLEANING_RESULTS,
-     cs.LOG_SUBTITLE_CLEANER, cs.SOURCE_REGISTRY, ct.CLEANING_RESULTS,
+     resolver.CLEANED_ARCHIVE, ct.CLEANING_RESULTS,
      ct.LOG_TRANSCRIPT_CLEANER, ct.SOURCE_REGISTRY) = saved
 
 
@@ -193,16 +167,16 @@ def cli_command(cleaner_dir, module_name, results_dir, log_attr, logs_dir,
 # Complete flows
 # ============================================================
 
-@test("1. complete subtitle flow")
+@test("1. complete clean_text flow")
 def _():
     root, saved = fixture()
     try:
-        raw_file = root / "Raw Subtitles" / "ep01.srt"
-        raw_file.write_text(SRT, encoding="utf-8")
+        raw_file = root / "Raw Transcripts" / "con.txt"
+        raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         flow = register_and_run(
-            root, raw_file, "anime_subtitle", "Sousou no Frieren", "ep001",
-            cs,
+            root, raw_file, "clean_text", "Con Teppei", "ep051",
+            ct,
         )
         sid = flow["sid"]
 
@@ -228,43 +202,6 @@ def _():
         check("output_hash matches artifact",
               output_hash == hashing.sha256_file(output_path))
         check("artifact non-empty", len(artifact_bytes) > 0)
-        check("artifact has no timecodes", b"-->" not in artifact_bytes)
-        check("artifact has no numbers",
-              b"00:00:" not in artifact_bytes)
-    finally:
-        restore(saved)
-
-
-@test("2. complete transcript flow")
-def _():
-    root, saved = fixture()
-    try:
-        raw_file = root / "Raw Transcripts" / "con.txt"
-        raw_file.write_text(TRANSCRIPT, encoding="utf-8")
-
-        flow = register_and_run(
-            root, raw_file, "podcast_transcript", "Con Teppei", "ep051",
-            ct,
-        )
-        sid = flow["sid"]
-
-        check("intake registered", flow["result"]["action"] == "registered")
-        check("cleaner exit 0", flow["exit_code"] == 0)
-
-        check("registry exists", flow["registry_path"].is_file())
-        check("job exists", flow["job_path"].is_file())
-
-        output_path = pathlib.Path(
-            load_json(flow["job_path"])["output_path"]
-        )
-        check("cleaned artifact exists", output_path.is_file())
-        check("result exists", flow["result_path"].is_file())
-
-        result = load_json(flow["result_path"])
-        check("success true", result["success"] is True)
-        check("source_id", result["source_id"] == sid)
-        check("output_hash matches artifact",
-              result["output_hash"] == hashing.sha256_file(output_path))
 
         text = output_path.read_text(encoding="utf-8")
         check("full-width space preserved", "　" in text)
@@ -273,32 +210,32 @@ def _():
         restore(saved)
 
 
-@test("3. both flows coexist independently")
+@test("2. multiple clean_text sources coexist independently")
 def _():
     root, saved = fixture()
     try:
-        sub_raw = root / "Raw Subtitles" / "ep01.srt"
-        sub_raw.write_text(SRT, encoding="utf-8")
-        trans_raw = root / "Raw Transcripts" / "con.txt"
-        trans_raw.write_text(TRANSCRIPT, encoding="utf-8")
+        trans_a = root / "Raw Transcripts" / "con_a.txt"
+        trans_a.write_text(TRANSCRIPT, encoding="utf-8")
+        trans_b = root / "Raw Transcripts" / "con_b.txt"
+        trans_b.write_text(TRANSCRIPT_ALT, encoding="utf-8")
 
-        sub = register_and_run(
-            root, sub_raw, "anime_subtitle", "Frieren", "ep001", cs
+        first = register_and_run(
+            root, trans_a, "clean_text", "Con Teppei", "ep051", ct
         )
-        trans = register_and_run(
-            root, trans_raw, "podcast_transcript", "Con Teppei", "ep051", ct
+        second = register_and_run(
+            root, trans_b, "clean_text", "Another Show", "ep002", ct
         )
 
         check("both registered",
-              sub["result"]["action"] == "registered"
-              and trans["result"]["action"] == "registered")
-        check("distinct source ids", sub["sid"] != trans["sid"])
+              first["result"]["action"] == "registered"
+              and second["result"]["action"] == "registered")
+        check("distinct source ids", first["sid"] != second["sid"])
         check("both results exist",
-              sub["result_path"].is_file()
-              and trans["result_path"].is_file())
+              first["result_path"].is_file()
+              and second["result_path"].is_file())
         check("both results success",
-              load_json(sub["result_path"])["success"] is True
-              and load_json(trans["result_path"])["success"] is True)
+              load_json(first["result_path"])["success"] is True
+              and load_json(second["result_path"])["success"] is True)
     finally:
         restore(saved)
 
@@ -307,7 +244,7 @@ def _():
 # Failure recovery
 # ============================================================
 
-@test("4A. cleaning job exists but raw file missing")
+@test("3. cleaning job exists but raw file missing")
 def _():
     root, saved = fixture()
     try:
@@ -315,7 +252,7 @@ def _():
         raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         flow = register_and_run(
-            root, raw_file, "podcast_transcript", "Con Teppei", "ep051",
+            root, raw_file, "clean_text", "Con Teppei", "ep051",
             ct,
         )
         check("intake registered", flow["result"]["action"] == "registered")
@@ -355,7 +292,7 @@ def _():
         raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         result = si.register_source(
-            str(raw_file), "podcast_transcript", "ja",
+            str(raw_file), "clean_text", "ja",
             "Con Teppei", "ep052"
         )
         sid = result["source_id"]
@@ -384,17 +321,16 @@ def _():
 # Duplicate / resume behavior
 # ============================================================
 
-@test("5. existing successful cleaning does not create conflicts")
+@test("4. existing successful cleaning does not create conflicts")
 def _():
     root, saved = fixture()
     try:
-        raw_file = root / "Raw Subtitles" / "ep01.srt"
-        raw_file.write_text(SRT, encoding="utf-8")
+        raw_file = root / "Raw Transcripts" / "con.txt"
+        raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         flow = register_and_run(
-            root, raw_file, "anime_subtitle", "Frieren", "ep001", cs
+            root, raw_file, "clean_text", "Con Teppei", "ep051", ct
         )
-        sid = flow["sid"]
         output_path = pathlib.Path(
             load_json(flow["job_path"])["output_path"]
         )
@@ -408,7 +344,7 @@ def _():
                       root / "Cleaning Results")
         }
         result = si.register_source(
-            str(raw_file), "anime_subtitle", "ja", "Frieren", "ep001"
+            str(raw_file), "clean_text", "ja", "Con Teppei", "ep051"
         )
         check("re-register is already_complete",
               result["action"] == "already_complete")
@@ -423,7 +359,7 @@ def _():
               == before[root / "Cleaning Results"])
 
         # Re-run cleaner on same job: deterministic overwrite.
-        exit_code = cs.run(flow["job_path"])
+        exit_code = ct.run(flow["job_path"])
         check("re-run exit 0", exit_code == 0)
         check("artifact byte-identical",
               output_path.read_bytes() == first_artifact)
@@ -444,7 +380,7 @@ def _():
         raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         first = si.register_source(
-            str(raw_file), "podcast_transcript", "ja",
+            str(raw_file), "clean_text", "ja",
             "Con Teppei", "ep051"
         )
         sid = first["source_id"]
@@ -453,7 +389,7 @@ def _():
         # Simulate a lost cleaning job (registry still present).
         job_path.unlink()
         result = si.register_source(
-            str(raw_file), "podcast_transcript", "ja",
+            str(raw_file), "clean_text", "ja",
             "Con Teppei", "ep051"
         )
         check("resume action", result["action"] == "resumed")
@@ -481,16 +417,16 @@ def _():
 def _():
     root, saved = fixture()
     try:
-        sub_raw = root / "Raw Subtitles" / "ep01.srt"
-        sub_raw.write_text(SRT, encoding="utf-8")
-        trans_raw = root / "Raw Transcripts" / "con.txt"
-        trans_raw.write_text(TRANSCRIPT, encoding="utf-8")
+        trans_a = root / "Raw Transcripts" / "con_a.txt"
+        trans_a.write_text(TRANSCRIPT, encoding="utf-8")
+        trans_b = root / "Raw Transcripts" / "con_b.txt"
+        trans_b.write_text(TRANSCRIPT_ALT, encoding="utf-8")
 
-        sub = register_and_run(
-            root, sub_raw, "anime_subtitle", "Frieren", "ep001", cs
+        first = register_and_run(
+            root, trans_a, "clean_text", "Con Teppei", "ep051", ct
         )
-        trans = register_and_run(
-            root, trans_raw, "podcast_transcript", "Con Teppei", "ep051", ct
+        second = register_and_run(
+            root, trans_b, "clean_text", "Another Show", "ep002", ct
         )
 
         # Source Intake wrote only registry + jobs.
@@ -498,34 +434,31 @@ def _():
         jobs_dir = root / "Cleaning Jobs"
         check("registry contains only two entries",
               sorted(x.name for x in registry_dir.iterdir())
-              == sorted([f"{sub['sid']}.json", f"{trans['sid']}.json"]))
+              == sorted([f"{first['sid']}.json", f"{second['sid']}.json"]))
         check("jobs contains only two jobs",
               sorted(x.name for x in jobs_dir.iterdir())
-              == sorted([f"{sub['sid']}.cleaning_job.json",
-                         f"{trans['sid']}.cleaning_job.json"]))
+              == sorted([f"{first['sid']}.cleaning_job.json",
+                         f"{second['sid']}.cleaning_job.json"]))
 
-        # Cleaners wrote only artifacts + results + logs.
+        # The cleaner wrote only artifacts + results + logs.
         results_dir = root / "Cleaning Results"
         check("results contains only two results",
               sorted(x.name for x in results_dir.iterdir())
-              == sorted([f"{sub['sid']}.cleaning_result.json",
-                         f"{trans['sid']}.cleaning_result.json"]))
+              == sorted([f"{first['sid']}.cleaning_result.json",
+                         f"{second['sid']}.cleaning_result.json"]))
 
-        sub_logs = root / "Logs" / "Subtitle Cleaner"
         trans_logs = root / "Logs" / "Transcript Cleaner"
-        check("subtitle cleaner log",
-              sorted(x.name for x in sub_logs.iterdir())
-              == [f"{sub['sid']}.cleaner.log"])
-        check("transcript cleaner log",
+        check("transcript cleaner logs",
               sorted(x.name for x in trans_logs.iterdir())
-              == [f"{trans['sid']}.cleaner.log"])
+              == sorted([f"{first['sid']}.cleaner.log",
+                         f"{second['sid']}.cleaner.log"]))
 
         archive = root / "Cleaned Archive"
         check("archive contains two artifacts",
               len([x for x in archive.iterdir()
                    if x.suffix == ".txt"]) == 2)
 
-        # No cross-ownership: registry/jobs untouched by cleaners.
+        # No cross-ownership: registry/jobs untouched by the cleaner.
         for entry in registry_dir.iterdir():
             check(f"registry entry is json: {entry.name}",
                   entry.suffix == ".json")
@@ -540,43 +473,7 @@ def _():
 # Standalone CLI execution
 # ============================================================
 
-@test("7. subtitle cleaner CLI invocation")
-def _():
-    root, saved = fixture()
-    try:
-        raw_file = root / "Raw Subtitles" / "ep01.srt"
-        raw_file.write_text(SRT, encoding="utf-8")
-
-        result = si.register_source(
-            str(raw_file), "anime_subtitle", "ja", "Frieren", "ep001"
-        )
-        job_path = pathlib.Path(result["cleaning_job_path"])
-        sid = result["source_id"]
-        output_path = pathlib.Path(load_json(job_path)["output_path"])
-
-        cmd = cli_command(
-            SUBTITLE_CLEANER, "clean_subtitles",
-            root / "Cleaning Results", "LOG_SUBTITLE_CLEANER",
-            root / "Logs" / "Subtitle Cleaner",
-            root / "Source Registry", job_path,
-        )
-        completed = subprocess.run(
-            cmd, capture_output=True, text=True,
-            cwd=str(PROJECT_ROOT),
-        )
-
-        check("CLI exit 0", completed.returncode == 0,
-              completed.stdout + completed.stderr)
-        check("artifact exists", output_path.is_file())
-        result_path = root / "Cleaning Results" / f"{sid}.cleaning_result.json"
-        check("result exists", result_path.is_file())
-        check("result success",
-              load_json(result_path)["success"] is True)
-    finally:
-        restore(saved)
-
-
-@test("7b. transcript cleaner CLI invocation")
+@test("7. transcript cleaner CLI invocation")
 def _():
     root, saved = fixture()
     try:
@@ -584,7 +481,7 @@ def _():
         raw_file.write_text(TRANSCRIPT, encoding="utf-8")
 
         result = si.register_source(
-            str(raw_file), "podcast_transcript", "ja",
+            str(raw_file), "clean_text", "ja",
             "Con Teppei", "ep051"
         )
         job_path = pathlib.Path(result["cleaning_job_path"])
