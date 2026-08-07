@@ -261,18 +261,264 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-07) — Updated after Session 7
+## 14. Session Wrap-Up (2026-08-07) — Updated after Session 8
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "Session 6"
+not appended to indefinitely.** This update supersedes the "Session 7"
 version below it (kept for reference, marked accordingly; the old
-"Session 5" section has been dropped entirely — git history and
+"Session 6" section has been dropped entirely — git history and
 `Audits/OC_Reliability_Log.md` still hold that detail if ever needed).
 If anything below conflicts with an older section elsewhere in this
 file, this section wins — it was last refreshed 2026-08-07, end of
-session 7.
+session 8.
 
-### Current phase — the headline: Corpus Change Study Phases 1-3 are complete
+### Current phase — a full architecture session, zero code written
+
+**This entire session was explicitly "thinking only mode" at Owner's
+request — no file edits, no commits, nothing implemented.** Everything
+below is real design work and real decisions, but none of it exists
+anywhere else on disk yet. This section is the only record. Treat it as
+a genuine to-do list with real direction, not a changelog.
+
+The trigger: Owner is about to bring in on the order of **1,500-2,600+
+real sources** (two external catalogs — see below), which would mean
+roughly 10,000+ per-source analysis reports before even counting
+cross-source comparisons. Owner correctly identified this as a real,
+near-term architecture problem, not a hypothetical one, and explicitly
+said processing won't start until it's addressed — this session's job
+was to actually think it through properly.
+
+**New context discovered mid-session**: a separate, parallel
+content-collection effort already exists at
+`C:\AI Development Projects\Content Collection\` (its own `.claude`
+folder — a different Claude Code workstream, not this one), actively
+cataloging real content from two sites:
+- **Natural Japanese** (nijapanese.com, paid subscription) — 1,773
+  videos, catalog at `nijapanese/catalog/nij_catalog_modules.tsv` (plus
+  `nij_catalog_teachers.tsv` / `nij_catalog_topics.tsv` lookup tables).
+  Media lives at `D:\Natural Japanese media\` (this is the same library
+  used for the deterministic-parser stress test earlier this session —
+  see the Session 7 section below).
+- **Nihongo Jikan** (nihongo-jikan.com, Yuki's newer donation-based
+  site) — 896 videos, catalog at `nihongo-jikan/catalog/nj_catalog.tsv`.
+  Media lives at `D:\Nihongo Jikan media\`. **Different raw format than
+  anything Jprogram currently handles**: furigana-annotated HTML
+  (`<ruby>` tags), no timestamps — would need its own future Cleaner,
+  not designed yet.
+- Full current status (what's downloaded vs. still pending per level)
+  lives in that project's own `LIBRARY_STATUS.md` — check there directly
+  rather than trusting a stale summary here, since that project updates
+  independently of this one.
+
+### New per-source metadata tags, decided this session
+
+- **Material Level** — mandatory at source creation, ordered integer,
+  display terminology user-editable but the *values* are fixed:
+  - `0` = Ungraded (deliberately **outside** the 1-4 range, not
+    appended as a 5th tier — so a naive range query like
+    `level >= 1 AND level <= 4` naturally excludes it without every
+    caller needing to remember to filter it out separately).
+  - `1` = Absolute Beginner, `2` = Beginner, `3` = Intermediate,
+    `4` = **Advanced** (settled on the field-standard term over
+    "Native" after discussion — validated by real precedent: Natural
+    Japanese's own catalog uses this exact same four-tier scheme).
+  - Enforced at creation time, not just for downstream analysis — Owner's
+    call, given 1,500+ sources arriving at once makes "backfill grading
+    later" much worse than "answer one required field per import now."
+- **Style** — optional, auto-incrementing integer id (a meaningless
+  surrogate key, unlike Material Level's ordered integer), separate
+  display name. **Deliberately kept as its own picker, not merged into
+  a flat combined topic/style/series list** — Natural Japanese's real
+  `topicIds` field does mix format concepts (e.g. topic id 82 is
+  literally "whiteboard," one of Owner's own Style examples) together
+  with subject matter and series grouping in one 140+-entry list, and
+  that precedent was explicitly considered and rejected as "tedious and
+  unfriendly" for a picker UX.
+- **Length/Duration** — optional, numeric seconds, meaning the
+  **originally-published** content duration specifically, not whatever
+  audio variant (e.g. silence-removed) might get used downstream — that
+  discrepancy is explicitly the user's own responsibility, not something
+  the field needs to reconcile. Exists to enable rate-of-speech
+  calculation once paired with token counts the canonical corpus already
+  has for free.
+- **Domain/Topic** remains an unsolidified, loose candidate carried over
+  from an earlier session — not decided or touched this session.
+- **Real, separate gap found while designing Style's uniqueness
+  requirement**: `metadata_editor.py`'s existing uniqueness validation
+  (`_check_unique`, used by `origin`/`source_type`/`collection`
+  validation) only checks **id** uniqueness, never **display name**
+  uniqueness — meaning two origins could already have identical display
+  names today with nothing preventing it. Not fixed yet; worth doing
+  when this becomes real work, and worth fixing on `origin`/`source_type`
+  too while at it, not just the new Style table.
+
+### Index/manifest: SQLite, decided
+
+Settled on SQLite specifically (Python stdlib, zero new dependency) as
+the technology, explicitly designed as a **disposable, rebuildable
+cache/index over the real files — never a second source of truth**. The
+real data stays exactly where it already lives (Source Registry,
+canonical JSONL corpus, analysis report files); the index is just a
+fast, queryable structure built by scanning those files, safely
+deletable and rebuildable at any time.
+
+A first-draft schema was sketched — genuinely a first draft, not
+finalized or built, but structurally sound and worth using as the
+literal starting point for real implementation:
+
+```
+sources          (source_id PK, collection_id, episode, origin_id,
+                  material_level, style_id, duration_seconds, created_at)
+collections      (collection_id PK, display_name, sequencing)
+origins          (origin_id PK, display_name)
+material_levels  (level PK 0-4, display_name)
+styles           (style_id PK autoincrement, display_name UNIQUE)
+analysis_reports (source_id, report_type, generated_at, corpus_version;
+                  PK is (source_id, report_type))
+```
+
+Two incidental wins worth remembering, since they weren't the point of
+the exercise but fell out of it: SQLite's own `UNIQUE` constraint gives
+the display-name-uniqueness requirement above "for free" with zero
+hand-written validation code; `analysis_reports.corpus_version` (a hash
+or mtime of the source's `.jsonl` at generation time) solves the
+report-staleness question almost as a side effect — a report is
+detectably stale the instant its recorded corpus version stops matching
+the corpus's actual current one.
+
+**No `aggregate_reports` table** — deliberately dropped mid-session once
+the Language Coach boundary (below) was worked out; that whole design
+thread turned out not to be Jprogram's problem to solve.
+
+### The bigger, not-yet-started piece: go fully flat, keyed only by `source_id`
+
+The real architectural shift this session landed on, **not started,
+the natural next concrete task**: physical storage should have **no
+folder nesting by collection at all** — everything keyed by nothing but
+`source_id`, with collection membership (and every other tag) living
+purely as SQLite columns, never encoded into folder structure.
+
+This isn't introducing a new pattern — it's removing the **one
+inconsistent outlier**. Confirmed by direct inspection this session:
+every other pipeline artifact (`jobs/{source_id}/`,
+`responses/{source_id}/`, `jsonl/{source_id}.jsonl`, processing results,
+the Source Registry itself) is already flat, keyed only by `source_id`.
+`Sources/`'s `collections/{collection_id}/{source_id}` nesting is the
+single place in the whole system that encodes meaning into physical
+structure instead of just storing it as data — exactly the
+"identity/file-coupling" pattern already flagged as a recurring bug
+shape in this project's own history (see memory:
+`project_identity_file_coupling_pattern.md`).
+
+Owner is explicitly open to the real rewrite this implies ("I don't
+mind rewriting code to make it function better"), and the Workspace
+being genuinely empty of real data right now makes this the cheapest
+possible moment — no migration, just a redesign. But it's real,
+touches live tested code, not a quick edit: `source_id.py`,
+`controller.py`'s filename/path generation, the Source Builder GUI's
+whole collection-picker flow, `quick_presets.py`, `metadata_editor.py`,
+and a real chunk of the Source Builder test suite. **Needs a proper
+blast-radius investigation before any Coder command gets drafted** —
+exactly the "investigation before implementation" discipline this
+project already holds itself to elsewhere.
+
+### Jprogram / Language Coach boundary, settled
+
+**Jprogram's job stops at "produce reliable per-source evidence, and
+make it discoverable/queryable."** Cross-source/series/compilation
+aggregation is explicitly **not** Jprogram's responsibility — it
+belongs entirely to Language Coach. Reasoning, not just assertion:
+
+- The analyzer functions already take a flat `records` list, not a file
+  path (confirmed by direct inspection of `frequency_analyzer.analyze()`
+  etc.) — so combining sources is just "load records from multiple
+  `.jsonl` files instead of one," feeding the exact same, already-built
+  analyzer logic. Nothing new needed on the analysis side.
+- **Real technical caveat surfaced and worth remembering**: combining
+  must happen on raw records, never on already-computed per-source
+  report output. Occurrence counts are safely summable after the fact;
+  sentence-distance/distribution metrics are not — they depend on
+  actual position within a combined, ordered sequence and only compute
+  correctly if the analyzer runs once against the full concatenated
+  record set. Post-hoc-combining finished reports would silently
+  produce wrong numbers for that class of metric.
+- This eliminated the previously-floated `aggregate_reports` table and
+  an unsolved "how does a user select an aggregate's source set" UX
+  question — neither is needed once the boundary is drawn this way.
+
+Concrete shape of the boundary:
+- **Language Coach will be an AI interface** (Owner talking to an AI
+  that calls deterministic scripts), explicitly **not a traditional
+  UI** — which is also why no dedicated aggregate-selection interface
+  is needed anywhere; a natural-language request just becomes a SQL
+  query plus an analyzer call.
+- **Language Coach gets its own independent copy** of the relevant
+  analyzer logic, not a live cross-project import — so it can freely
+  extend/modify its own copy for its own pedagogical purposes without
+  ever needing to touch Jprogram's actual Frozen Components.
+- **Sync is strictly one-way, Jprogram → Language Coach only**,
+  matching the real pipeline data-flow direction — never automatic
+  backflow. If something in Language Coach's copy is ever worth
+  adopting into Jprogram itself, that's a deliberate, separate
+  decision — full blast-radius analysis, full production sequence,
+  done by Jprogram, on Jprogram's own terms, never a routine merge-back.
+- **Language Coach does not write into Jprogram's SQL index.** If it
+  wants its own caching for combined/aggregate reports, it gets its own
+  separate index, mirroring the same disposable-rebuildable-cache
+  principle — not sharing Jprogram's.
+
+### Real, unaddressed gap surfaced, explicitly out of scope here
+
+The two large real media libraries (~2,669 videos combined) live on a
+single `D:\` drive with no separate backup. `LIBRARY_STATUS.md` (the
+other project's own doc) already documents a concrete, already-happened
+case of permanent loss risk: Yuki's videos are being actively pulled
+from Natural Japanese as she moves to her own site — once that happens,
+re-downloading stops being an option. That means `D:\`'s raw media is
+now the true bottom-of-chain irreplaceable tier, not (as this session
+first assumed) Jprogram's own `Sources/` folder, which is regenerable
+as long as `D:\` survives. **Owner confirmed a proper backup system is
+already on their own separate to-do list** — flagged here for the
+record, not something Jprogram needs to solve.
+
+### Open risks / unresolved questions
+
+- **The flat-storage rewrite** (above) — the natural next concrete
+  task, not started, needs blast-radius investigation first.
+- **Domain/Topic tag** — still loose, not solidified, carried forward
+  again.
+- **The SQLite schema above is a first draft**, not finalized or built.
+- **Nihongo Jikan's raw transcript format** (furigana HTML, no
+  timestamps) needs its own future Cleaner — not designed yet.
+- **Language Reactor cleaner** — still scoped from Session 7 (concatenate
+  rows, strip internal whitespace, re-derive sentences via
+  `deterministic_parser.split_sentences()`), still not built.
+- **`D:\` backup** — real, acknowledged gap, Owner's own separate
+  to-do, not Jprogram's to solve.
+- Everything carried forward unchanged from Session 7's own open-risks
+  list (12 deferred `ruff` findings, the now-actionable UI-simplification
+  idea, the `WORKING_LIST.md` GUI backlog) — see that section below,
+  none of it touched this session.
+
+### Next immediate task
+
+Scope and, with Owner's go-ahead, execute the flat-storage rewrite for
+`Sources/` — the biggest, most concrete, most clearly-defined piece of
+unstarted work from this session. Start with the blast-radius
+investigation (what actually references `collections/{collection_id}/`
+path construction today — `source_id.py`, `controller.py`, the GUI,
+tests), before drafting any Coder command.
+
+### Real-data validation status
+
+Unchanged from Session 7 — no code changed this session (thinking-only
+mode throughout), so nothing new to validate. See the Session 7 section
+below for the full detail (QC Test Harness ground-truth PASS, 588,315
+real tokens from the media-library stress test).
+
+### Session 7 wrap-up (2026-08-07) — superseded by the section above, kept for reference
+
+#### Current phase — the headline: Corpus Change Study Phases 1-3 are complete
 
 **The deterministic parser is built, validated, stress-tested against
 real content, and wired into the real app.** This is the actual reason
@@ -510,172 +756,6 @@ bugs found and fixed. See `QC Test Harness/README.md` for reuse
 instructions; the stress-test script itself lives only in this
 session's scratchpad, not the repo — reusable in concept, not as a
 checked-in tool yet.
-
-### Session 6 wrap-up (2026-08-07) — superseded by the section above, kept for reference
-
-#### Current phase
-
-Same category as Session 5: more `deterministic-parser` branch prep and
-cleanup, not the Corpus Change Study's own phases. **The actual
-GiNZA/SudachiPy rewrite still has not started.** This session worked
-through several `WORKING_LIST.md` items specifically chosen because
-they sit outside the upcoming parser rewrite's blast radius (none touch
-a Frozen Component), plus one governance change to Advisor's own git
-behavior.
-
-Six commits landed on `deterministic-parser` this session, all local,
-not yet pushed at the time of this wrap-up (pushing now, as the
-session's own end-of-session housekeeping, per the git-handling policy
-revised this same session — see below):
-
-1. `71dad32` — swapped Episode/Origin field order on the main Sources
-   form (Owner reported it visually backwards from a live screenshot).
-2. `2c477c3` — revised `CLAUDE.md`'s Git handling: commits now
-   pre-approved once a change passes Advisor's evaluation; pushes
-   default to end-of-session wrap-up instead of an explicit ask every
-   time (Owner's own initiative — commits are cheap/reversible, gating
-   every one added friction without adding safety; push kept at a
-   higher bar since it's shared/visible state).
-3. `136940c` — removed the per-collection `default_source_type` field
-   entirely (not just hidden). Investigation found it was more than a
-   stale display: live-wired into `quick_presets.py`'s preset-population
-   fallback. Confirmed safe to remove outright because `source_type_var`
-   already stays correctly populated from Config independent of that
-   mechanism, now that only one `source_type` value exists anywhere.
-   Touched `metadata_editor.py`, `config_loader.py`, `quick_presets.py`,
-   `gui.py`, `metadata_editor_gui.py`, and 4 test files. OC also caught
-   and removed a related dead check in `delete_source_type()` that
-   referenced the now-gone field — correct follow-through, not scope
-   creep.
-4. `9dc506d` — corrected two stale `WORKING_LIST.md` entries found
-   already resolved while scanning for parser-rewrite-safe work:
-   `RAW_SUBTITLES`/`RAW_TRANSCRIPTS` removal was actually done in
-   TASK 15 but never checked off; the `podcast_transcript` import-default
-   bug is moot since that `source_type` no longer exists anywhere after
-   the TASK 16-18 collapse.
-5. `f646709` — added `paths.RAW_IMPORTS` as a standard workspace folder.
-   Owner had manually created a `Raw Imports` folder at project root;
-   moved it (with its existing `Subtitles`/`For Future Import Types`
-   structure intact) into the real Workspace instead, since raw import
-   material is customer/runtime data, not product code — matches
-   `paths.py`'s own stated product-vs-customer-data split. Wired into
-   the existing `WORKSPACE_FOLDERS`/`ensure_workspace()` auto-creation
-   mechanism, so no new setup utility was needed (Owner initially
-   thought one would be, correctly reconsidered once this was pointed
-   out).
-6. `6fa18d0` — Import Material's Browse button now defaults to
-   `paths.RAW_IMPORTS` and remembers the last-picked folder for the rest
-   of the running session, mirroring the Load File button's existing
-   pattern exactly.
-
-All six independently verified against raw `git diff` and direct test
-re-runs, not OC's self-report — full Source Builder suite green (23
-files, 0 failures) after every change. `master` remains the mothballed
-DeepSeek-architecture reference, untouched this session.
-
-### Two process/environment findings from this session, not code
-
-- **Correction to a Session 6 finding, not a real gap after all.** Last
-  session reported `2026-08-06_blast_radius_scope.md` as missing
-  entirely (cited by this file and `WORKING_LIST.md` as the source
-  confirming Analysis modules are unaffected by the parser rewrite).
-  That was Advisor's own search error, not a real documentation gap —
-  the file exists and always did, at
-  `C:\AI Development Projects\Corpus change study\2026-08-06_blast_radius_scope.md`,
-  a separate sibling folder outside the Jprogram repo. Last session's
-  search only covered the repo itself. No action needed; the citation
-  was correct all along. A UI/workflow simplification insight (see
-  Session 7 below) was added to that file as an addendum this session.
-- **This Bash shell has a stale `JPROGRAM_WORKSPACE` environment
-  variable** (the pre-relocation value, `C:\Jprogram Workspace`) — the
-  real persistent store is correct (confirmed via the direct registry
-  read `CLAUDE.md` already prescribes for this exact failure mode).
-  Root cause: env vars are inherited once at process start, not
-  live-refreshed; the underlying shell process was spawned before the
-  variable was last updated. Caused one small accidental side effect
-  (an empty folder created in the stale location during a sanity
-  check), cleaned up immediately. Owner's plan: a full computer restart
-  before the next session resolves it — confirmed sufficient, since a
-  fresh login re-reads the registry-stored value cleanly. **Verify this
-  directly at the start of next session rather than assuming the
-  restart happened or worked** — same standing caution `CLAUDE.md`
-  already states for this class of issue.
-- Separately, and not addressed this session: a **pre-existing stale
-  `C:\Jprogram Workspace` folder tree** (predates this session, not
-  created by this session's work) is still sitting on disk — likely
-  tied to the still-open "OpenCode desktop may still point at the old
-  repo folder" item carried from Session 4. Not touched without Owner's
-  say-so; flagged, not cleaned up.
-
-### Last several decisions and why
-
-- **Git handling policy revised** (see commit `2c477c3` above) — the
-  reasoning and exact new rule are in `CLAUDE.md` itself now; this
-  entry is just the pointer so it isn't missed at next wrap-up.
-- **`default_source_type` removed outright, not just hidden** — same
-  judgment already established for `origin`/`source_type` cleanup this
-  branch: when a field can only ever resolve to one value, keeping it
-  around as inert data invites exactly the kind of stale-legacy-value
-  confusion already seen elsewhere in this project, so delete rather
-  than leave as dead weight.
-- **`Raw Imports` corrected to live in the Workspace, not project
-  root** — Owner's first instinct was project root (where the folder
-  was manually created); corrected against `paths.py`'s own stated
-  convention once the "would need a setup utility" concern turned out
-  to be moot (the existing auto-creation mechanism already covers it).
-
-### Open risks / unresolved questions
-
-Full detail in `WORKING_LIST.md` — this is a pointer, not a duplicate.
-Headline items still open:
-
-- **The Corpus Change Study work itself** — still the big one, still not
-  started. Start at
-  `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-- **This shell's stale `JPROGRAM_WORKSPACE` value** — expected resolved
-  by Owner's planned computer restart; verify at next session's start.
-- **The pre-existing stale `C:\Jprogram Workspace` folder tree** — still
-  on disk, still not cleaned up, still tied to the unresolved OpenCode
-  desktop repo-location question from Session 4.
-- **12 `ruff` findings deliberately deferred**, all inside Frozen
-  Components the parser rewrite will touch anyway — unchanged from
-  Session 5, see that section below for the caution about
-  `corpus_builder.py`'s re-exports.
-- **A forward-looking, unscoped note**: possible future need for
-  metadata to organize processor/analysis output data, distinct from
-  `origin`. Not a task yet.
-- **`origin`'s name itself may change later** — explicitly deferred,
-  cheap to do anytime.
-- **`sentence_index` "no gaps" not validated** — still deliberately
-  deferred, zero current functional impact confirmed.
-- **Remaining live-testing GUI backlog** — Import default-folder is now
-  done (drop from future carry-forward). Still open: embedded-tabs
-  restructure, Analysis multi-file capability (direction already
-  settled: one report per file, loop the existing single-file logic,
-  no Frozen changes — just not built), Template Editor pass, the
-  Tkinter GUI-state error report still blocked on Owner pasting a
-  traceback, the `teppei_beginner` stale-selection bug, the
-  import-from-subtitle workflow (needs design thought, not scoped).
-- **API key structure/utility design** — not started.
-
-### Next immediate task
-
-No hard blocker on anything. In rough priority order:
-1. More `WORKING_LIST.md` items outside the parser rewrite's blast
-   radius remain if more branch-prep is wanted: the `teppei_beginner`
-   stale-selection bug, Analysis multi-file capability, or a Template
-   Editor pass are the next-easiest candidates.
-2. Otherwise: start the actual Corpus Change Study work from
-   `C:\AI Development Projects\Corpus change study\00_INDEX.md` — the
-   real reason `deterministic-parser` exists as a branch.
-3. Test the freshly-wiped workspace end to end, per Session 5's own
-   stated goal — still not done.
-
-### Real-data validation status
-
-Unchanged from Session 5: done once, successfully, via
-`QC Test Harness/`. See `QC Test Harness/README.md` for reuse
-instructions.
 
 ---
 
