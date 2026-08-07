@@ -133,7 +133,7 @@ def _():
         labels = recent_sources.recent_labels(sources_root)
         check("one label", len(labels) == 1)
         check("human label",
-              labels[0] == "Con Teppei for Beginner — Episode 63")
+              labels[0] == "Con Teppei for Beginner — ID#63")
         check("no source_id", "clean_text_teppei-beginner_ep063"
               not in labels[0])
         check("no path", "Sources" not in labels[0])

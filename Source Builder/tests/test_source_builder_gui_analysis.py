@@ -180,8 +180,8 @@ def _():
             window = analysis_tab_gui.AnalysisTabWindow(app)
             check("rows listed", len(window.rows) == 2)
             labels = [r["label"] for r in window.rows]
-            check("ep58 label", "Episode 58" in " ".join(labels))
-            check("ep59 label", "Episode 59" in " ".join(labels))
+            check("ep58 label", "ID#58" in " ".join(labels))
+            check("ep59 label", "ID#59" in " ".join(labels))
             window.window.destroy()
         finally:
             ctx.__exit__()

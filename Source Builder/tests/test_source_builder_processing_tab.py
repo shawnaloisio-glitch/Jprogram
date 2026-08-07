@@ -132,7 +132,7 @@ def _():
         check("two packages", len(packages) == 2)
         labels = sorted(processing_tab.human_label(p) for p in packages)
         check("collection label",
-              f"{COLLECTION_NAME} — Episode 58" in labels)
+              f"{COLLECTION_NAME} — ID#58" in labels)
         check("standalone label", "nhk_weather" in labels)
     finally:
         restore(saved)
@@ -157,7 +157,7 @@ def _():
 
     saved = patch_root(sources_root, config_dir)
     try:
-        # Mixed multi-digit episodes: a lexicographic ("Episode N" string)
+        # Mixed multi-digit episodes: a lexicographic ("ID#N" string)
         # sort would put 10 before 2 and 1000 before 999.
         for ep in (2, 10, 999, 1000):
             write_collection_source(sources_root, "teppei_beginner", ep,
@@ -213,7 +213,7 @@ def _():
         "episode": 58,
     }
     label = processing_tab.human_label(package)
-    check("label has display text", "Episode 58" in label)
+    check("label has display text", "ID#58" in label)
     check("no source_id", "clean_text_teppei-beginner" not in label)
 
 
@@ -553,7 +553,7 @@ def _():
         check("correct source", completed[0]["source_id"] == ep58)
         check("human label",
               processing_tab.human_label(completed[0])
-              == f"{COLLECTION_NAME} — Episode 58")
+              == f"{COLLECTION_NAME} — ID#58")
     finally:
         restore(saved)
 

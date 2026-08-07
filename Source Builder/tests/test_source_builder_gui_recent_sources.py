@@ -236,12 +236,12 @@ def _():
             items = list_items(app)
             check("one recent entry", len(items) == 1)
             check("label at top",
-                  items[0] == "Con Teppei for Beginner — Episode 1")
+                  items[0] == "Con Teppei for Beginner — ID#1")
             # Save another -> newest first.
             fill_and_save(app, 64)
             items = list_items(app)
             check("newest first",
-                  items[0] == "Con Teppei for Beginner — Episode 2")
+                  items[0] == "Con Teppei for Beginner — ID#2")
             check("two entries", len(items) == 2)
         finally:
             root.destroy()
@@ -313,7 +313,7 @@ def _():
                                     encoding="utf-8")
             labels = recent_sources.recent_labels(controller.SOURCES_ROOT)
             check("max ten", len(labels) == 10)
-            check("newest first", "Episode 12" in labels[0])
+            check("newest first", "ID#12" in labels[0])
         finally:
             root.destroy()
     finally:

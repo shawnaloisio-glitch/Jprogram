@@ -64,8 +64,13 @@ def human_label(package):
     """
     Return a human-readable label for a source package.
 
-    Collection: "<collection display name> — Episode <N>"
+    Collection: "<collection display name> — ID#<N>"
     Standalone: "<source_name>"
+
+    "episode" is the hidden, always-auto-incrementing system identifier
+    (not the user-facing Episode#/Season# metadata fields), so the label
+    calls it "ID#" rather than "Episode" to avoid implying it reflects the
+    real-world episode number the user may have entered separately.
 
     Input: package (dict, validated source package).
     Output: str.
@@ -75,7 +80,7 @@ def human_label(package):
         name = _display_name_for_collection(collection_id)
         episode = package.get("episode")
         if episode is not None:
-            return f"{name} — Episode {episode}"
+            return f"{name} — ID#{episode}"
         return name
     source_name = package.get("source_name")
     if source_name:

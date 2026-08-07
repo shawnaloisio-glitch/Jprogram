@@ -156,7 +156,7 @@ def _():
             check("two sources", len(rows) == 2)
             labels = [r["label"] for r in rows]
             check("collection label present",
-                  "Episode 58" in " ".join(labels))
+                  "ID#58" in " ".join(labels))
             check("standalone label present",
                   "nhk_weather" in " ".join(labels))
             check("no source_id in labels",
