@@ -85,6 +85,7 @@ def stage_setup():
         canonical_path=canonical_path,
         cleaning_profile=cleaning_profile,
         cleaner_version=cleaner_version,
+        material_level=0,
         source_name=SOURCE_NAME,
     )
     source_package.write_package(package)
