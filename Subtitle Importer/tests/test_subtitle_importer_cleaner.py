@@ -69,9 +69,11 @@ def _():
     cleaned = cleaner.clean_text(SAMPLE_SRT, "srt")
     check("no timestamp", "00:00" not in cleaned)
     check("no sequence number 1", "1\nこんにちは" not in cleaned)
-    check("keeps dialogue 1", "こんにちは。お元気ですか。" in cleaned)
+    check("keeps dialogue 1a", "こんにちは。" in cleaned)
+    check("keeps dialogue 1b", "お元気ですか。" in cleaned)
     check("keeps dialogue 2", "はい、元気です。" in cleaned)
-    check("two cues", cleaned.count("こんにちは。お元気ですか。") == 1)
+    check("exact output",
+          cleaned == "こんにちは。\n\nお元気ですか。\n\nはい、元気です。")
 
 
 @test("srt: markup tags removed")
@@ -96,7 +98,7 @@ def _():
     check("keeps text", "こんにちは。" in cleaned)
 
 
-@test("srt: multi-line cue keeps line breaks")
+@test("srt: multi-line cue with two full sentences splits into two cues")
 def _():
     content = """1
 00:00:01,000 --> 00:00:02,000
@@ -106,7 +108,31 @@ def _():
     cleaned = cleaner.clean_text(content, "srt")
     check("line one", "これは一行目。" in cleaned)
     check("line two", "これは二行目。" in cleaned)
-    check("newline preserved", "これは一行目。\nこれは二行目。" in cleaned)
+    check("separate cues", cleaned == "これは一行目。\n\nこれは二行目。")
+
+
+@test("srt: two sentences in one cue split into two separate cues")
+def _():
+    content = """1
+00:00:01,000 --> 00:00:02,000
+通りません。はい。
+"""
+    cleaned = cleaner.clean_text(content, "srt")
+    check("split into two cues", cleaned == "通りません。\n\nはい。")
+
+
+@test("srt: one sentence wrapped across two display lines stays one entry")
+def _():
+    content = """1
+00:00:01,000 --> 00:00:02,000
+これは長い一つの
+文です。
+"""
+    cleaned = cleaner.clean_text(content, "srt")
+    check("single entry", cleaned == "これは長い一つの\n文です。")
+    check("no leading/trailing newline artifact",
+          not cleaned.startswith("\n") and not cleaned.endswith("\n"))
+    check("not fragmented into two entries", "\n\n" not in cleaned)
 
 
 # ============================================================
@@ -118,8 +144,35 @@ def _():
     cleaned = cleaner.clean_text(SAMPLE_VTT, "vtt")
     check("no timestamp", "00:00" not in cleaned)
     check("no webvtt header", "WEBVTT" not in cleaned)
-    check("keeps dialogue 1", "こんにちは。お元気ですか。" in cleaned)
+    check("keeps dialogue 1a", "こんにちは。" in cleaned)
+    check("keeps dialogue 1b", "お元気ですか。" in cleaned)
     check("keeps dialogue 2", "はい、元気です。" in cleaned)
+
+
+@test("vtt: two sentences in one cue split into two separate cues")
+def _():
+    content = """WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+通りません。はい。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("split into two cues", cleaned == "通りません。\n\nはい。")
+
+
+@test("vtt: one sentence wrapped across two display lines stays one entry")
+def _():
+    content = """WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+これは長い一つの
+文です。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("single entry", cleaned == "これは長い一つの\n文です。")
+    check("no leading/trailing newline artifact",
+          not cleaned.startswith("\n") and not cleaned.endswith("\n"))
+    check("not fragmented into two entries", "\n\n" not in cleaned)
 
 
 @test("vtt: html tags and cue settings removed")

@@ -47,6 +47,7 @@ from cleaning_utils import (
     collapse_blank_lines,
     collapse_ascii_spaces,
 )
+from sentence_split import split_line
 from paths import CLEANING_RESULTS, LOG_TRANSCRIPT_CLEANER, SOURCE_REGISTRY
 from project_config import (
     CLEANER_VERSIONS,
@@ -139,7 +140,11 @@ def clean_transcript_text(text):
         4. Collapse repeated ASCII spaces only (full-width U+3000 and
            Japanese text are preserved).
         5. Collapse consecutive blank lines to one.
-        6. Join output: utterances separated by one blank line, rstrip,
+        6. Split each line at sentence-final punctuation boundaries
+           (。！？), replacing any line containing multiple sentences
+           with multiple separate lines so each non-blank line is one
+           sentence for the parser.
+        7. Join output: utterances separated by one blank line, rstrip,
            exactly one final newline.
 
     The canonical corpus reconstruction contract (Corpus Builder) joins
@@ -166,7 +171,11 @@ def clean_transcript_text(text):
 
     lines, blank_lines_removed = collapse_blank_lines(cleaned_lines)
 
-    output_text = join_transcript_lines(lines)
+    sentence_lines = []
+    for line in lines:
+        sentence_lines.extend(split_line(line))
+
+    output_text = join_transcript_lines(sentence_lines)
     characters_written = len(output_text)
 
     statistics = {

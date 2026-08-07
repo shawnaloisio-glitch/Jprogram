@@ -52,13 +52,22 @@ or app.py) and is not part of the frozen component set yet.
 """
 
 import re
+import sys
+from pathlib import Path
 
 import ginza
 import spacy
 
-CANONICAL_LINE_SEPARATOR = "\n\n"
+# Project import convention: expose the project root and the shared
+# Common utility layer (same sys.path/import pattern Transcript
+# Cleaner/clean_transcript.py uses to import from Common/cleaning_utils.py).
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT))
+sys.path.append(str(PROJECT_ROOT / "Common"))
 
-SENTENCE_FINAL_PUNCT = frozenset("。！？")
+from sentence_split import split_line, SENTENCE_FINAL_PUNCT
+
+CANONICAL_LINE_SEPARATOR = "\n\n"
 
 # Word separator characters, mirroring the Response Validator's evidence
 # separators: word units never include the spaces or punctuation that
@@ -104,37 +113,6 @@ def _is_section_marker_line(line):
     return stripped.startswith("=====") and stripped.endswith("=====")
 
 
-def _split_line(line):
-    """Split one content line at sentence-final punctuation boundaries.
-
-    Sentence-final punctuation (。！？) marks a boundary and stays
-    attached to the preceding sentence. Consecutive sentence-final
-    punctuation characters are coalesced into one boundary. A line
-    with no sentence-final punctuation is one whole sentence.
-    """
-    if not line:
-        return []
-    if not any(ch in SENTENCE_FINAL_PUNCT for ch in line):
-        return [line]
-    result = []
-    start = 0
-    i = 0
-    n = len(line)
-    while i < n:
-        if line[i] in SENTENCE_FINAL_PUNCT:
-            j = i
-            while j < n and line[j] in SENTENCE_FINAL_PUNCT:
-                j += 1
-            result.append(line[start:j])
-            start = j
-            i = j
-        else:
-            i += 1
-    if start < n:
-        result.append(line[start:])
-    return result
-
-
 def split_sentences(clean_text):
     """Split the job's clean source text into sentences.
 
@@ -150,7 +128,7 @@ def split_sentences(clean_text):
         kept[-1] = kept[-1][:-1]
     sentences = []
     for line in kept:
-        sentences.extend(_split_line(line))
+        sentences.extend(split_line(line))
     return sentences
 
 
@@ -404,7 +382,6 @@ __all__ = [
     "segment_sentence",
     "parse_job",
     "_is_section_marker_line",
-    "_split_line",
     "_merge_groups",
     "_word_from_group",
 ]

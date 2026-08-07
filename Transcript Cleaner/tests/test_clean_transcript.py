@@ -562,6 +562,24 @@ def _():
           any("sha256" in e and "match" in e for e in result["errors"]))
 
 
+@test("21. one line with two sentences splits into two utterances")
+def _():
+    out, _ = ct.clean_transcript_text("通りません。はい。\n")
+    check("two utterances", out == "通りません。\n\nはい。\n")
+
+
+@test("22. mixed punctuation split, single-sentence lines preserved")
+def _():
+    out, _ = ct.clean_transcript_text("待って！本当？\nこんにちは\n")
+    check("split and preserved", out == "待って！\n\n本当？\n\nこんにちは\n")
+
+
+@test("23. consecutive sentence-final punctuation stays one boundary")
+def _():
+    out, _ = ct.clean_transcript_text("すごい！！本当？\n")
+    check("coalesced", out == "すごい！！\n\n本当？\n")
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

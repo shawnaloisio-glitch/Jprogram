@@ -21,10 +21,13 @@ from pathlib import Path
 
 import sys
 
-# Allow imports from the project root (project convention).
+# Allow imports from the project root and the shared Common utility layer
+# (project convention).
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent / "Common"))
 
 import paths
+from sentence_split import split_line
 
 # Output directory for cleaned text files.
 INTAKE_DIR = paths.INTAKE
@@ -194,6 +197,14 @@ def clean_text(content, fmt):
     """
     Clean subtitle content into dialogue text (single string).
 
+    Each cue's full text is split at sentence-final punctuation
+    boundaries (。！？), so a cue containing two sentences becomes two
+    separate cues, exactly matching the deterministic parser's sentence
+    splitting. A single sentence that wraps across display lines within
+    one cue stays one piece: only whitespace around a split boundary is
+    removed, never newlines embedded inside an un-split sentence, and
+    pieces that are empty after stripping are dropped.
+
     Input: content (str), fmt (str: "srt" or "vtt").
     Output: cleaned dialogue text with cues joined by blank lines.
     """
@@ -203,7 +214,13 @@ def clean_text(content, fmt):
         raise CleanError(f"unsupported subtitle format: {fmt}")
     parser = PARSERS[fmt]()
     cues = parser.parse(content)
-    return "\n\n".join(cues)
+    sentences = []
+    for cue in cues:
+        for piece in split_line(cue):
+            piece = piece.strip()
+            if piece:
+                sentences.append(piece)
+    return "\n\n".join(sentences)
 
 
 def clean_file(path):
