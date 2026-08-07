@@ -1,6 +1,6 @@
 SOURCE
 template_version: 1.0
-source_type: anime_subtitle
+source_type: clean_text
 collection:
 season:
 language: ja

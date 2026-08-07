@@ -32,6 +32,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 sys.path.append(str(PROJECT_ROOT / "Source Builder"))
 
+import config_loader
 import controller
 import metadata_editor
 import paths
@@ -108,6 +109,30 @@ def _origins_config_path(workspace_root):
     return None
 
 
+def _populate_origins(conn, path):
+    """Populate origins via the workspace-aware config_loader.
+
+    config_loader resolves origins from the workspace (paths.ORIGINS_CONFIG),
+    the same customer-data location metadata_editor uses. The optional path
+    is applied by temporarily pointing paths.ORIGINS_CONFIG at it so
+    sandboxed rebuilds (workspace_root=...) stay isolated.
+    """
+    saved = paths.ORIGINS_CONFIG
+    if path is not None:
+        paths.ORIGINS_CONFIG = path
+    try:
+        for origin in config_loader.load_origins_full():
+            conn.execute(
+                "INSERT INTO origins (origin_id, display_name) VALUES (?, ?)",
+                (
+                    origin.get("origin_id"),
+                    origin.get("display_name"),
+                ),
+            )
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
+
 def _indexes_dir(workspace_root):
     """Return the directory that receives the rebuilt index database."""
     if workspace_root is not None:
@@ -160,18 +185,6 @@ def _populate_collections(conn, path):
                 collection.get("collection_id"),
                 collection.get("display_name"),
                 collection.get("sequencing"),
-            ),
-        )
-
-
-def _populate_origins(conn, path):
-    """Populate origins from the tested metadata_editor loader."""
-    for origin in metadata_editor.load_origins(path):
-        conn.execute(
-            "INSERT INTO origins (origin_id, display_name) VALUES (?, ?)",
-            (
-                origin.get("origin_id"),
-                origin.get("display_name"),
             ),
         )
 

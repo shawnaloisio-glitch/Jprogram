@@ -19,10 +19,8 @@ Run:
     python "Data Processor/tests/test_parser_normalizer.py"
 """
 
-import json
 import pathlib
 import sys
-import tempfile
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 DATA_PROCESSOR = PROJECT_ROOT / "Data Processor"

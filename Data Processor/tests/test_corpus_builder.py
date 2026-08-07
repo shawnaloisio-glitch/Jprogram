@@ -76,6 +76,35 @@ def valid_response(source_id=SOURCE_ID, job_number=1):
     }
 
 
+def valid_deterministic_response(source_id=SOURCE_ID, job_number=1):
+    """The deterministic producer saves its parsed dict as the response."""
+    return {
+        "source_name": source_id,
+        "job_number": job_number,
+        "sentences": [
+            {
+                "sentence_index": 0,
+                "text": "こんにちは。",
+                "words": [[0, "こんにちは", "こんにちは", 0, 5],
+                          [1, "。", "。", 5, 6]],
+                "chunks": [[0, "こんにちは。", 0, 2]],
+                "expressions": [],
+            },
+        ],
+    }
+
+
+def valid_job(source_id=SOURCE_ID, job_number=1, text="こんにちは。\n"):
+    """A job artifact matching the Job Builder's output shape."""
+    return {
+        "source_id": source_id,
+        "cleaned_artifact": f"Cleaned Archive/{source_id}.clean.txt",
+        "job_number": job_number,
+        "characters": len(text),
+        "text": text,
+    }
+
+
 def write_requests(requests_dir, source_id, requests):
     request_dir = requests_dir / source_id
     request_dir.mkdir(parents=True, exist_ok=True)
@@ -83,6 +112,15 @@ def write_requests(requests_dir, source_id, requests):
         path = request_dir / f"request_{request['job_number']:06d}.json"
         path.write_text(json.dumps(request, ensure_ascii=False), encoding="utf-8")
     return request_dir
+
+
+def write_jobs(jobs_dir, source_id, jobs):
+    job_dir = jobs_dir / source_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    for job in jobs:
+        path = job_dir / f"job_{job['job_number']:06d}.json"
+        path.write_text(json.dumps(job, ensure_ascii=False), encoding="utf-8")
+    return job_dir
 
 
 def write_responses(responses_dir, source_id, responses):
@@ -98,32 +136,39 @@ def write_responses(responses_dir, source_id, responses):
 def setup():
     """Create isolated temp dirs and patch Corpus Builder globals."""
     root = pathlib.Path(tempfile.mkdtemp())
+    jobs_dir = root / "jobs"
     requests_dir = root / "requests"
     responses_dir = root / "responses"
     jsonl_dir = root / "jsonl"
     corpus_dir = root / "Corpus Results"
     logs_dir = root / "logs"
-    for folder in (requests_dir, responses_dir, jsonl_dir, corpus_dir, logs_dir):
+    processing_results_dir = root / "Processing Results"
+    for folder in (jobs_dir, requests_dir, responses_dir, jsonl_dir,
+                   corpus_dir, logs_dir, processing_results_dir):
         folder.mkdir(parents=True)
 
     saved = (
+        cb.JOBS,
         cb.REQUESTS,
         cb.RESPONSES,
         cb.JSONL,
         cb.CORPUS_RESULTS,
         cb.LOG_CORPUS_BUILDER,
+        cb.PROCESSING_RESULTS,
     )
+    cb.JOBS = jobs_dir
     cb.REQUESTS = requests_dir
     cb.RESPONSES = responses_dir
     cb.JSONL = jsonl_dir
     cb.CORPUS_RESULTS = corpus_dir
     cb.LOG_CORPUS_BUILDER = logs_dir
+    cb.PROCESSING_RESULTS = processing_results_dir
     return root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved
 
 
 def restore(saved):
-    (cb.REQUESTS, cb.RESPONSES, cb.JSONL, cb.CORPUS_RESULTS,
-     cb.LOG_CORPUS_BUILDER) = saved
+    (cb.JOBS, cb.REQUESTS, cb.RESPONSES, cb.JSONL, cb.CORPUS_RESULTS,
+     cb.LOG_CORPUS_BUILDER, cb.PROCESSING_RESULTS) = saved
 
 
 def result_path(corpus_dir, source_id):
@@ -155,6 +200,7 @@ def check(name, cond, detail=""):
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.main(["--source", SOURCE_ID])
@@ -185,6 +231,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -200,6 +247,8 @@ def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
         bad = valid_request(source_id="pod_wrong_ep999")
+        write_jobs(root / "jobs", SOURCE_ID,
+                   [valid_job(source_id="pod_wrong_ep999")])
         write_requests(requests_dir, SOURCE_ID, [bad])
         write_responses(responses_dir, SOURCE_ID,
                         [valid_response(source_id="pod_wrong_ep999")])
@@ -217,6 +266,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -233,6 +283,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -254,7 +305,6 @@ def _():
     # Clean source sentence contains punctuation; parser word surfaces omit
     # it. The new flow canonicalize() -> validate_parser_output() -> build
     # must complete and write canonical JSONL.
-    import parser_normalizer as pn
 
     source_id = SOURCE_ID
     clean_text = "こんにちは。\n\nさようなら。\n"
@@ -279,6 +329,9 @@ def _():
             f"SOURCE METADATA:\nsource_id: {source_id}\n"
             f"job_number: 1\n\nTEXT:\n{clean_text}"
         )
+        write_jobs(root / "jobs", source_id,
+                   [valid_job(source_id=source_id, job_number=1,
+                              text=clean_text)])
         write_requests(requests_dir, source_id, [request])
         write_responses(responses_dir, source_id, [
             {"model": MODEL, "job_number": 1,
@@ -308,6 +361,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -335,6 +389,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -361,6 +416,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         # No response written.
         code = cb.run(SOURCE_ID)
@@ -377,6 +433,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         bad = {"choices": [{"message": {"content": "not valid json"}}],
                "usage": {},
@@ -395,6 +452,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
 
@@ -412,6 +470,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -431,6 +490,7 @@ def _():
 
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
 
@@ -488,6 +548,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
         code = cb.run(SOURCE_ID)
@@ -507,6 +568,7 @@ def _():
 def _():
     root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
     try:
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         write_responses(responses_dir, SOURCE_ID, [valid_response()])
 
@@ -678,6 +740,7 @@ def _():
                 "expressions": [],
             }],
         }
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         resp = {
             "model": MODEL,
@@ -715,6 +778,7 @@ def _():
                 "expressions": [],
             }],
         }
+        write_jobs(root / "jobs", SOURCE_ID, [valid_job()])
         write_requests(requests_dir, SOURCE_ID, [valid_request()])
         resp = {
             "model": MODEL,
@@ -779,6 +843,8 @@ def _():
             "TEXT:\n"
             f"{text}"
         )
+        write_jobs(root / "jobs", SOURCE_ID,
+                   [valid_job(source_id=SOURCE_ID, job_number=1, text=text)])
         write_requests(requests_dir, SOURCE_ID, [request])
 
         # Response echoes the supplied metadata -> validator passes.
@@ -815,20 +881,91 @@ def _():
         restore(saved)
 
 
-@test("25. job_text_from_user_content strips the metadata header")
+@test("25. deterministic path: job + response only, no request file, builds end-to-end")
 def _():
-    content = ("SOURCE METADATA:\n"
-               "source_id: pod_x_ep001\n"
-               "job_number: 1\n"
-               "\n"
-               "TEXT:\n"
-               "これは　本文です。\n")
-    text = cb.job_text_from_user_content(content)
-    check("text extracted", text == "これは　本文です。\n")
-    check("no metadata in text", "SOURCE METADATA" not in text)
-    check("legacy content unchanged",
-          cb.job_text_from_user_content("ただのテキスト。\n")
-          == "ただのテキスト。\n")
+    # Simulates the new deterministic parser path: a source with ONLY a
+    # job file and a response file, no request file at all. The response
+    # is the deterministic producer's format (its parsed dict saved
+    # directly as the response artifact).
+    source_id = SOURCE_ID
+    deterministic_model = "ginza-ja_ginza-5.2.0"
+    root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
+    try:
+        write_jobs(root / "jobs", source_id, [valid_job()])
+        write_responses(responses_dir, source_id,
+                        [valid_deterministic_response()])
+        # The source's processing result records the real producer identity.
+        processing_results_dir = root / "Processing Results"
+        processing = {
+            "schema_version": "1",
+            "source_id": source_id,
+            "model": deterministic_model,
+            "requests_processed": 1,
+            "jobs": [],
+            "totals": {"prompt_tokens": 0, "completion_tokens": 0,
+                       "total_tokens": 0},
+        }
+        (processing_results_dir / f"{source_id}.processing_result.json").write_text(
+            json.dumps(processing, ensure_ascii=False), encoding="utf-8")
+
+        check("no request file present", not (requests_dir / source_id).exists())
+
+        code = cb.run(source_id)
+        check("exit 0", code == 0)
+
+        jsonl_file = jsonl_dir / f"{source_id}.jsonl"
+        check("jsonl created", jsonl_file.is_file())
+        lines = jsonl_file.read_text(encoding="utf-8").splitlines()
+        check("one record", len(lines) == 1)
+        record = json.loads(lines[0])
+        check("job text from job file", record["text"] == "こんにちは。")
+        p = record["provenance"]
+        check("source_id", p["source_id"] == source_id)
+        check("source == source_id", p["source"] == source_id)
+        check("source_file from job cleaned_artifact",
+              p["source_file"] == f"Cleaned Archive/{source_id}.clean.txt")
+        check("job_number", p["job_number"] == 1)
+        check("model from processing result", p["model"] == deterministic_model)
+        check("prompt_version None", p["prompt_version"] is None)
+    finally:
+        restore(saved)
+
+
+@test("26. missing processing result falls back to MODEL_NAME")
+def _():
+    source_id = SOURCE_ID
+    root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
+    try:
+        write_jobs(root / "jobs", source_id, [valid_job()])
+        write_responses(responses_dir, source_id,
+                        [valid_deterministic_response()])
+        check("no processing result present",
+              not (root / "Processing Results"
+                   / f"{source_id}.processing_result.json").exists())
+        code = cb.run(source_id)
+        check("exit 0", code == 0)
+        record = json.loads(
+            (jsonl_dir / f"{source_id}.jsonl")
+            .read_text(encoding="utf-8").splitlines()[0])
+        check("model falls back to MODEL_NAME",
+              record["provenance"]["model"] == cb.MODEL_NAME)
+    finally:
+        restore(saved)
+
+
+@test("27. no job files -> failed result, no jsonl")
+def _():
+    source_id = SOURCE_ID
+    root, requests_dir, responses_dir, jsonl_dir, corpus_dir, saved = setup()
+    try:
+        code = cb.run(source_id)
+        check("exit non-zero", code != 0)
+        check("no jsonl", not (jsonl_dir / f"{source_id}.jsonl").exists())
+        result = load_result(corpus_dir, source_id)
+        check("success false", result["success"] is False)
+        check("no jobs processed", result["jobs_processed"] == 0)
+    finally:
+        restore(saved)
 
 
 def main():

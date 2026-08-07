@@ -6,7 +6,7 @@ GUI-level tests for the Source Builder metadata editor window:
 
 - window opens from the app,
 - window is centred over the parent,
-- tabs are present (Collections / Source Types / Origins),
+- tabs are present (Collections / Origins),
 - refreshing after a metadata save updates Source Builder dropdowns.
 
 These tests build the actual Tk window. Config files are redirected to a
@@ -49,6 +49,7 @@ def sandbox():
     saved_config_dir = metadata_editor.CONFIG_DIR
     saved_loader_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
+    saved_origins_config = paths.ORIGINS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     conf_dir = tmp / "Config"
@@ -57,11 +58,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (conf_dir / "source_types.json").write_text(json.dumps({
-        "source_types": ["podcast_transcript", "cij_transcript",
+        "source_types": ["clean_text", "cij_transcript",
                          "subtitle", "article"],
     }), encoding="utf-8")
     (conf_dir / "origins.json").write_text(json.dumps({
@@ -76,6 +77,7 @@ def sandbox():
     metadata_editor.CONFIG_DIR = conf_dir
     config_loader.CONFIG_DIR = conf_dir
     paths.COLLECTIONS_CONFIG = conf_dir / "collections.json"
+    paths.ORIGINS_CONFIG = conf_dir / "origins.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -84,6 +86,7 @@ def sandbox():
         metadata_editor.CONFIG_DIR = saved_config_dir
         config_loader.CONFIG_DIR = saved_loader_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
+        paths.ORIGINS_CONFIG = saved_origins_config
 
     return restore
 
@@ -116,7 +119,7 @@ def make_visible_app(restore):
     return root, app
 
 
-@test("metadata editor window opens with three tabs")
+@test("metadata editor window opens with two tabs")
 def _():
     restore = sandbox()
     try:
@@ -136,8 +139,8 @@ def _():
             notebook = notebooks[0]
             tabs = [notebook.tab(tab_id, "text") for tab_id in notebook.tabs()]
             check("collections tab", "Collections" in tabs)
-            check("source types tab", "Source Types" in tabs)
             check("origins tab", "Origins" in tabs)
+            check("no source types tab", "Source Types" not in tabs)
         finally:
             root.destroy()
     finally:
@@ -187,20 +190,18 @@ def _():
     try:
         root, app = make_app(restore)
         try:
-            # Only processable source types are shown in the GUI; origins
+            # Only processable source types are used by the GUI; origins
             # exclude format-id values (none here).
-            check("source types before",
-                  app.source_type_combo.cget("values")
-                  == ("podcast_transcript",))
+            check("source type before",
+                  app.source_type_var.get() == "clean_text")
             check("origins before",
                   app.origin_combo.cget("values")
                   == ("con_teppei_podcast", "nhk_news"))
 
-            # Add a processable source type (anime_subtitle has a profile) +
-            # a non-processable one, plus a new origin, then refresh.
-            metadata_editor.add_source_type(
-                "anime_subtitle", "Anime Subtitle", path=metadata_editor.CONFIG_DIR /
-                metadata_editor.FILES["source_types"])
+            # Add a non-processable source type plus a new origin, then
+            # refresh. Source types added through the editor never gain a
+            # processing profile, so clean_text (the single processable
+            # type) stays the fixed source type.
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
@@ -209,10 +210,8 @@ def _():
                 metadata_editor.FILES["origins"])
             app._refresh_metadata()
 
-            check("processable type shown",
-                  "Anime Subtitle" in app.source_type_combo.cget("values"))
-            check("non-processable type hidden",
-                  "Video" not in app.source_type_combo.cget("values"))
+            check("processable type kept",
+                  app.source_type_var.get() == "clean_text")
             check("origins after",
                   "NHK Radio" in app.origin_combo.cget("values"))
             check("collections unchanged",
@@ -265,17 +264,11 @@ def _():
             root.geometry("+100+200")
             root.update()
             app._open_metadata_editor()
-            editor = [w for w in root.winfo_children()
-                      if isinstance(w, tk.Toplevel)
-                      and w.title() == "Edit Metadata"][0]
             import metadata_editor_gui
             # Build the collections tab's Add fields exactly as the tab does.
-            source_types = ["podcast_transcript", "subtitle", "article"]
             fields = [
                 ("collection_id", "Collection ID", "entry"),
                 ("display_name", "Display Name", "entry"),
-                ("default_source_type", "Default Source Type", "combo",
-                 source_types),
             ]
             result = {}
 
@@ -375,16 +368,12 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             # The dialog returns entered fields; the tab's add fn writes them.
-            source_types = ["podcast_transcript", "subtitle", "article"]
             result = {
-                "collection_id": "nhk_b", "display_name": "NHK B",
-                "default_source_type": "article"}
+                "collection_id": "nhk_b", "display_name": "NHK B"}
             metadata_editor.add_collection(
-                result["collection_id"], result["display_name"],
-                default_source_type=result.get("default_source_type") or None,
-                source_type_ids=source_types)
+                result["collection_id"], result["display_name"])
             app._refresh_metadata()
             collections = metadata_editor.load_collections()
             check("collection added",
@@ -392,8 +381,6 @@ def _():
                   == ["teppei_beginner", "nhk_b"])
             check("display name stored",
                   collections[1]["display_name"] == "NHK B")
-            check("default stored",
-                  collections[1]["default_source_type"] == "article")
             check("app dropdown refreshed",
                   "nhk_b" in app.collection_combo.cget("values"))
         finally:
@@ -409,14 +396,12 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            metadata_editor_gui.MetadataEditorWindow(app)
             # Blank display name must be rejected by the data layer.
             try:
                 metadata_editor.add_collection(
                     "new_col", "   ", path=metadata_editor.CONFIG_DIR /
-                    metadata_editor.FILES["collections"],
-                    source_type_ids=source_types)
+                    metadata_editor.FILES["collections"])
                 check("blank rejected", False)
             except metadata_editor.MetadataError as exc:
                 check("blank message", "display_name is required" in str(exc))
@@ -435,14 +420,12 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
-            source_types = ["podcast_transcript", "subtitle", "article"]
+            metadata_editor_gui.MetadataEditorWindow(app)
             try:
                 metadata_editor.add_collection(
                     "teppei_beginner", "Dup",
                     path=metadata_editor.CONFIG_DIR /
-                    metadata_editor.FILES["collections"],
-                    source_type_ids=source_types)
+                    metadata_editor.FILES["collections"])
                 check("duplicate rejected", False)
             except metadata_editor.MetadataError as exc:
                 check("duplicate message", "already exists" in str(exc))
@@ -461,7 +444,7 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
@@ -545,7 +528,7 @@ def _():
         root, app = make_visible_app(restore)
         try:
             import metadata_editor_gui
-            me = metadata_editor_gui.MetadataEditorWindow(app)
+            metadata_editor_gui.MetadataEditorWindow(app)
             fields = [
                 ("collection_id", "Collection ID", "entry"),
                 ("display_name", "Display Name", "entry"),
@@ -574,7 +557,6 @@ def _():
     try:
         root, app = make_visible_app(restore)
         try:
-            import tkinter.ttk as ttk
             import metadata_editor_gui
             me = metadata_editor_gui.MetadataEditorWindow(app)
             root.update()
@@ -1038,130 +1020,6 @@ def _():
         restore()
 
 
-@test("add dialog Default Source Type combo only offers processable types")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def inspect_and_cancel():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["values"] = tuple(combo.cget("values"))
-                cancel = find_button_in(d, "Cancel")
-                if cancel:
-                    cancel.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, inspect_and_cancel)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("source type combo present",
-                  result.get("combo_found") is True)
-            values = result.get("values", ())
-            check("processable type offered", "podcast_transcript" in values)
-            check("known non-processable cij_transcript excluded",
-                  "cij_transcript" not in values)
-            check("subtitle excluded", "subtitle" not in values)
-            check("article excluded", "article" not in values)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("edit dialog pre-fills and saves a legacy non-processable default")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            metadata_editor.add_collection(
-                "cijapanese", "CI Japanese",
-                default_source_type="cij_transcript")
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
-            result = {}
-
-            def drive_edit():
-                result["row_selected"] = select_tree_row_by_id(
-                    tab, "cijapanese")
-                edit_button.invoke()
-
-            def inspect_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Edit"]
-                if not tops:
-                    result["error"] = "Edit dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
-                if combo is None:
-                    result["error"] = "source type combo not found"
-                    return
-                result["displayed"] = combo.get()
-                result["offered"] = tuple(combo.cget("values"))
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            def verify_no_error_dialog():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)]
-                result["error_dialog"] = any(
-                    w.title() == "Cannot edit" for w in tops)
-                result["edit_dialog_closed"] = not any(
-                    w.title() == "Edit" for w in tops)
-
-            root.after(100, drive_edit)
-            root.after(250, inspect_and_save)
-            root.after(400, verify_no_error_dialog)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("legacy row selected", result.get("row_selected") is True)
-            check("legacy value pre-filled",
-                  result.get("displayed") == "cij_transcript")
-            check("legacy value not offered for new picks",
-                  "cij_transcript" not in result.get("offered", ()))
-            check("saved without error dialog",
-                  result.get("error_dialog") is False)
-            check("edit dialog closed after save",
-                  result.get("edit_dialog_closed") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection still present", "cijapanese" in by_id)
-            check("legacy default preserved",
-                  by_id["cijapanese"]["default_source_type"] == "cij_transcript")
-            check("display name preserved",
-                  by_id["cijapanese"]["display_name"] == "CI Japanese")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
 # ============================================================
 # Sequencing display labels
 # ============================================================
@@ -1337,324 +1195,6 @@ def _():
             check("combo present (auto)", result.get("combo_found") is True)
             check("auto pre-fills Auto label",
                   result.get("displayed") == SEQUENCING_LABELS["auto"])
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("Default Source Type combo values and save behavior are unchanged")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, ("podcast_transcript",))
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["displayed_values"] = tuple(combo.cget("values"))
-                    combo.set("podcast_transcript")
-                fill_dialog_entries(d, ["nhk_st", "NHK ST"])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, fill_and_save)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("source type combo present", result.get("combo_found") is True)
-            check("displayed values unchanged",
-                  result.get("displayed_values") == ("podcast_transcript",))
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection added", "nhk_st" in by_id)
-            check("default persisted",
-                  by_id["nhk_st"]["default_source_type"] == "podcast_transcript")
-            check("sequencing default still episodic",
-                  by_id["nhk_st"]["sequencing"] == "episodic")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-# ============================================================
-# Styles tab (Add hides the autoincrement id; Edit locks it)
-# ============================================================
-
-@test("metadata editor opens with a Styles tab")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_app(restore)
-        try:
-            app._open_metadata_editor()
-            editor = [w for w in root.winfo_children()
-                      if isinstance(w, tk.Toplevel)
-                      and w.title() == "Edit Metadata"][0]
-            import tkinter.ttk as ttk
-            notebook = [c for c in editor.winfo_children()
-                        if isinstance(c, ttk.Notebook)][0]
-            tabs = [notebook.tab(tab_id, "text")
-                    for tab_id in notebook.tabs()]
-            check("styles tab", "Styles" in tabs)
-            check("styles tab last",
-                  tabs.index("Styles") == len(tabs) - 1)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("styles Add dialog shows only Display Name, never a style id field")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = styles_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def inspect():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                import tkinter.ttk as ttk
-                entries = []
-                labels = []
-
-                def collect(w):
-                    for c in w.winfo_children():
-                        if isinstance(c, ttk.Entry):
-                            entries.append(c)
-                        if isinstance(c, ttk.Label):
-                            labels.append(c.cget("text"))
-                        collect(c)
-
-                collect(d)
-                result["entry_count"] = len(entries)
-                result["labels"] = labels
-                result["has_style_id_field"] = any(
-                    text.strip() == "Style ID" for text in labels)
-                cancel = find_button_in(d, "Cancel")
-                if cancel:
-                    cancel.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, inspect)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("one entry (display name only)",
-                  result.get("entry_count") == 1)
-            check("no style id field",
-                  result.get("has_style_id_field") is False)
-            text = " ".join(result.get("labels", []))
-            check("display name label present", "Display Name" in text)
-            check("helper mentions auto ids", "assigned automatically" in text)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("styles Add dialog completes and persists a new style")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = styles_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                fill_dialog_entries(d, ["Documentary"])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, fill_and_save)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            styles = metadata_editor.load_styles()
-            check("style added", len(styles) == 1)
-            check("autoincrement id", styles[0]["style_id"] == 1)
-            check("display stored", styles[0]["display_name"] == "Documentary")
-            check("tree row appears",
-                  ("1", "Documentary") in treeview_rows(tab))
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("styles Edit dialog shows the style id locked and pre-filled")
-def _():
-    restore = sandbox()
-    try:
-        metadata_editor.add_style("Documentary")
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = styles_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
-            result = {}
-
-            def drive_edit():
-                result["row_selected"] = select_first_tree_row(tab)
-                edit_button.invoke()
-
-            def inspect():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Edit"]
-                if not tops:
-                    result["error"] = "Edit dialog not found"
-                    return
-                d = tops[0]
-                import tkinter.ttk as ttk
-                entries = []
-
-                def collect(w):
-                    for c in w.winfo_children():
-                        if isinstance(c, ttk.Entry):
-                            entries.append(c)
-                        collect(c)
-
-                collect(d)
-                result["entry_count"] = len(entries)
-                if len(entries) >= 2:
-                    result["id_value"] = entries[0].get()
-                    result["id_state"] = str(entries[0].cget("state"))
-                labels = []
-
-                def collect_labels(w):
-                    for c in w.winfo_children():
-                        if isinstance(c, ttk.Label):
-                            labels.append(c.cget("text"))
-                        collect_labels(c)
-
-                collect_labels(d)
-                result["labels"] = labels
-                cancel = find_button_in(d, "Cancel")
-                if cancel:
-                    cancel.invoke()
-
-            root.after(100, drive_edit)
-            root.after(250, inspect)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("row selected", result.get("row_selected") is True)
-            check("two entries (id + display)", result.get("entry_count") == 2)
-            check("id pre-filled", result.get("id_value") == "1")
-            check("id locked readonly", result.get("id_state") == "readonly")
-            text = " ".join(result.get("labels", []))
-            check("lock indicator on id label", "\U0001F512" in text)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("styles Edit dialog renames the selected style")
-def _():
-    restore = sandbox()
-    try:
-        metadata_editor.add_style("Documentary")
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = styles_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
-            result = {}
-
-            def drive_edit():
-                result["row_selected"] = select_first_tree_row(tab)
-                edit_button.invoke()
-
-            def rename_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Edit"]
-                if not tops:
-                    result["error"] = "Edit dialog not found"
-                    return
-                d = tops[0]
-                import tkinter.ttk as ttk
-                entries = []
-
-                def collect(w):
-                    for c in w.winfo_children():
-                        if isinstance(c, ttk.Entry):
-                            entries.append(c)
-                        collect(c)
-
-                collect(d)
-                # entries[0] is the locked id; entries[1] is Display Name.
-                if len(entries) >= 2:
-                    entries[1].delete(0, "end")
-                    entries[1].insert(0, "Documentary Series")
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            root.after(100, drive_edit)
-            root.after(250, rename_and_save)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("row selected", result.get("row_selected") is True)
-            styles = metadata_editor.load_styles()
-            check("still one style", len(styles) == 1)
-            check("id unchanged", styles[0]["style_id"] == 1)
-            check("renamed", styles[0]["display_name"] == "Documentary Series")
         finally:
             root.destroy()
     finally:

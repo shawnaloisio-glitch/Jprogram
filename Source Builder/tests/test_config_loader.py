@@ -4,12 +4,11 @@ test_config_loader.py
 
 Deterministic tests for the Source Builder config loader:
 
-- load_collections returns collection_id / name / source_type / sequencing,
+- load_collections returns collection_id / name / sequencing,
 - sequencing defaults to "episodic" when a collection does not declare it,
 - explicit "auto" / "episodic" values are read back,
 - empty and missing collection configs load as empty lists,
-- collection ordering is preserved,
-- default_source_type_for_collection resolves through the loaded data.
+- collection ordering is preserved.
 
 Config is redirected to a sandboxed directory; the real workspace Config
 file is never touched.
@@ -50,22 +49,24 @@ def patch_collections_config(collections):
 
 
 def patch_vocab_config(source_types, origins, styles=None):
-    """Point config_loader.CONFIG_DIR at a sandbox; return restore fn."""
-    saved = config_loader.CONFIG_DIR
+    """Point config_loader.CONFIG_DIR and paths.ORIGINS_CONFIG at a sandbox."""
+    saved = (config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG)
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "source_types.json").write_text(
         json.dumps({"source_types": source_types}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(
+    origins_file = config_dir / "origins.json"
+    origins_file.write_text(
         json.dumps({"origins": origins}), encoding="utf-8")
     if styles is not None:
         (config_dir / "styles.json").write_text(
             json.dumps({"styles": styles}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
+    paths.ORIGINS_CONFIG = origins_file
 
     def restore():
-        config_loader.CONFIG_DIR = saved
+        config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG = saved
 
     return restore
 
@@ -85,12 +86,11 @@ def check(name, cond, detail=""):
         raise AssertionError(f"{name} failed. {detail}")
 
 
-@test("load_collections: returns the four canonical fields")
+@test("load_collections: returns the canonical fields")
 def _():
     restore = patch_collections_config([
         {"collection_id": "teppei_beginner",
          "name": "Con Teppei for Beginner",
-         "source_type": "podcast_transcript",
          "sequencing": "auto"},
     ])
     try:
@@ -99,7 +99,6 @@ def _():
         item = items[0]
         check("collection_id", item["collection_id"] == "teppei_beginner")
         check("name", item["name"] == "Con Teppei for Beginner")
-        check("source_type", item["source_type"] == "podcast_transcript")
         check("sequencing", item["sequencing"] == "auto")
     finally:
         restore()
@@ -115,6 +114,7 @@ def _():
         items = config_loader.load_collections()
         check("one collection", len(items) == 1)
         check("default sequencing", items[0]["sequencing"] == "episodic")
+        check("legacy source_type ignored", "source_type" not in items[0])
     finally:
         restore()
 
@@ -157,6 +157,19 @@ def _():
         paths.COLLECTIONS_CONFIG = saved
 
 
+@test("load_origins: missing origins file loads empty")
+def _():
+    saved = paths.ORIGINS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
+    paths.ORIGINS_CONFIG = missing
+    try:
+        check("load_origins empty", config_loader.load_origins() == [])
+        check("load_origins_full empty",
+              config_loader.load_origins_full() == [])
+    finally:
+        paths.ORIGINS_CONFIG = saved
+
+
 @test("load_collections: ordering preserved")
 def _():
     restore = patch_collections_config([
@@ -168,24 +181,6 @@ def _():
         items = config_loader.load_collections()
         check("order",
               [c["collection_id"] for c in items] == ["b", "a", "c"])
-    finally:
-        restore()
-
-
-@test("default_source_type_for_collection resolves via loaded data")
-def _():
-    restore = patch_collections_config([
-        {"collection_id": "teppei_beginner",
-         "name": "Con Teppei for Beginner",
-         "source_type": "podcast_transcript"},
-    ])
-    try:
-        check("resolved",
-              config_loader.default_source_type_for_collection(
-                  "teppei_beginner") == "podcast_transcript")
-        check("unknown collection",
-              config_loader.default_source_type_for_collection(
-                  "missing") is None)
     finally:
         restore()
 
@@ -205,7 +200,7 @@ def _():
 @test("load_source_types_full: returns id + display_name pairs in order")
 def _():
     restore = patch_vocab_config(
-        [{"source_type_id": "podcast_transcript",
+        [{"source_type_id": "clean_text",
           "display_name": "Podcast Transcript"},
          {"source_type_id": "cij_transcript",
           "display_name": "CIJ Transcripts"}],
@@ -214,7 +209,7 @@ def _():
         entries = config_loader.load_source_types_full()
         check("order",
               [e["source_type_id"] for e in entries]
-              == ["podcast_transcript", "cij_transcript"])
+              == ["clean_text", "cij_transcript"])
         check("display name 1",
               entries[0]["display_name"] == "Podcast Transcript")
         check("display name 2",
@@ -242,7 +237,7 @@ def _():
 @test("full loaders fall back to the id when display_name is absent")
 def _():
     restore = patch_vocab_config(
-        ["podcast_transcript",
+        ["clean_text",
          {"source_type_id": "article"},
          {"source_type_id": "manga_text", "display_name": ""}],
         ["con_teppei_podcast",
@@ -251,7 +246,7 @@ def _():
     try:
         st = config_loader.load_source_types_full()
         check("plain string fallback",
-              st[0]["display_name"] == "podcast_transcript")
+              st[0]["display_name"] == "clean_text")
         check("missing display fallback", st[1]["display_name"] == "article")
         check("empty display fallback",
               st[2]["display_name"] == "manga_text")
@@ -269,12 +264,12 @@ def _():
 @test("id-only loaders are unchanged by the full loaders")
 def _():
     restore = patch_vocab_config(
-        [{"source_type_id": "podcast_transcript",
+        [{"source_type_id": "clean_text",
           "display_name": "Podcast Transcript"}],
         [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"}])
     try:
         check("source types ids",
-              config_loader.load_source_types() == ["podcast_transcript"])
+              config_loader.load_source_types() == ["clean_text"])
         check("origins ids",
               config_loader.load_origins() == ["cijsub"])
     finally:

@@ -43,7 +43,7 @@ def registry_artifact(sid=SID):
         "source_id": sid,
         "original_filename": "con.txt",
         "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "format": "txt",
         "language": "ja",
         "cleaning_profile": "transcript_standard_v1",
@@ -56,7 +56,7 @@ def cleaning_job_artifact(sid=SID):
         "schema_version": "1",
         "source_id": sid,
         "raw_path": "Raw Transcripts/con.txt",
-        "source_type": "podcast_transcript",
+        "source_type": "clean_text",
         "cleaning_profile": "transcript_standard_v1",
         "cleaner_version": "1.0",
         "output_path": f"Cleaned Archive/{sid}.clean.txt",
@@ -187,7 +187,6 @@ def setup():
         "CORPUS_RESULTS": root / "Corpus Results",
         "JSONL": root / "jsonl",
         "DATA_PROCESSOR": root / "Data Processor",
-        "SUBTITLE_CLEANER": root / "Subtitle Cleaner",
         "TRANSCRIPT_CLEANER": root / "Transcript Cleaner",
         "LOG_PRODUCTION_MANAGER": root / "Logs" / "Production Manager",
     }
@@ -195,10 +194,9 @@ def setup():
         folder.mkdir(parents=True)
 
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
-    (dirs["SUBTITLE_CLEANER"] / "clean_subtitles.py").write_text(
-        "", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
 
@@ -324,11 +322,10 @@ class ScriptedRun:
     """subprocess.run mock dispatching by script filename."""
 
     SCRIPT_TO_STAGE = {
-        "clean_subtitles.py": "clean",
         "clean_transcript.py": "clean",
         "job builder.py": "jobs",
         "request builder.py": "requests",
-        "deepseek_client.py": "api",
+        "deterministic_parser_client.py": "api",
         "corpus_builder.py": "corpus",
     }
 
@@ -412,7 +409,7 @@ def _():
         check("five stages launched",
               launched_names(scripted)
               == ["clean_transcript.py", "job builder.py",
-                  "request builder.py", "deepseek_client.py",
+                  "request builder.py", "deterministic_parser_client.py",
                   "corpus_builder.py"])
         check("state is corpus_available",
               pm.state_for(SID)["state"] == "corpus_available")
@@ -456,7 +453,7 @@ def _():
         check("resume launched remaining four",
               launched_names(scripted)
               == ["clean_transcript.py", "job builder.py",
-                  "request builder.py", "deepseek_client.py",
+                  "request builder.py", "deterministic_parser_client.py",
                   "corpus_builder.py"])
         check("state is corpus_available",
               pm.state_for(SID)["state"] == "corpus_available")

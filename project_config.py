@@ -169,14 +169,12 @@ def expressions_enabled(model_name=None):
 # source_type is separate from cleaning_profile.
 
 SOURCE_TYPES = frozenset({
-    "anime_subtitle",
-    "podcast_transcript",
+    "clean_text",
 })
 
 # Supported cleaning profiles (the cleaning procedure to apply).
 
 CLEANING_PROFILES = frozenset({
-    "subtitle_standard_v1",
     "transcript_standard_v1",
 })
 
@@ -184,11 +182,7 @@ CLEANING_PROFILES = frozenset({
 # source_type -> {"cleaning_profile": str, "cleaner": str}
 
 PROCESSING_PROFILES = {
-    "anime_subtitle": {
-        "cleaning_profile": "subtitle_standard_v1",
-        "cleaner": "clean_subtitles",
-    },
-    "podcast_transcript": {
+    "clean_text": {
         "cleaning_profile": "transcript_standard_v1",
         "cleaner": "clean_transcript",
     },
@@ -198,15 +192,13 @@ PROCESSING_PROFILES = {
 # cleaning_profile -> version string
 
 CLEANER_VERSIONS = {
-    "subtitle_standard_v1": "1.0",
     "transcript_standard_v1": "1.0",
 }
 
 # Source type -> raw directory name mapping.
 
 SOURCE_TYPE_RAW_DIR = {
-    "anime_subtitle": "Raw Subtitles",
-    "podcast_transcript": "Raw Transcripts",
+    "clean_text": "Raw Transcripts",
 }
 
 # Extension appended to the source_id for the cleaned artifact.
@@ -241,14 +233,6 @@ MATERIAL_LEVELS = (
 # furigana logic - those remain in the cleaner implementation.
 
 CLEANING_TRANSFORMS = {
-    "subtitle_standard_v1": {
-        "strip_bom": True,
-        "trim_lines": True,
-        "remove_subtitle_numbers": True,
-        "remove_timecodes": True,
-        "collapse_blank_lines": True,
-        "collapse_repeated_spaces": False,
-    },
     "transcript_standard_v1": {
         "strip_bom": True,
         "trim_lines": True,

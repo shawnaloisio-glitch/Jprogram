@@ -32,7 +32,7 @@ import paths
 
 def make_collection(ep, text, created_at):
     result = controller.create_collection_source(
-        "teppei_beginner", ep, "podcast_transcript", "con_teppei_podcast",
+        "teppei_beginner", ep, "clean_text", "con_teppei_podcast",
         text, material_level=1)
     package_path = source_package_pkg_path(result)
     package = json.loads(package_path.read_text(encoding="utf-8"))
@@ -57,11 +57,11 @@ def setup():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
@@ -115,7 +115,7 @@ def _():
         check("one label", len(labels) == 1)
         check("human label",
               labels[0] == "Con Teppei for Beginner — Episode 63")
-        check("no source_id", "podcast_transcript_teppei-beginner_ep063"
+        check("no source_id", "clean_text_teppei-beginner_ep063"
               not in labels[0])
         check("no path", "Sources" not in labels[0])
         check("no json", ".json" not in labels[0])
@@ -157,7 +157,7 @@ def _():
     try:
         make_collection(64, "b\n", "2026-08-01T11:00:00")
         result = controller.create_standalone_source(
-            "nhk_weather", "podcast_transcript", "nhk_news", "y\n",
+            "nhk_weather", "clean_text", "nhk_news", "y\n",
             material_level=1)
         # standalone package has a created_at too; strip it to test fallback
         pkg_path = source_package_pkg_path(result)

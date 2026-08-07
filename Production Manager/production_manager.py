@@ -26,7 +26,6 @@ Supported states:
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime
@@ -51,7 +50,6 @@ from paths import (
     REQUESTS,
     RESPONSES,
     SOURCE_REGISTRY,
-    SUBTITLE_CLEANER,
     TRANSCRIPT_CLEANER,
 )
 
@@ -189,6 +187,7 @@ def _bool_or_none(data, field):
 #   args(source_id)     -> argv list (never a shell string)
 #   result_path(source_id) -> expected result artifact path
 #   validate(data)      -> True when the result artifact confirms success
+#   python(source_id)   -> optional interpreter (defaults to sys.executable)
 # The manager executes this table; it contains no stage logic.
 
 def _source_args(source_id):
@@ -217,8 +216,6 @@ def _cleaner_script(source_id):
             f"{source_type!r}"
         )
     cleaner = profile.get("cleaner")
-    if cleaner == "clean_subtitles":
-        return SUBTITLE_CLEANER / "clean_subtitles.py"
     if cleaner == "clean_transcript":
         return TRANSCRIPT_CLEANER / "clean_transcript.py"
     raise ManagerError(f"cannot determine cleaner: unknown cleaner {cleaner!r}")
@@ -237,7 +234,14 @@ def _request_script(source_id):
 
 
 def _api_script(source_id):
-    return DATA_PROCESSOR / "deepseek_client.py"
+    return DATA_PROCESSOR / "deterministic_parser_client.py"
+
+
+def _api_python(source_id):
+    # Deterministic Parser Client requires the project venv's Python
+    # (spacy/ginza are not installed in the app's global interpreter).
+    # Same resolution convention as QC Test Harness stage_parse().
+    return PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
 
 
 def _corpus_script(source_id):
@@ -279,6 +283,7 @@ STAGES = {
     "api": {
         "script": _api_script,
         "args": _source_args,
+        "python": _api_python,
         "result_path": processing_result_path,
         "validate": _validate_api,
     },
@@ -312,7 +317,9 @@ def build_command(stage, source_id):
     entry = STAGES[stage]
     script = entry["script"](source_id)
     args = entry["args"](source_id)
-    return [sys.executable, str(script)] + list(args)
+    python = entry.get("python")
+    interpreter = str(python(source_id)) if python is not None else sys.executable
+    return [interpreter, str(script)] + list(args)
 
 
 def launch_stage(stage, source_id, timeout=None):
@@ -573,9 +580,6 @@ def state_for(source_id):
           and evidence["responses_count"] < evidence["requests_count"]):
         state = "api_processing"
     # Requests created: requests exist but the API stage has not started.
-    elif evidence["requests_count"] > 0:
-        state = "requests_created"
-    # Requests created: requests exist, no API started.
     elif evidence["requests_count"] > 0:
         state = "requests_created"
     # Jobs created: job result success (or job files exist).

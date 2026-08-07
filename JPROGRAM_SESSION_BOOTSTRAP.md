@@ -261,193 +261,501 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-06) — Updated after Session 4
+## 14. Session Wrap-Up (2026-08-07) — Updated after Session 8
 
 **Read this section first, always — it's kept current at every wrap-up,
-not appended to indefinitely.** This update supersedes the "Session 3"
-version. If anything below conflicts with an older section elsewhere in
-this file, this section wins — it was last refreshed 2026-08-06, end of
-session 4.
+not appended to indefinitely.** This update supersedes the "Session 7"
+version below it (kept for reference, marked accordingly; the old
+"Session 6" section has been dropped entirely — git history and
+`Audits/OC_Reliability_Log.md` still hold that detail if ever needed).
+If anything below conflicts with an older section elsewhere in this
+file, this section wins — it was last refreshed 2026-08-07, end of
+session 8.
 
-### Relocation is DONE — repo now lives at the new path
+### Current phase — a full architecture session, zero code written
 
-**This session's whole scope.** The plan at
-`C:\AI Development Projects\Corpus change study\2026-08-06_relocation_plan.md`
-was executed in full and verified step by step, not just self-reported:
+**This entire session was explicitly "thinking only mode" at Owner's
+request — no file edits, no commits, nothing implemented.** Everything
+below is real design work and real decisions, but none of it exists
+anywhere else on disk yet. This section is the only record. Treat it as
+a genuine to-do list with real direction, not a changelog.
 
-1. **Pre-flight** — `JPROGRAM_WORKSPACE` set (User env var) to
-   `C:\Jprogram Workspace` *before* the folder moved. Verified directly
-   against the real persistent store both before (empty) and after
-   (correct value) via `[System.Environment]::GetEnvironmentVariable(...)`,
-   and the app was confirmed showing real existing data (Recent Sources,
-   templates) with the override active.
-2. **Close + move** — done by Owner. Confirmed on disk from two
-   independent shells (Bash and PowerShell): `C:\Jprogram` no longer
-   exists; `C:\AI Development Projects\Jprogram` exists with `.git` and
-   the full tree intact.
-3. **Code/config fixes** (done by Advisor directly — Owner's explicit
-   one-off exception to the standing Advisor/OC boundary, see below):
-   - `oc_session_dump.py`: `JPROGRAM_WORKTREE` is now computed from the
-     file's own location (`Path(__file__).resolve().parent`) instead of
-     hardcoded — a future move won't need this touched again.
-   - `.claude/settings.json`: the one absolute-path permission entry
-     updated.
-4. **Living docs updated**: `PROJECT_STATUS.md`, `ARCHITECTURE_CURRENT.md`,
-   `ANALYZER_ARCHITECTURE.md`, `WORKING_LIST.md`,
-   `OC_Session_Access_Procedure.md` (in-repo), plus
-   `ECOSYSTEM_OVERVIEW.md` (sibling repo). Deliberately left unchanged:
-   `JPROGRAM_SESSION_BOOTSTRAP.md`'s and
-   `AI_Coding_Environment_Design_Spec.md`'s only matches were historical
-   incident narrative, accurate to when written — rewriting those to the
-   new path would have made them factually wrong about the past.
-   `LANGZ_SESSION_BOOTSTRAP.md` also left alone — its mention is about
-   Claude Code's own working-directory history, not Jprogram's location.
-5. **Validated**: `verify_paths()` passes and resolves the real
-   `WORKSPACE_ROOT`; all 64 `test_*.py` files pass (checked actual
-   PASS/FAIL text, not just exit codes); `git status` showed exactly the
-   7 files touched, nothing unexpected; `git log` intact, still 4 commits
-   ahead of `origin/master`.
-6. **Owner's own environment — investigated, mostly nothing to do**:
-   - Desktop shortcut: doesn't exist. Checked the real (OneDrive-
-     redirected) Desktop and every `.lnk` there by actual target path,
-     not filename — none point at Jprogram. The plan's assumption about
-     an existing shortcut didn't match reality.
-   - Shell aliases/profile scripts: none exist (`$PROFILE` absent, no
-     `.bashrc`/`.bash_profile`/`.profile`). Nothing to fix.
-   - OpenCode desktop's working directory: found its per-workspace state
-     file (`opencode.workspace.C--Jprogram.*.dat` under
-     `%APPDATA%\ai.opencode.desktop\`), but it's an opaque JSON format
-     keyed by a hash of the old path — not something safe to hand-edit.
-     **Still open, Owner action**: next time OC opens, point it at
-     `C:\AI Development Projects\Jprogram` directly; it will create a
-     fresh, correctly-keyed entry on its own.
+The trigger: Owner is about to bring in on the order of **1,500-2,600+
+real sources** (two external catalogs — see below), which would mean
+roughly 10,000+ per-source analysis reports before even counting
+cross-source comparisons. Owner correctly identified this as a real,
+near-term architecture problem, not a hypothetical one, and explicitly
+said processing won't start until it's addressed — this session's job
+was to actually think it through properly.
 
-**Not yet done: nothing committed.** The 7 touched files
-(`oc_session_dump.py`, `.claude/settings.json`, and the 5 in-repo docs)
-are sitting as uncommitted working-tree changes. Advisor deliberately did
-not commit without an explicit ask — see "Next immediate task" below.
+**New context discovered mid-session**: a separate, parallel
+content-collection effort already exists at
+`C:\AI Development Projects\Content Collection\` (its own `.claude`
+folder — a different Claude Code workstream, not this one), actively
+cataloging real content from two sites:
+- **Natural Japanese** (nijapanese.com, paid subscription) — 1,773
+  videos, catalog at `nijapanese/catalog/nij_catalog_modules.tsv` (plus
+  `nij_catalog_teachers.tsv` / `nij_catalog_topics.tsv` lookup tables).
+  Media lives at `D:\Natural Japanese media\` (this is the same library
+  used for the deterministic-parser stress test earlier this session —
+  see the Session 7 section below).
+- **Nihongo Jikan** (nihongo-jikan.com, Yuki's newer donation-based
+  site) — 896 videos, catalog at `nihongo-jikan/catalog/nj_catalog.tsv`.
+  Media lives at `D:\Nihongo Jikan media\`. **Different raw format than
+  anything Jprogram currently handles**: furigana-annotated HTML
+  (`<ruby>` tags), no timestamps — would need its own future Cleaner,
+  not designed yet.
+- Full current status (what's downloaded vs. still pending per level)
+  lives in that project's own `LIBRARY_STATUS.md` — check there directly
+  rather than trusting a stale summary here, since that project updates
+  independently of this one.
 
-### Read the two Session-2 audit reports before assuming anything about project state
+### New per-source metadata tags, decided this session
 
-Unchanged pointer, still current:
-- **`Audits/2026-08-05/DEEP_AUDIT_REPORT.md`** — behavioral/documentation
-  audit, 800/800 tests repo-wide, Frozen Components untouched across the
-  entire git history at that time.
-- **`Audits/2026-08-05/CODE_QUALITY_AUDIT.md`** — code-level review
-  against the project's own stated principles. Its two headline findings
-  were resolved in Session 3.
+- **Material Level** — mandatory at source creation, ordered integer,
+  display terminology user-editable but the *values* are fixed:
+  - `0` = Ungraded (deliberately **outside** the 1-4 range, not
+    appended as a 5th tier — so a naive range query like
+    `level >= 1 AND level <= 4` naturally excludes it without every
+    caller needing to remember to filter it out separately).
+  - `1` = Absolute Beginner, `2` = Beginner, `3` = Intermediate,
+    `4` = **Advanced** (settled on the field-standard term over
+    "Native" after discussion — validated by real precedent: Natural
+    Japanese's own catalog uses this exact same four-tier scheme).
+  - Enforced at creation time, not just for downstream analysis — Owner's
+    call, given 1,500+ sources arriving at once makes "backfill grading
+    later" much worse than "answer one required field per import now."
+- **Style** — optional, auto-incrementing integer id (a meaningless
+  surrogate key, unlike Material Level's ordered integer), separate
+  display name. **Deliberately kept as its own picker, not merged into
+  a flat combined topic/style/series list** — Natural Japanese's real
+  `topicIds` field does mix format concepts (e.g. topic id 82 is
+  literally "whiteboard," one of Owner's own Style examples) together
+  with subject matter and series grouping in one 140+-entry list, and
+  that precedent was explicitly considered and rejected as "tedious and
+  unfriendly" for a picker UX.
+- **Length/Duration** — optional, numeric seconds, meaning the
+  **originally-published** content duration specifically, not whatever
+  audio variant (e.g. silence-removed) might get used downstream — that
+  discrepancy is explicitly the user's own responsibility, not something
+  the field needs to reconcile. Exists to enable rate-of-speech
+  calculation once paired with token counts the canonical corpus already
+  has for free.
+- **Domain/Topic** remains an unsolidified, loose candidate carried over
+  from an earlier session — not decided or touched this session.
+- **Real, separate gap found while designing Style's uniqueness
+  requirement**: `metadata_editor.py`'s existing uniqueness validation
+  (`_check_unique`, used by `origin`/`source_type`/`collection`
+  validation) only checks **id** uniqueness, never **display name**
+  uniqueness — meaning two origins could already have identical display
+  names today with nothing preventing it. Not fixed yet; worth doing
+  when this becomes real work, and worth fixing on `origin`/`source_type`
+  too while at it, not just the new Style table.
 
-### Current phase
+### Index/manifest: SQLite, decided
 
-Relocation complete and verified. Still **13 Coder tasks** logged (no new
-Coder tasks this session — every edit this session was a direct Advisor
-edit under Owner's one-off authorization, not an OC task), see
-`Audits/OC_Reliability_Log.md` for full per-task detail. `master` remains
-the intentionally mothballed reference for the current (DeepSeek-based)
-architecture, now sitting at the new path with 7 uncommitted relocation-
-fix files on top of it. Per the original agreed sequencing, the
-deterministic-parser work (Corpus Change Study) is the next major
-project, on a new branch — not started yet.
+Settled on SQLite specifically (Python stdlib, zero new dependency) as
+the technology, explicitly designed as a **disposable, rebuildable
+cache/index over the real files — never a second source of truth**. The
+real data stays exactly where it already lives (Source Registry,
+canonical JSONL corpus, analysis report files); the index is just a
+fast, queryable structure built by scanning those files, safely
+deletable and rebuildable at any time.
 
-### Last several decisions and why
+A first-draft schema was sketched — genuinely a first draft, not
+finalized or built, but structurally sound and worth using as the
+literal starting point for real implementation:
 
-- **Advisor made this session's code/doc edits directly, as an explicit
-  one-off exception** to the standing Advisor/OC boundary
-  (`feedback_advisor_implementation_boundary`) — Owner authorized this
-  specifically for the relocation's mechanical path-string updates, not
-  as a general precedent. Route future product-file changes through OC
-  as usual.
-- **OpenCode's per-workspace state file was deliberately left untouched**
-  rather than hand-edited — its format is undocumented/opaque (hash-keyed
-  JSON), and the correct fix (opening OC pointed at the new folder)
-  achieves the same result without risking corrupting app-internal state
-  Advisor doesn't fully understand. Consistent with "verify over trust" —
-  don't act on state you can't confirm the shape of.
-- **Relocation changes were verified independently at each step**, not
-  accepted from either tool self-report or assumption — the env var via a
-  direct persistent-store read (twice), the move via two separate shells
-  agreeing, the app's real-data read via Owner's own screenshot, the
-  tests via actual PASS/FAIL text. No step was taken on trust alone.
-- **Commit deliberately deferred** — 7 files modified, nothing staged or
-  committed. This wasn't asked for as part of "wrap up," and committing
-  is an explicit-permission action; Owner should decide whether these
-  land on `master` (most likely, since they're maintenance on the current
-  architecture, not new-branch work) before the next branch gets cut.
-- **The recurring identity/file-coupling pattern's 5th instance (from
-  Session 3) is now resolved**, not just tracked — the
-  `JPROGRAM_WORKSPACE` pre-flight step worked exactly as designed.
+```
+sources          (source_id PK, collection_id, episode, origin_id,
+                  material_level, style_id, duration_seconds, created_at)
+collections      (collection_id PK, display_name, sequencing)
+origins          (origin_id PK, display_name)
+material_levels  (level PK 0-4, display_name)
+styles           (style_id PK autoincrement, display_name UNIQUE)
+analysis_reports (source_id, report_type, generated_at, corpus_version;
+                  PK is (source_id, report_type))
+```
+
+Two incidental wins worth remembering, since they weren't the point of
+the exercise but fell out of it: SQLite's own `UNIQUE` constraint gives
+the display-name-uniqueness requirement above "for free" with zero
+hand-written validation code; `analysis_reports.corpus_version` (a hash
+or mtime of the source's `.jsonl` at generation time) solves the
+report-staleness question almost as a side effect — a report is
+detectably stale the instant its recorded corpus version stops matching
+the corpus's actual current one.
+
+**No `aggregate_reports` table** — deliberately dropped mid-session once
+the Language Coach boundary (below) was worked out; that whole design
+thread turned out not to be Jprogram's problem to solve.
+
+### The bigger, not-yet-started piece: go fully flat, keyed only by `source_id`
+
+The real architectural shift this session landed on, **not started,
+the natural next concrete task**: physical storage should have **no
+folder nesting by collection at all** — everything keyed by nothing but
+`source_id`, with collection membership (and every other tag) living
+purely as SQLite columns, never encoded into folder structure.
+
+This isn't introducing a new pattern — it's removing the **one
+inconsistent outlier**. Confirmed by direct inspection this session:
+every other pipeline artifact (`jobs/{source_id}/`,
+`responses/{source_id}/`, `jsonl/{source_id}.jsonl`, processing results,
+the Source Registry itself) is already flat, keyed only by `source_id`.
+`Sources/`'s `collections/{collection_id}/{source_id}` nesting is the
+single place in the whole system that encodes meaning into physical
+structure instead of just storing it as data — exactly the
+"identity/file-coupling" pattern already flagged as a recurring bug
+shape in this project's own history (see memory:
+`project_identity_file_coupling_pattern.md`).
+
+Owner is explicitly open to the real rewrite this implies ("I don't
+mind rewriting code to make it function better"), and the Workspace
+being genuinely empty of real data right now makes this the cheapest
+possible moment — no migration, just a redesign. But it's real,
+touches live tested code, not a quick edit: `source_id.py`,
+`controller.py`'s filename/path generation, the Source Builder GUI's
+whole collection-picker flow, `quick_presets.py`, `metadata_editor.py`,
+and a real chunk of the Source Builder test suite. **Needs a proper
+blast-radius investigation before any Coder command gets drafted** —
+exactly the "investigation before implementation" discipline this
+project already holds itself to elsewhere.
+
+### Jprogram / Language Coach boundary, settled
+
+**Jprogram's job stops at "produce reliable per-source evidence, and
+make it discoverable/queryable."** Cross-source/series/compilation
+aggregation is explicitly **not** Jprogram's responsibility — it
+belongs entirely to Language Coach. Reasoning, not just assertion:
+
+- The analyzer functions already take a flat `records` list, not a file
+  path (confirmed by direct inspection of `frequency_analyzer.analyze()`
+  etc.) — so combining sources is just "load records from multiple
+  `.jsonl` files instead of one," feeding the exact same, already-built
+  analyzer logic. Nothing new needed on the analysis side.
+- **Real technical caveat surfaced and worth remembering**: combining
+  must happen on raw records, never on already-computed per-source
+  report output. Occurrence counts are safely summable after the fact;
+  sentence-distance/distribution metrics are not — they depend on
+  actual position within a combined, ordered sequence and only compute
+  correctly if the analyzer runs once against the full concatenated
+  record set. Post-hoc-combining finished reports would silently
+  produce wrong numbers for that class of metric.
+- This eliminated the previously-floated `aggregate_reports` table and
+  an unsolved "how does a user select an aggregate's source set" UX
+  question — neither is needed once the boundary is drawn this way.
+
+Concrete shape of the boundary:
+- **Language Coach will be an AI interface** (Owner talking to an AI
+  that calls deterministic scripts), explicitly **not a traditional
+  UI** — which is also why no dedicated aggregate-selection interface
+  is needed anywhere; a natural-language request just becomes a SQL
+  query plus an analyzer call.
+- **Language Coach gets its own independent copy** of the relevant
+  analyzer logic, not a live cross-project import — so it can freely
+  extend/modify its own copy for its own pedagogical purposes without
+  ever needing to touch Jprogram's actual Frozen Components.
+- **Sync is strictly one-way, Jprogram → Language Coach only**,
+  matching the real pipeline data-flow direction — never automatic
+  backflow. If something in Language Coach's copy is ever worth
+  adopting into Jprogram itself, that's a deliberate, separate
+  decision — full blast-radius analysis, full production sequence,
+  done by Jprogram, on Jprogram's own terms, never a routine merge-back.
+- **Language Coach does not write into Jprogram's SQL index.** If it
+  wants its own caching for combined/aggregate reports, it gets its own
+  separate index, mirroring the same disposable-rebuildable-cache
+  principle — not sharing Jprogram's.
+
+### Real, unaddressed gap surfaced, explicitly out of scope here
+
+The two large real media libraries (~2,669 videos combined) live on a
+single `D:\` drive with no separate backup. `LIBRARY_STATUS.md` (the
+other project's own doc) already documents a concrete, already-happened
+case of permanent loss risk: Yuki's videos are being actively pulled
+from Natural Japanese as she moves to her own site — once that happens,
+re-downloading stops being an option. That means `D:\`'s raw media is
+now the true bottom-of-chain irreplaceable tier, not (as this session
+first assumed) Jprogram's own `Sources/` folder, which is regenerable
+as long as `D:\` survives. **Owner confirmed a proper backup system is
+already on their own separate to-do list** — flagged here for the
+record, not something Jprogram needs to solve.
+
+### Open risks / unresolved questions
+
+- **The flat-storage rewrite** (above) — the natural next concrete
+  task, not started, needs blast-radius investigation first.
+- **Domain/Topic tag** — still loose, not solidified, carried forward
+  again.
+- **The SQLite schema above is a first draft**, not finalized or built.
+- **Nihongo Jikan's raw transcript format** (furigana HTML, no
+  timestamps) needs its own future Cleaner — not designed yet.
+- **Language Reactor cleaner** — still scoped from Session 7 (concatenate
+  rows, strip internal whitespace, re-derive sentences via
+  `deterministic_parser.split_sentences()`), still not built.
+- **`D:\` backup** — real, acknowledged gap, Owner's own separate
+  to-do, not Jprogram's to solve.
+- Everything carried forward unchanged from Session 7's own open-risks
+  list (12 deferred `ruff` findings, the now-actionable UI-simplification
+  idea, the `WORKING_LIST.md` GUI backlog) — see that section below,
+  none of it touched this session.
+
+### Next immediate task
+
+Scope and, with Owner's go-ahead, execute the flat-storage rewrite for
+`Sources/` — the biggest, most concrete, most clearly-defined piece of
+unstarted work from this session. Start with the blast-radius
+investigation (what actually references `collections/{collection_id}/`
+path construction today — `source_id.py`, `controller.py`, the GUI,
+tests), before drafting any Coder command.
+
+### Real-data validation status
+
+Unchanged from Session 7 — no code changed this session (thinking-only
+mode throughout), so nothing new to validate. See the Session 7 section
+below for the full detail (QC Test Harness ground-truth PASS, 588,315
+real tokens from the media-library stress test).
+
+### Session 7 wrap-up (2026-08-07) — superseded by the section above, kept for reference
+
+#### Current phase — the headline: Corpus Change Study Phases 1-3 are complete
+
+**The deterministic parser is built, validated, stress-tested against
+real content, and wired into the real app.** This is the actual reason
+the `deterministic-parser` branch exists, and it went from "not
+started" to "working end-to-end in the real Processing tab" across this
+session and the one before it. `master` remains the mothballed
+DeepSeek-architecture reference, completely untouched throughout.
+
+Eight commits landed this session (all pushed to `origin` immediately
+after each, per the established push-early habit — nothing sitting
+unpushed at any point):
+
+1. `ecdf049` — corrected a Session 6 self-report error (see below).
+2. `827d995` — `.gitignore` cleanup (stale entries, added `.venv/`).
+3. `1f9ced9` — **Phase 2**: pinned the GiNZA/SudachiPy dependency stack
+   in a new project-local `.venv`, verified against the real project
+   environment (not the prior session's isolated scratch venv) —
+   `click` had to be pinned explicitly to work around a real upstream
+   gap in spacy 3.8.13's own packaging metadata.
+4. `d79ab05` — **Phase 3**: built `Data Processor/deterministic_parser.py`,
+   the actual GiNZA/spaCy parser satisfying the frozen
+   `PARSER_OUTPUT_SPEC.md` contract — deterministic sentence splitting,
+   the merge-rule algorithm (conjugatable heads absorb their auxiliary/
+   te-form continuation chain; noun+サ変可能+する compounds merge; a
+   real mid-build finding that `動詞-非自立可能` auxiliary verbs like
+   いる/くる/しまう/おく never merge backward, so they stay independently
+   trackable vocabulary instead of collapsing into the preceding verb),
+   and bunsetu-to-merged-word chunk mapping. Built and unit-tested in
+   isolation, 22/22 passing at that point.
+5. `db542ca` — **Phase 3 continued**: built
+   `deterministic_parser_client.py`, the transport layer mirroring
+   `deepseek_client.py`'s job-in/response-out contract exactly (same
+   resume behavior, same `processing_result` schema, same exit codes)
+   but calling the new parser directly instead of the DeepSeek API.
+   15/15 tests, including guards confirming zero writes to the real
+   workspace and zero imports outside its transport role.
+6. `630f836` — **the big one**: validating against `QC Test Harness`
+   surfaced a real architectural gap — `corpus_builder.py` (Frozen)
+   required request files (Request Builder's output) to discover jobs
+   and extracted its canonicalization ground truth by parsing a
+   `"TEXT:\n"` marker out of the DeepSeek prompt. The new path
+   deliberately bypasses Request Builder, so it had none. Fixed to
+   source `job_text`/provenance from job files directly for **both**
+   producers, removing the fragile marker-parsing entirely. Also fixed
+   a related bug found in the same pass: provenance's `model` field was
+   hardcoded to a constant regardless of which producer actually ran;
+   now read per-source from that source's own `processing_result.json`.
+   Zero regressions (30/30 + 10/10 required suites, full Data Processor
+   suite 9 files/0 failures), then the actual proof: ran the real QC
+   harness end-to-end and got a full ground-truth **PASS** — 犬 5/5 at
+   exact expected spacing, 猫 5/5 at exact expected spacing, 食べる 4/4
+   occurrences across all four inflected surfaces correctly grouped to
+   one lexical form. First real, ground-truth-verified confirmation the
+   new parser produces correct corpus output through the actual
+   pipeline, not just unit tests. Frozen Component touched — audit
+   trigger Yes, deferred to fire once per completed phase per this
+   branch's calibration; logged in
+   `Audits/Trigger_Log/2026-08-07_corpus_builder_job_file_fix.md`.
+7. `354a6af` — **real-world stress test**: ran the new parser against
+   ~9,600 lines (~52,000 tokens) from a genuine external Japanese media
+   library (`D:\Natural Japanese media\Subtitles`, 462 real subtitle
+   files, Owner-supplied) — not the QC harness's clean, hand-authored
+   data. Found two real, reproducible bugs: (a) `_build_chunks()`'s
+   "coarsen into previous chunk" branch used wrong list indices, crashed
+   on real whitespace-delimited content (9/60 sampled files crashed);
+   (b) the merge rule over-merged across a completed predicate boundary
+   (`決まるです` wrongly became one word instead of two, because a
+   terminal-form verb's own conjugation state wasn't checked before
+   absorbing a following `助動詞`). Fixed both — the second fix required
+   inspecting `token.morph`'s Inflection field to distinguish terminal
+   (`終止形`) from continuative (`連用形`) forms, a real linguistic
+   distinction the original design pass didn't anticipate. Re-verified
+   at full scale after the fix: **all 462 files, 68,645 lines, 588,315
+   real tokens — 0 crashes, 0 fatal errors, 0 partition mismatches, 0
+   empty lemmas.** 20 remaining non-fatal char-span mismatches
+   investigated and confirmed to be real caption-transcription artifacts
+   (a comma injected mid-word in messy source data), not parser bugs —
+   exactly what the "validated but not authoritative" char-span design
+   already tolerates.
+8. `391d088` — **Production Manager wiring, completing Phase 3**: the
+   real app's `"api"` stage now launches `deterministic_parser_client.py`
+   via the project's `.venv` interpreter (a new optional per-stage
+   `"python"` key in the `STAGES` dispatch table, defaulting to
+   `sys.executable` for every other stage, unchanged) instead of
+   `deepseek_client.py` via the global interpreter. The `"api"` stage
+   key itself was left unchanged everywhere it's referenced — a
+   contained repoint, not a rename. Also fixed `processing_tab.py`'s
+   now-inaccurate `"Failed during AI processing"` user-facing message to
+   `"Failed during parsing"`. Full Production Manager suite (7 files, 0
+   failures) + processing_tab suite (19/19), zero regressions. The
+   deterministic parser is now reachable through the real app's
+   Processing tab, not just `QC Test Harness`'s manual stage invocation.
+
+All eight independently verified against raw `git diff`, direct test
+re-runs, and (for the two most consequential commits) direct re-runs of
+the actual QC harness and stress-test scripts myself — not from OC's
+self-report.
+
+### Language Reactor (LR) cleaner — investigated, explicitly not scoped as a task yet
+
+Owner is exploring a new source type: Language Reactor's subtitle
+export (a browser extension for YouTube). Confirmed via direct
+inspection of a real exported file: **Excel is the right format** — it
+exports clean, unambiguous columns (`Subtitle` / `Machine Translation` /
+`Romaji` / `Hiragana` for a Japanese source), not HTML's markup-tied
+structure or Saved-Items' vocabulary-only fragment. Confirmed the HTML
+export gives nothing different — direct visual comparison showed
+identical underlying data, same caption fragmentation, just a different
+rendering; "Save as" was greyed out on that page anyway (dynamically
+rendered, not a real backing resource).
+
+**Real structural gap found, worth remembering when this becomes an
+actual task:** LR's row boundaries are caption-display timing chunks,
+not sentence or word boundaries. Concatenating rows with no separator
+produces perfectly coherent continuous Japanese — meaning a single
+sentence routinely splits mid-clause across rows, and individual
+conjugations get split too (confirmed directly: `違い ます` appears with
+a literal space where it should read `違います`, purely because that's
+where the caption line wrapped for display). This would break
+`deterministic_parser.py`'s whitespace-preservation logic (the Word
+Rule's MUST) if fed in raw — it would treat the spurious caption-break
+space as a deliberate word boundary and wrongly split real conjugations
+apart. **The fix, already scoped but not built:** concatenate all rows
+into one continuous blob, strip all internal whitespace (it's caption
+noise here, not the deliberate kind LingQ's export had), then re-derive
+real sentence boundaries via punctuation — which can reuse
+`deterministic_parser.split_sentences()`'s existing logic directly, not
+build something new. Owner explicitly said to hold off on building this
+— not an open task, just don't lose the finding.
+
+### Two process/environment findings from this session
+
+- **The stale `JPROGRAM_WORKSPACE` shell env var, flagged at the end of
+  Session 6, is confirmed resolved.** Owner's planned full computer
+  restart worked exactly as expected — verified directly at the start
+  of this session (not assumed): this Bash shell's own copy of the
+  variable now matches the real persistent registry value exactly. No
+  more need to force it explicitly per command.
+- **A large, genuinely useful new resource appeared mid-session**:
+  Owner pointed to `D:\Natural Japanese media\` (462 real subtitle
+  files, 781 audio files, graded by difficulty tier) as available for
+  testing. This is what the Phase 3 stress test (commit `354a6af`
+  above) actually ran against, and it's a real, reusable asset for any
+  future correctness work on this pipeline, not a one-time prop.
+- Still not addressed, carried forward again: the **pre-existing stale
+  `C:\Jprogram Workspace` folder tree** (predates Session 6, not
+  created by this session's work) is still sitting on disk — likely
+  tied to the still-open "OpenCode desktop may still point at the old
+  repo folder" item from Session 4. Not touched without Owner's say-so.
+
+### Last several decisions and why (this session)
+
+- **`corpus_builder.py` fixed to read job files directly rather than
+  synthesizing a fake request artifact** — Owner's own call between two
+  options Advisor presented. The more durable fix (single source of
+  truth, removes a fragile string-parsing hack) over the lower-risk one
+  (zero Frozen-file changes, but a confusing "request" that was never
+  sent). Justified specifically because this branch is safe to carry
+  that risk — `master` stays untouched until merge regardless.
+- **`動詞-非自立可能` auxiliary verbs never merge backward** — settled
+  mid-build with OC, not assumed in the original design pass. Keeps
+  these auxiliary verbs (progressive/completive/benefactive/directional
+  aspect markers) independently trackable as their own recurring
+  vocabulary rather than collapsing them into whatever main verb
+  precedes them — matches the project's "evidence, not conclusions"
+  principle over convenience.
+- **Language Reactor cleaner work explicitly held off** — the
+  structural gap (caption rows != sentence/word boundaries) is real and
+  scoped, but Owner chose to stop at "found and understood" rather than
+  build it this session. Don't treat the scoped fix as a green light to
+  just go build it next session without checking first.
 
 ### Open risks / unresolved questions
 
 Full detail in `WORKING_LIST.md` — this is a pointer, not a duplicate.
-Headline items still open:
+Headline items:
 
-- **The Corpus Change Study work** — the big one. No longer blocked
-  (relocation is done) but still deliberately not started. Start at
-  `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-- **Uncommitted relocation-fix changes** (this session) — 7 files, needs
-  an explicit commit decision from Owner.
-- **A real DeepSeek API key in plaintext**, found in
-  `.claude/settings.local.json` (git-ignored, not tracked, but still live
-  on disk) — flagged in the relocation plan's own "separate finding," not
-  yet rotated. Carrying this forward explicitly so it doesn't get lost.
-- **OpenCode desktop still pointed at the old folder** — Owner action,
-  see step 6 above.
-- **GUI terminology fix** — the standalone/series/site-collection
-  three-way split doesn't exist anywhere yet; scoped but not built.
-- **`sentence_index` "no gaps" not validated** — deliberately deferred
-  (Session 3), zero current functional impact confirmed. Revisit if
-  something ever starts reading `sentence_index` directly.
-- **Two dead methods in `gui.py`** (`_on_source_type_selected`/
-  `_on_origin_selected` from TASK 12) — queued into the next task that
-  touches `gui.py`, not standalone.
-- **From the Session-2 code quality audit, still open**: the dead
-  duplicate branch in `production_manager.py`'s state machine; the
-  duplicated silent-fallback-to-zero pattern in two files
-  (`corpus_builder.py`'s `response_path_for()`,
-  `deepseek_client.py`'s `job_number_from_request()`); two unused write
-  helpers (`write_jsonl_record`, `output_writer.py`).
-- **API key structure/utility design** — not started.
-- **Remaining live-testing GUI backlog** — embedded-tabs restructure,
-  import defaults, Analysis multi-file, Template Editor pass, the
-  Tkinter-error report still blocked on Owner pasting a traceback,
-  Import Material default-format GUI fix — see `WORKING_LIST.md`.
+- **Language Reactor cleaner** — scoped (see above), not built, not
+  authorized to start without checking with Owner first.
+- **The Corpus Change Study's own Phase 6** (retire/archive
+  `parser_prompt.md`, rewrite `PARSER_OUTPUT_SPEC.md`'s framing from
+  LLM-instruction language to implementation-rule language) — the only
+  formal phase from the original 7-phase order not yet done. Low
+  urgency: the contract *shape* never changed, only the prose describing
+  who follows it would need updating. `deepseek_client.py`/
+  `parser_prompt.md` themselves are staying dormant as an Advisor-only
+  fallback, not being retired — that decision was already settled this
+  session's predecessor.
+- **The UI-simplification idea from earlier this session is now
+  actually actionable** — collapsing Import straight into processor
+  output, since the deterministic parser removes the cost-timing reason
+  the Sources/Processing split existed. This was a design note only
+  until now; the parser being genuinely live changes that. Worth
+  revisiting as a real task if GUI work resumes.
+- **12 `ruff` findings deferred to "fold into the parser rewrite work"**
+  — that work just happened (`corpus_builder.py` was directly modified
+  this session). Worth checking now whether those specific findings are
+  still present/relevant, rather than continuing to defer indefinitely.
+- **Pre-existing stale `C:\Jprogram Workspace` folder tree** — still not
+  cleaned up, carried forward again from Session 4.
+- **`origin`'s name change** and **`sentence_index` "no gaps"
+  validation** — both still explicitly deferred, unchanged.
+- **The broader `WORKING_LIST.md` GUI backlog** — `teppei_beginner`
+  stale-selection bug, Template Editor pass, Analysis multi-file
+  capability, embedded-tabs restructure, API key utility design — all
+  still open, all lower priority than the parser work now that it's
+  actually done.
+- Test the freshly-wiped workspace end to end — still not done, carried
+  forward since Session 5.
 
 ### Next immediate task
 
-Two open decisions, neither a hard blocker on the other:
-1. **Commit the 7 relocation-fix files** — Owner's call on whether these
-   land on `master` (this bootstrap doc's read: yes, since they're
-   maintenance on the current architecture, not new-branch work).
-2. **Create the new branch for the deterministic-parser work**, per the
-   original sequencing — now unblocked. Start from
-   `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-
-If Owner instead wants to pick something off `WORKING_LIST.md` first,
-that's fine too.
+No hard blocker on anything; the parser rewrite's core work is done.
+In rough priority order:
+1. If continuing pipeline/architecture work: the now-actionable
+   UI-simplification (Import straight to processor output) is the most
+   natural next step, directly following from today's completion.
+2. `WORKING_LIST.md`'s GUI backlog if branch-prep/UI polish is wanted
+   instead — same candidates as before, all confirmed outside the
+   parser's blast radius.
+3. Language Reactor cleaner, if/when Owner decides to pick it back up —
+   scoping is already done, see above.
+4. The formal Phase 6 documentation rewrite, lowest urgency of the
+   above.
 
 ### Real-data validation status
 
-Unchanged: done once, successfully, via `QC Test Harness/`. See
-`QC Test Harness/README.md` for reuse instructions.
-
-### Tooling and standing docs available going forward
-
-- `QC Test Harness/` — reusable known-ground-truth pipeline test.
-- `oc_session_dump.py` — reads OC's raw session data directly (see
-  `OC_Session_Access_Procedure.md`). Fixed this session — worktree path
-  now computed dynamically, no longer hardcoded.
-- `Audits/OC_Reliability_Log.md` — the evidence-based OC track record,
-  13 tasks deep, ten consecutive clean-or-clean-with-notes results.
-- `WORKING_LIST.md` — the living queue; check here first every session.
-- `ARTIFACT_CONTRACT_TRACE.md` (see §15 below) — real, on-disk artifact
-  examples for every pipeline stage; last refreshed post-TASK-8.
-- `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and `CODE_QUALITY_AUDIT.md`
-  — Session 2's two audits; still current, read before assuming project
-  state.
-- **`C:\AI Development Projects\Corpus change study\`** — the
-  deterministic-parser scoping work, outside this repo. Start at
-  `00_INDEX.md`. Read before starting that work.
+Substantially stronger than any prior session. `QC Test Harness` gives
+a full ground-truth **PASS** through the real pipeline using the new
+deterministic parser (犬/猫/食べる all exact-match against hand-verified
+expected values). Separately, stress-tested against a real, external
+462-file Japanese media library — **588,315 real tokens, 0 crashes, 0
+fatal errors, 0 partition mismatches, 0 empty lemmas** after two real
+bugs found and fixed. See `QC Test Harness/README.md` for reuse
+instructions; the stress-test script itself lives only in this
+session's scratchpad, not the repo — reusable in concept, not as a
+checked-in tool yet.
 
 ---
 

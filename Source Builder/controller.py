@@ -210,7 +210,7 @@ def _try_write_source_package(source_type, origin, canonical_path,
 
 
 def create_collection_source(collection_id, episode, source_type, origin,
-                             source_text, overwrite=False, material_level=None,
+                             source_text, overwrite=False, material_level=0,
                              style_id=None, duration_seconds=None):
     """Validate and create a canonical collection source file."""
     errors = validate_collection_fields(collection_id, episode, source_type,
@@ -245,7 +245,7 @@ def create_collection_source(collection_id, episode, source_type, origin,
 
 
 def create_standalone_source(source_name, source_type, origin, source_text,
-                             overwrite=False, material_level=None,
+                             overwrite=False, material_level=0,
                              style_id=None, duration_seconds=None):
     """Validate and create a canonical standalone source file."""
     errors = validate_standalone_fields(source_name, source_type, origin,
@@ -461,7 +461,7 @@ class ReadyStateEngine:
         self._error_message = str(message)
 
     def evaluate(self, identity_type, collection_id, source_name, episode,
-                 source_type, origin, source_text, material_level=None,
+                 source_type, origin, source_text, material_level=0,
                  style_id=None, duration_seconds=None):
         """
         Return the current workflow state for the given form fields.
@@ -534,7 +534,7 @@ class ReadyStateEngine:
             and (origin or "") == (snap.get("origin") or "")
             and (source_text or "") == (snap.get("source_text") or "")
             and _snapshot_or_blank(material_level) == _snapshot_or_blank(
-                snap.get("material_level"))
+                snap.get("material_level", 0))
             and _snapshot_or_blank(style_id) == _snapshot_or_blank(
                 snap.get("style_id"))
             and _snapshot_or_blank(duration_seconds) == _snapshot_or_blank(

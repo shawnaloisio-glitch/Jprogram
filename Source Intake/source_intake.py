@@ -45,7 +45,6 @@ from common import (
 from project_config import (
     PROJECT_VERSION,
     SOURCE_TYPES,
-    SUBTITLE_EXTENSION,
     TRANSCRIPT_EXTENSION,
     DEFAULT_LANGUAGE,
 )
@@ -69,8 +68,7 @@ PROGRAM_NAME = "Source Intake"
 # Allowed extensions per source type (metadata validation only).
 
 _EXTENSIONS_BY_TYPE = {
-    "anime_subtitle": (SUBTITLE_EXTENSION,),
-    "podcast_transcript": (TRANSCRIPT_EXTENSION,),
+    "clean_text": (TRANSCRIPT_EXTENSION,),
 }
 
 

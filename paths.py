@@ -54,8 +54,6 @@ DATA_PROCESSOR = PROJECT_ROOT / "Data Processor"
 
 PROMPTS = PROJECT_ROOT / "Prompts"
 
-SUBTITLE_CLEANER = PROJECT_ROOT / "Subtitle Cleaner"
-
 TRANSCRIPT_CLEANER = PROJECT_ROOT / "Transcript Cleaner"
 
 
@@ -75,10 +73,6 @@ CLEANED_ARCHIVE = WORKSPACE_ROOT / "Cleaned Archive"
 
 PROCESSING_RESULTS = WORKSPACE_ROOT / "Processing Results"
 
-RAW_SUBTITLES = WORKSPACE_ROOT / "Raw Subtitles"
-
-RAW_TRANSCRIPTS = WORKSPACE_ROOT / "Raw Transcripts"
-
 LOGS = WORKSPACE_ROOT / "Logs"
 
 ANALYSIS_OUTPUTS = WORKSPACE_ROOT / "Analysis" / "outputs"
@@ -87,9 +81,13 @@ DIAGNOSTICS = WORKSPACE_ROOT / "Diagnostics"
 
 INTAKE = WORKSPACE_ROOT / "Intake"
 
-# Customer/runtime configuration (workspace). Collections are customer data;
-# source_types.json / origins.json remain repository product configuration.
+RAW_IMPORTS = WORKSPACE_ROOT / "Raw Imports"
+
+# Customer/runtime configuration (workspace). Collections and origins are
+# customer data; only source_types.json remains repository product config.
 COLLECTIONS_CONFIG = WORKSPACE_ROOT / "Config" / "collections.json"
+
+ORIGINS_CONFIG = WORKSPACE_ROOT / "Config" / "origins.json"
 
 
 # --------------------------------------------------
@@ -117,17 +115,6 @@ CORPUS_RESULTS = WORKSPACE_ROOT / "Corpus Results"
 PROCESSING = WORKSPACE_ROOT / "processing"
 
 RESPONSES = WORKSPACE_ROOT / "responses"
-
-
-# --------------------------------------------------
-# API
-# --------------------------------------------------
-#
-# Temporary compatibility constant. Key loading now prefers the
-# DEEPSEEK_API_KEY environment variable; this file fallback remains until
-# the final secret-migration step.
-
-API_KEY = PROJECT_ROOT / "api_key.txt"
 
 
 # --------------------------------------------------
@@ -164,8 +151,6 @@ WORKSPACE_FOLDERS = (
     CLEANING_RESULTS,
     CLEANED_ARCHIVE,
     PROCESSING_RESULTS,
-    RAW_SUBTITLES,
-    RAW_TRANSCRIPTS,
     LOGS,
     LOG_JOB_BUILDER,
     LOG_SUBTITLE_CLEANER,
@@ -178,6 +163,7 @@ WORKSPACE_FOLDERS = (
     ANALYSIS_OUTPUTS,
     DIAGNOSTICS,
     INTAKE,
+    RAW_IMPORTS,
     COMPLETED,
     FAILED,
     INDEXES,
@@ -233,7 +219,6 @@ def verify_paths():
         ANALYSIS,
         DATA_PROCESSOR,
         PROMPTS,
-        SUBTITLE_CLEANER,
         TRANSCRIPT_CLEANER,
         CLEANED_ARCHIVE,
         COMPLETED,
@@ -251,8 +236,6 @@ def verify_paths():
         LOG_SOURCE_INTAKE,
         LOG_PRODUCTION_MANAGER,
         PROCESSING,
-        RAW_SUBTITLES,
-        RAW_TRANSCRIPTS,
         REQUESTS,
         REQUEST_RESULTS,
         RESPONSES,
@@ -264,6 +247,7 @@ def verify_paths():
         ANALYSIS_OUTPUTS,
         DIAGNOSTICS,
         INTAKE,
+        RAW_IMPORTS,
     ]
 
     missing = [

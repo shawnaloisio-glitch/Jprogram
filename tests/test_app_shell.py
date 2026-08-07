@@ -101,7 +101,7 @@ def _():
         check("load file button", hasattr(sb, "load_button"))
         check("collection combo", hasattr(sb, "collection_combo"))
         check("episode entry", hasattr(sb, "episode_entry"))
-        check("source type combo", hasattr(sb, "source_type_combo"))
+        check("source type var", hasattr(sb, "source_type_var"))
         check("origin combo", hasattr(sb, "origin_combo"))
     finally:
         root.destroy()
@@ -122,9 +122,8 @@ def _():
         try:
             sb.collection_var.set("teppei_beginner")
             sb.episode_var.set("63")
-            sb.source_type_var.set("podcast_transcript")
+            sb.source_type_var.set("clean_text")
             sb.origin_var.set("con_teppei_podcast")
-            sb.material_level_var.set("1")
             sb.text_area.insert("1.0", "第六十三回のテストです。\n")
             sb._on_text_changed()
             sb.on_save()
@@ -137,7 +136,7 @@ def _():
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package type", data["artifact_type"] == "source_package")
             check("source_id",
-                  data["source_id"] == "podcast_transcript_teppei-beginner_ep063")
+                  data["source_id"] == "clean_text_teppei-beginner_ep063")
         finally:
             controller.SOURCES_ROOT = saved
     finally:

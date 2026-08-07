@@ -37,6 +37,10 @@ class ConfigError(Exception):
 
 def config_path(name):
     """Return the path for a named config file."""
+    if name == "origins":
+        # Origins are customer/runtime configuration in the workspace, like
+        # collections; only source_types remains repository product config.
+        return paths.ORIGINS_CONFIG
     return CONFIG_DIR / CONFIG_FILES[name]
 
 
@@ -67,8 +71,7 @@ def load_collections():
     separate from the repository product configuration.
 
     Returns a list of collection dicts:
-        [{"collection_id": str, "name": str, "source_type": str,
-          "sequencing": str}, ...]
+        [{"collection_id": str, "name": str, "sequencing": str}, ...]
 
     "sequencing" is "episodic" or "auto", defaulting to "episodic" when a
     collection does not declare it.
@@ -97,7 +100,6 @@ def load_collections():
             result.append({
                 "collection_id": collection_id,
                 "name": item.get("name", collection_id),
-                "source_type": item.get("source_type"),
                 "sequencing": item.get("sequencing", "episodic"),
             })
     return result
@@ -130,10 +132,14 @@ def load_origins():
     """
     Return the ordered list of origin values.
 
-    Accepts both plain-string entries and object entries
+    Origins are customer data in the workspace; a fresh install has no
+    origins.json yet, which is an empty list, not an error (exactly like
+    collections). Accepts both plain-string entries and object entries
     {"origin_id": str, "display_name": str}.
     """
-    data = load_json("origins")
+    data = _load_origins_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("origins")
     else:
@@ -170,14 +176,18 @@ def load_origins_full():
     """
     Return the ordered list of origin entries WITH display names.
 
-    Accepts both plain-string entries and object entries
+    Origins are customer data in the workspace; a fresh install has no
+    origins.json yet, which is an empty list, not an error (exactly like
+    collections). Accepts both plain-string entries and object entries
     {"origin_id": str, "display_name": str}. display_name falls back to
     the id when the entry is a bare string or omits/empties display_name.
 
     Returns:
         [{"origin_id": str, "display_name": str}, ...]
     """
-    data = load_json("origins")
+    data = _load_origins_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("origins")
     else:
@@ -263,6 +273,22 @@ def _style_id(item):
     return value
 
 
+def _load_origins_raw():
+    """Read the origins payload, or None when no origins file exists yet.
+
+    Origins are customer data; a fresh install has none, which reads as an
+    empty list rather than an error. A corrupt file still raises.
+    """
+    path = config_path("origins")
+    if not path.is_file():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ConfigError(f"config file unreadable: {path}: {exc}") from exc
+
+
 def _vocab_id(item, key):
     """Extract the canonical id from a string or object vocabulary entry."""
     if isinstance(item, str):
@@ -291,18 +317,6 @@ def _vocab_full(item, key):
     return {key: vid, "display_name": display_name}
 
 
-def default_source_type_for_collection(collection_id):
-    """
-    Return the default source_type for a collection, or None.
-
-    Uses the collection's declared source_type when present.
-    """
-    for collection in load_collections():
-        if collection["collection_id"] == collection_id:
-            return collection.get("source_type")
-    return None
-
-
 __all__ = [
     "CONFIG_DIR",
     "CONFIG_FILES",
@@ -318,5 +332,4 @@ __all__ = [
     "load_styles",
     "load_styles_full",
     "load_material_levels_full",
-    "default_source_type_for_collection",
 ]

@@ -22,6 +22,7 @@ import json
 import pathlib
 import sys
 import tempfile
+import threading
 from unittest import mock
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -31,7 +32,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "Production Manager"))
 
 import tkinter as tk
-import tkinter.ttk as ttk
 
 import config_loader
 import controller
@@ -53,6 +53,7 @@ def sandbox():
         config_loader.CONFIG_DIR,
         diagnostics.DIAGNOSTICS_DIR,
         paths.COLLECTIONS_CONFIG,
+        paths.ORIGINS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -61,11 +62,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -76,13 +77,14 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
     diagnostics.DIAGNOSTICS_DIR = tmp / "Diagnostics"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
          diagnostics.DIAGNOSTICS_DIR,
-         paths.COLLECTIONS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
 
     return restore
 
@@ -90,10 +92,10 @@ def sandbox():
 def make_source(package_spec):
     if package_spec[0] == "collection":
         return controller.create_collection_source(
-            package_spec[1], package_spec[2], "podcast_transcript",
+            package_spec[1], package_spec[2], "clean_text",
             "con_teppei_podcast", "こんにちは。\n", material_level=1)
     return controller.create_standalone_source(
-        package_spec[1], "podcast_transcript", "nhk_news", "天気です。\n",
+        package_spec[1], "clean_text", "nhk_news", "天気です。\n",
         material_level=1)
 
 
@@ -322,6 +324,58 @@ def _():
             check("status does not imply an instant stop",
                   "finishes" in window.progress_var.get())
             window._reset_busy()
+            window.window.destroy()
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("worker exception surfaces the real message, not a NameError")
+def _():
+    restore = sandbox()
+    try:
+        make_source(("collection", "teppei_beginner", 58))
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            window = processing_tab_gui.ProcessingTabWindow(app)
+            release = threading.Event()
+
+            # Gate the mock so the worker reaches the deferred error
+            # callback only while the Tk main loop is running (cross-thread
+            # window.after requires the main loop to be active).
+            def boom(*args, **kwargs):
+                release.wait(timeout=5)
+                raise RuntimeError("boom")
+
+            shown = []
+            real_show = window._show_run_error
+
+            def show_and_quit(message):
+                shown.append(message)
+                real_show(message)
+                root.after(0, root.quit)
+
+            window._show_run_error = show_and_quit
+
+            with mock.patch.object(
+                    processing_tab, "process_sources",
+                    side_effect=boom) as ps:
+                window._run_sources(window.rows)
+
+            root.after(0, release.set)
+            root.after(5000, root.quit)
+            root.mainloop()
+
+            check("process_sources raised", ps.called)
+            check("_show_run_error got the real exception message",
+                  shown == ["boom"])
+            check("error label shows the real exception message",
+                  window.error_label.cget("text") == "boom")
+            check("status indicates the error",
+                  window.progress_var.get() == "Finished with an error.")
             window.window.destroy()
         finally:
             root.destroy()

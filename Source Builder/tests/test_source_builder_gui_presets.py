@@ -43,6 +43,7 @@ def sandbox():
     saved_presets = quick_presets.PRESETS_PATH
     saved_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
+    saved_origins_config = paths.ORIGINS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -51,11 +52,11 @@ def sandbox():
         "collections": [
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
-             "source_type": "podcast_transcript"},
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
-        {"source_types": ["podcast_transcript"]}), encoding="utf-8")
+        {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -66,6 +67,7 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
+    paths.ORIGINS_CONFIG = config_dir / "origins.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -73,6 +75,7 @@ def sandbox():
         quick_presets.PRESETS_PATH = saved_presets
         config_loader.CONFIG_DIR = saved_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
+        paths.ORIGINS_CONFIG = saved_origins_config
 
     return restore
 
@@ -113,13 +116,13 @@ def _():
         quick_presets.save_slot(
             1, "Teppei_Beginner", "collection",
             collection_id="teppei_beginner",
-            source_type="podcast_transcript", origin="con_teppei_podcast")
+            source_type="clean_text", origin="con_teppei_podcast")
         root, app = make_app(restore)
         try:
             app._on_preset_click(1)
             check("collection", app.collection_var.get() == "teppei_beginner")
             check("source type",
-                  app.source_type_var.get() == "podcast_transcript")
+                  app.source_type_var.get() == "clean_text")
             check("origin", app.origin_var.get() == "con_teppei_podcast")
             check("status mentions preset",
                   "Preset loaded: Teppei_Beginner" in app.status_var.get())
@@ -136,7 +139,7 @@ def _():
         quick_presets.save_slot(
             1, "Teppei_Beginner", "collection",
             collection_id="teppei_beginner",
-            source_type="podcast_transcript", origin="con_teppei_podcast")
+            source_type="clean_text", origin="con_teppei_podcast")
         root, app = make_app(restore)
         try:
             app._on_preset_click(1)
@@ -163,7 +166,7 @@ def _():
         quick_presets.save_slot(
             1, "Teppei_Beginner", "collection",
             collection_id="teppei_beginner",
-            source_type="podcast_transcript", origin="con_teppei_podcast")
+            source_type="clean_text", origin="con_teppei_podcast")
         root, app = make_app(restore)
         try:
             app._on_preset_click(1)
@@ -220,7 +223,7 @@ def _():
     try:
         quick_presets.save_slot(
             4, "NHK Article", "standalone",
-            source_type="podcast_transcript", origin="nhk_news")
+            source_type="clean_text", origin="nhk_news")
         root, app = make_app(restore)
         try:
             app._on_preset_click(4)
@@ -229,7 +232,7 @@ def _():
             check("source name not populated",
                   app.source_name_var.get() == "")
             check("source type",
-                  app.source_type_var.get() == "podcast_transcript")
+                  app.source_type_var.get() == "clean_text")
             check("origin", app.origin_var.get() == "nhk_news")
         finally:
             root.destroy()

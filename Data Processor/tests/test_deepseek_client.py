@@ -136,27 +136,22 @@ def setup():
     for folder in (requests_dir, responses_dir, processing_dir, logs_dir):
         folder.mkdir(parents=True)
 
-    api_key_file = root / "api_key.txt"
-    api_key_file.write_text("test-key", encoding="utf-8")
-
     saved = (
         dsc.REQUESTS,
         dsc.RESPONSES,
         dsc.PROCESSING_RESULTS,
         dsc.LOG_DEEPSEEK_CLIENT,
-        dsc.API_KEY,
     )
     dsc.REQUESTS = requests_dir
     dsc.RESPONSES = responses_dir
     dsc.PROCESSING_RESULTS = processing_dir
     dsc.LOG_DEEPSEEK_CLIENT = logs_dir
-    dsc.API_KEY = api_key_file
     return root, requests_dir, responses_dir, processing_dir, saved
 
 
 def restore(saved):
     (dsc.REQUESTS, dsc.RESPONSES, dsc.PROCESSING_RESULTS,
-     dsc.LOG_DEEPSEEK_CLIENT, dsc.API_KEY) = saved
+     dsc.LOG_DEEPSEEK_CLIENT) = saved
 
 
 def result_path(processing_dir, source_id):
@@ -608,7 +603,7 @@ def _():
     check("max_tokens override", body["max_tokens"] == 1000)
 
 
-@test("14. api key: DEEPSEEK_API_KEY env var wins over file")
+@test("14. api key: DEEPSEEK_API_KEY env var is used")
 def _():
     root, requests_dir, responses_dir, processing_dir, saved = setup()
     try:
@@ -622,7 +617,7 @@ def _():
         restore(saved)
 
 
-@test("14b. api key: run uses env var; key file not required")
+@test("14b. api key: run resolves key from env var")
 def _():
     root, requests_dir, responses_dir, processing_dir, saved = setup()
     try:
@@ -632,15 +627,13 @@ def _():
         sender = KeyRecordingSender([api_response()])
         dsc.send_with_retry = sender
 
-        # Remove the key file so only the environment can satisfy resolution.
-        dsc.API_KEY.unlink()
         os.environ["DEEPSEEK_API_KEY"] = "env-key"
         try:
             code = dsc.run("pod_conteppei_ep051")
         finally:
             del os.environ["DEEPSEEK_API_KEY"]
 
-        check("exit 0 with env key only", code == 0)
+        check("exit 0 with env key", code == 0)
         check("resolved env key reached the API call", sender.keys == ["env-key"])
         check("response created",
               (responses_dir / "pod_conteppei_ep051" / "response_000001.json").is_file())
@@ -649,49 +642,36 @@ def _():
         restore(saved)
 
 
-@test("15. api key: file fallback when env absent")
+@test("15. api key: error when env var unset")
 def _():
     root, requests_dir, responses_dir, processing_dir, saved = setup()
     try:
         os.environ.pop("DEEPSEEK_API_KEY", None)
-        key = dsc._resolve_api_key()
-        check("file key returned", key == "test-key")
+        raised = False
+        try:
+            dsc._resolve_api_key()
+        except EnvironmentError as exc:
+            raised = True
+            check("clear message", str(exc) ==
+                  "DEEPSEEK_API_KEY environment variable is not set")
+        check("EnvironmentError raised", raised)
     finally:
         restore(saved)
 
 
-@test("15b. api key: run falls back to key file when env absent")
+@test("15b. api key: run fails cleanly when env var unset")
 def _():
     root, requests_dir, responses_dir, processing_dir, saved = setup()
     try:
         write_requests(requests_dir, "pod_conteppei_ep051",
                        [valid_request("pod_conteppei_ep051", 1)])
-        real_send = dsc.send_with_retry
-        sender = KeyRecordingSender([api_response()])
-        dsc.send_with_retry = sender
-
         os.environ.pop("DEEPSEEK_API_KEY", None)
         code = dsc.run("pod_conteppei_ep051")
-
-        check("exit 0 via file key", code == 0)
-        check("file key reached the API call", sender.keys == ["test-key"])
-        dsc.send_with_retry = real_send
-    finally:
-        restore(saved)
-
-
-@test("15c. api key: error when env absent and key file missing")
-def _():
-    root, requests_dir, responses_dir, processing_dir, saved = setup()
-    try:
-        os.environ.pop("DEEPSEEK_API_KEY", None)
-        dsc.API_KEY.unlink()
-        raised = False
-        try:
-            dsc._resolve_api_key()
-        except FileNotFoundError:
-            raised = True
-        check("FileNotFoundError raised", raised)
+        check("clean failure return", code == 1)
+        check("failure result written",
+              result_path(processing_dir, "pod_conteppei_ep051").is_file())
+        result = load_result(processing_dir, "pod_conteppei_ep051")
+        check("no jobs processed", result["requests_processed"] == 0)
     finally:
         restore(saved)
 
