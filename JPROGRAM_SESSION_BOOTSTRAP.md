@@ -331,15 +331,17 @@ DeepSeek-architecture reference, untouched this session.
 
 ### Two process/environment findings from this session, not code
 
-- **A citation gap in this project's own docs.** Both this file and
-  `WORKING_LIST.md` cite `2026-08-06_blast_radius_scope.md` as the
-  source confirming the Analysis modules are unaffected by the parser
-  rewrite. That file does not actually exist anywhere in the repo or
-  git history — confirmed via direct search. Worked around it this
-  session by using `CLAUDE.md`'s Frozen Components list directly (the
-  actually-authoritative source regardless). Not fixed: either the
-  missing analysis should be redone and saved, or the citation should
-  be removed/corrected so it stops pointing at a file that isn't there.
+- **Correction to a Session 6 finding, not a real gap after all.** Last
+  session reported `2026-08-06_blast_radius_scope.md` as missing
+  entirely (cited by this file and `WORKING_LIST.md` as the source
+  confirming Analysis modules are unaffected by the parser rewrite).
+  That was Advisor's own search error, not a real documentation gap —
+  the file exists and always did, at
+  `C:\AI Development Projects\Corpus change study\2026-08-06_blast_radius_scope.md`,
+  a separate sibling folder outside the Jprogram repo. Last session's
+  search only covered the repo itself. No action needed; the citation
+  was correct all along. A UI/workflow simplification insight (see
+  Session 7 below) was added to that file as an addendum this session.
 - **This Bash shell has a stale `JPROGRAM_WORKSPACE` environment
   variable** (the pre-relocation value, `C:\Jprogram Workspace`) — the
   real persistent store is correct (confirmed via the direct registry
@@ -386,9 +388,6 @@ Headline items still open:
 - **The Corpus Change Study work itself** — still the big one, still not
   started. Start at
   `C:\AI Development Projects\Corpus change study\00_INDEX.md`.
-- **The missing `2026-08-06_blast_radius_scope.md` citation** (new this
-  session, see above) — fix by either recreating that analysis or
-  removing the dangling reference.
 - **This shell's stale `JPROGRAM_WORKSPACE` value** — expected resolved
   by Owner's planned computer restart; verify at next session's start.
 - **The pre-existing stale `C:\Jprogram Workspace` folder tree** — still
