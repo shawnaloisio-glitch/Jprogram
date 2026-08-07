@@ -57,7 +57,8 @@ def setup():
         folder.mkdir(parents=True)
 
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
@@ -199,7 +200,7 @@ class ScriptedRun:
         "clean_transcript.py": "clean",
         "job builder.py": "jobs",
         "request builder.py": "requests",
-        "deepseek_client.py": "api",
+        "deterministic_parser_client.py": "api",
         "corpus_builder.py": "corpus",
     }
 
@@ -287,7 +288,7 @@ def _():
         check("all five stages launched",
               [pathlib.Path(c[1]).name for c in scripted.calls]
               == ["clean_transcript.py", "job builder.py",
-                  "request builder.py", "deepseek_client.py",
+                  "request builder.py", "deterministic_parser_client.py",
                   "corpus_builder.py"])
         check("four confirmations", len(confirmations) == 0)
         pm.subprocess.run = real_run
@@ -350,7 +351,7 @@ def _():
         check("resumes from jobs",
               [pathlib.Path(c[1]).name for c in scripted.calls]
               == ["job builder.py", "request builder.py",
-                  "deepseek_client.py", "corpus_builder.py"])
+                  "deterministic_parser_client.py", "corpus_builder.py"])
         pm.subprocess.run = real_run
     finally:
         restore(saved)

@@ -64,7 +64,8 @@ def setup():
 
     # Placeholder stage executables so the sandbox has real script paths.
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
@@ -151,11 +152,29 @@ def _():
 
         for stage, script_name in (("jobs", "job builder.py"),
                                    ("requests", "request builder.py"),
-                                   ("api", "deepseek_client.py"),
+                                   ("api", "deterministic_parser_client.py"),
                                    ("corpus", "corpus_builder.py")):
             cmd = pm.build_command(stage, SID)
             check(f"{stage} script", cmd[1].endswith(script_name))
             check(f"{stage} args", cmd[2:] == ["--source", SID])
+    finally:
+        restore(saved)
+
+
+@test("1b. api stage uses the venv interpreter; other stages use sys.executable")
+def _():
+    root, dirs, saved = setup()
+    try:
+        add_cleaning_job(dirs)
+        expected_venv = str(pm.PROJECT_ROOT / ".venv" / "Scripts" / "python.exe")
+        cmd = pm.build_command("api", SID)
+        check("api uses venv python", cmd[0] == expected_venv)
+        check("api script is deterministic_parser_client.py",
+              cmd[1].endswith("deterministic_parser_client.py"))
+        check("api args unchanged", cmd[2:] == ["--source", SID])
+        for stage in ("clean", "jobs", "requests", "corpus"):
+            cmd = pm.build_command(stage, SID)
+            check(f"{stage} still uses sys.executable", cmd[0] == sys.executable)
     finally:
         restore(saved)
 

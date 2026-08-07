@@ -58,7 +58,8 @@ def setup():
         folder.mkdir(parents=True)
 
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
@@ -211,7 +212,7 @@ class ScriptedRun:
         "clean_transcript.py": "clean",
         "job builder.py": "jobs",
         "request builder.py": "requests",
-        "deepseek_client.py": "api",
+        "deterministic_parser_client.py": "api",
         "corpus_builder.py": "corpus",
     }
 

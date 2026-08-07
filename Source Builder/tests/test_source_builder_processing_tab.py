@@ -207,7 +207,7 @@ def _():
     status, message = processing_tab.simple_status(
         {}, {"state": "failed", "failed_stage": "api"})
     check("failed", status == processing_tab.STATUS_FAILED)
-    check("friendly api message", message == "Failed during AI processing")
+    check("friendly api message", message == "Failed during parsing")
 
 
 @test("simple_status maps unregistered to Pending")
@@ -226,7 +226,7 @@ def _():
 @test("friendly_failure_message hides technical stage names")
 def _():
     check("api", processing_tab.friendly_failure_message(
-        {"failed_stage": "api"}) == "Failed during AI processing")
+        {"failed_stage": "api"}) == "Failed during parsing")
     check("corpus", processing_tab.friendly_failure_message(
         {"failed_stage": "corpus"})
         == "Failed while producing the final output")

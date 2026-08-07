@@ -207,11 +207,11 @@ def friendly_failure_message(state_info):
     Build a plain-language failure message (no technical stage names).
 
     Input: state_info (dict from ProductionManager.state_for).
-    Output: str like "Failed during AI processing".
+    Output: str like "Failed during parsing".
     """
     failed_stage = state_info.get("failed_stage")
     if failed_stage == "api":
-        return "Failed during AI processing"
+        return "Failed during parsing"
     if failed_stage == "corpus":
         return "Failed while producing the final output"
     if failed_stage == "requests":

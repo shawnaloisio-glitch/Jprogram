@@ -56,7 +56,8 @@ def setup():
         folder.mkdir(parents=True)
 
     for script in ("job builder.py", "request builder.py",
-                   "deepseek_client.py", "corpus_builder.py"):
+                   "deepseek_client.py", "corpus_builder.py",
+                   "deterministic_parser_client.py"):
         (dirs["DATA_PROCESSOR"] / script).write_text("", encoding="utf-8")
     (dirs["TRANSCRIPT_CLEANER"] / "clean_transcript.py").write_text(
         "", encoding="utf-8")
@@ -259,7 +260,7 @@ def _():
                     "source_name": sid,
                     "messages": [{"role": "system", "content": "p"},
                                  {"role": "user", "content": "こんにちは。"}]})
-            elif stage == "deepseek_client.py":
+            elif stage == "deterministic_parser_client.py":
                 write_json(dirs["PROCESSING_RESULTS"] / f"{sid}.processing_result.json", {
                     "schema_version": "1", "source_id": sid, "model": "m",
                     "requests_processed": 1,
