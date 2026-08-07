@@ -323,19 +323,39 @@ branches exist. Nothing to flag.
 
 ### Next immediate task
 
-**A real "Failed" processing run surfaced a genuine Cleaner bug after this
-section was first written** (see `WORKING_LIST.md`'s top entry, added
-same session): two sentences sharing one raw source line breaks exact
-reconstruction, root-caused directly via the real `response_validator`/
-`parser_normalizer` functions against the app's own diagnostic dump, not
-guessed. Owner-confirmed as a Cleaner-side issue, not a Frozen-component
-problem. Fix mechanism identified (reuse `deterministic_parser.py`'s
-`_split_line`) but not yet built or scoped into a Coder command — this is
-the most concrete next task, pick it up first.
+**The Cleaner bug (see previous update) is now fully scoped — a Coder
+command is drafted and ready to run, not yet dispatched.** Confirmed
+during scoping that the same bug independently occurs in Subtitle
+Importer's cleaner too (a real SRT import hit it, cue #93), which is why
+the fix extracts the shared splitting rule into a new `Common/
+sentence_split.py` utility rather than patching one Cleaner alone. Run
+the drafted command next session, evaluate the diff + full test suite as
+usual, then a fresh-subagent Auditor pass before considering it landed
+(judgment-call Yes — touches `deterministic_parser.py`, the live parser
+stage, even though it's a pure behavior-preserving extraction).
+
+Also shipped this session, small and already committed: `processing_tab.py`'s
+`human_label()` renamed its "Episode <N>" text to "ID#<N>" — Owner caught
+in real usage that the label implied it reflected the new Episode#/Season#
+fields when it's actually the unrelated hidden system counter. Pure
+display-text change, zero behavior change, 6 files (`1665cfc`).
+
+Two one-off hand-fixes also landed this session as immediate unblocks
+(data fixes, not code — see `WORKING_LIST.md` for exact files): the
+`teppeibeginner_ep0002` canonical source and the raw `Seika's Day Out.srt`,
+both had the real bug pattern manually split so at least one clean run
+could get through meanwhile.
 
 The three small episode/season follow-ups (Index's sequencing column,
 `collision_exists()` cleanup, `diagnostics.py`'s stale reference) remain
 open too, still none urgent.
+
+**Not yet pushed to `origin`:** two local commits (`1665cfc`, `348adf0`)
+ahead of `origin/master` as of this update — push at the start of next
+session if not already done. `Config/styles.json` also has an uncommitted
+real data change (a "Podcast-Monologue" style added through the app during
+testing) — Owner's own data, left uncommitted intentionally, not part of
+any task.
 Processing tab's fate (removed vs. kept as a simpler status panel, now
 that the deterministic parser doesn't need DeepSeek-era rate scheduling)
 is still open and undecided, raised but deliberately not resolved this

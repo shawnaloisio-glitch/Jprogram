@@ -57,16 +57,26 @@ in the Cleaner — rather than writing separate splitting logic that could
 drift out of agreement with the parser's actual behavior — closes the gap
 permanently instead of patching this one instance.
 
-- [ ] **Decide + scope the actual fix**: extract `_split_line` into a
-  shared utility both `clean_transcript.py` and `deterministic_parser.py`
-  import (respects "one program = one task" better), vs. duplicating the
-  logic in the Cleaner with strong shared test coverage pinning the two
-  implementations identical. Neither file touched is Frozen (Transcript
-  Cleaner isn't on the list at all; `deterministic_parser.py` isn't either
-  — see the aside below), so this is normal-friction Advisor/OC work, not
-  an automatic-Yes audit trigger — though still a judgment-call Yes given
-  it's a real correctness gap in evidence-preservation. Not drafted yet;
-  pick up fresh next session.
+- [ ] **Coder command drafted (2026-08-08), not yet run.** Also confirmed
+  a second, independent occurrence of the same bug via a real Subtitle
+  Importer import (`せいか先生のお出かけ Seika's Day Out.srt`, cue #93 —
+  `Subtitle Importer/cleaner.py`'s `clean_text()` has the identical
+  cue-per-sentence assumption as the Transcript Cleaner), which is why the
+  scoped fix extracts `_split_line` into a new shared `Common/
+  sentence_split.py` utility rather than duplicating it once — now two real
+  call sites need to agree, not a hypothetical one. Scope: 5 parts — new
+  shared module, a behavior-preserving refactor of
+  `deterministic_parser.py` to import from it, the actual fix in both
+  Cleaners, and test coverage including the real `通りません。はい。` case.
+  Neither Cleaner nor `deterministic_parser.py` is Frozen, so normal-friction
+  Advisor/OC work — still a judgment-call Yes for a fresh Auditor pass once
+  it lands, given it touches the live parser stage's own module (even by
+  pure extraction) and the evidence-preservation gate's correctness depends
+  on it. Two one-off hand-fixes already landed as immediate unblocks this
+  session (not part of this command, already done): `Sources\
+  teppeibeginner_ep0002.txt` (+ its Source Registry/Source Package sha256,
+  kept in sync) and the raw `Seika's Day Out.srt` (cue #93 split, no
+  registry involved since it wasn't registered yet).
 - [ ] **Aside, unrelated, not urgent:** `CLAUDE.md`'s Frozen Components
   list only names `Data Processor/deepseek_client.py` under "Transport" —
   `deterministic_parser.py`/`deterministic_parser_client.py` aren't listed,
