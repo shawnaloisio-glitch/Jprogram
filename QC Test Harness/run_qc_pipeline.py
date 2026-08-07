@@ -64,7 +64,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "Analysis"))
 
 SOURCE_NAME = "qc_test_001"
 SOURCE_TYPE = "clean_text"
-ORIGIN = "qc_test"
+CREATOR = "qc_test"
 LANGUAGE = "ja"
 SOURCE_ID = "clean_text_qc-test-001"
 
@@ -86,7 +86,7 @@ def stage_setup():
 
     package = source_package.build_package(
         source_type=SOURCE_TYPE,
-        origin=ORIGIN,
+        creator=CREATOR,
         language=LANGUAGE,
         canonical_path=canonical_path,
         cleaning_profile=cleaning_profile,
