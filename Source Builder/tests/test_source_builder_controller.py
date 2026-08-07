@@ -78,7 +78,6 @@ def _():
 def _():
     errors = controller.validate_fields("", "", "", "", "text")
     check("missing collection", "collection" in " ".join(errors))
-    check("missing episode", any("episode" in e for e in errors))
     check("missing source type", any("source type" in e for e in errors))
     check("missing creator", any("creator" in e for e in errors))
 
@@ -89,16 +88,16 @@ def _():
     check("empty text error", any("empty" in e for e in errors))
 
 
-@test("validation: invalid episode number")
+@test("validation: episode is never required or validated")
 def _():
+    # episode is a hidden auto-incrementing system identifier; any caller
+    # value (empty, non-numeric, negative) is accepted and never validated.
+    errors = controller.validate_fields("c", "", "s", "o", "text")
+    check("empty episode not required", any("episode" in e for e in errors) is False)
     errors = controller.validate_fields("c", "abc", "s", "o", "text")
-    check("invalid episode error", any("integer" in e for e in errors))
-
-
-@test("validation: negative episode number")
-def _():
+    check("non-numeric episode not validated", any("episode" in e for e in errors) is False)
     errors = controller.validate_fields("c", -3, "s", "o", "text")
-    check("negative episode error", any("non-negative" in e for e in errors))
+    check("negative episode not validated", any("episode" in e for e in errors) is False)
 
 
 @test("validation: valid input passes")
@@ -108,16 +107,18 @@ def _():
     check("no errors", errors == [])
 
 
-@test("successful source creation writes canonical file")
+@test("successful source creation writes canonical file (auto episode)")
 def _():
     root, sources, saved = setup()
     try:
+        # The caller-supplied episode (51) is ignored; the controller always
+        # auto-increments, so the first save lands on episode 1.
         result = controller.create_source(
             "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "これはテストです。\n")
         check("success true", result["success"] is True)
-        check("filename", result["filename"] == "teppei_beginner_ep0051.txt")
-        path = sources / "teppei_beginner_ep0051.txt"
+        check("filename", result["filename"] == "teppei_beginner_ep0001.txt")
+        path = sources / "teppei_beginner_ep0001.txt"
         check("file exists", path.is_file())
         check("text preserved",
               path.read_text(encoding="utf-8") == "これはテストです。\n")
@@ -126,40 +127,39 @@ def _():
         restore(saved)
 
 
-@test("collision detection: existing file rejected without overwrite")
+@test("collection source creation always auto-increments the episode")
 def _():
     root, sources, saved = setup()
     try:
-        result = controller.create_source(
+        result1 = controller.create_source(
             "teppei_beginner", 51, "clean_text",
             "con_teppei_podcast", "first\n")
-        check("first save succeeds", result["success"] is True)
+        check("first success", result1["success"] is True)
+        check("first episode 1", result1["filename"] == "teppei_beginner_ep0001.txt")
 
-        check("collision detected", controller.collision_exists("teppei_beginner", 51))
         result2 = controller.create_source(
-            "teppei_beginner", 51, "clean_text",
+            "teppei_beginner", 99, "clean_text",
             "con_teppei_podcast", "second\n")
-        check("second save rejected", result2["success"] is False)
-        check("error mentions exists",
-              any("already exists" in e for e in result2["errors"]))
-        path = sources / "teppei_beginner_ep0051.txt"
-        check("original preserved", path.read_text(encoding="utf-8") == "first\n")
+        check("second success", result2["success"] is True)
+        check("second episode 2", result2["filename"] == "teppei_beginner_ep0002.txt")
+        check("first file preserved",
+              (sources / "teppei_beginner_ep0001.txt").is_file())
+        check("caller episode ignored",
+              not (sources / "teppei_beginner_ep0099.txt").exists())
     finally:
         restore(saved)
 
 
-@test("collision detection: overwrite allowed")
+@test("collision_exists detects an existing canonical file")
 def _():
     root, sources, saved = setup()
     try:
-        controller.create_source("teppei_beginner", 51, "clean_text",
-                                 "con_teppei_podcast", "first\n")
-        result = controller.create_source(
-            "teppei_beginner", 51, "clean_text",
-            "con_teppei_podcast", "second\n", overwrite=True)
-        check("overwrite succeeds", result["success"] is True)
-        path = sources / "teppei_beginner_ep0051.txt"
-        check("overwritten", path.read_text(encoding="utf-8") == "second\n")
+        sources.mkdir(parents=True, exist_ok=True)
+        check("no collision initially",
+              controller.collision_exists("teppei_beginner", 51) is False)
+        (sources / "teppei_beginner_ep0051.txt").write_text("x\n",
+                                                            encoding="utf-8")
+        check("collision now", controller.collision_exists("teppei_beginner", 51))
     finally:
         restore(saved)
 
@@ -184,7 +184,7 @@ def _():
             "teppei_beginner", 7, "clean_text",
             "con_teppei_podcast", "text\n")
         check("success true", result["success"] is True)
-        path = sources / "teppei_beginner_ep0007.txt"
+        path = sources / "teppei_beginner_ep0001.txt"
         check("no .tmp", not path.with_name(path.name + ".tmp").exists())
     finally:
         restore(saved)
@@ -295,29 +295,26 @@ def _():
         restore(saved)
 
 
-@test("next_source_state: collection retains and increments episode")
+@test("next_source_state: collection resets episode to blank")
 def _():
     state = controller.next_source_state(
         "collection", "teppei_beginner", 51, "clean_text",
         "con_teppei_podcast")
     check("identity type", state["identity_type"] == "collection")
     check("collection retained", state["collection_id"] == "teppei_beginner")
-    check("episode incremented", state["episode"] == "52")
+    check("episode blank", state["episode"] == "")
     check("source type retained", state["source_type"] == "clean_text")
     check("creator retained", state["creator"] == "con_teppei_podcast")
     check("source text reset", state["source_text"] == "")
 
 
-@test("next_source_state: episode as string")
+@test("next_source_state: episode input is never suggested or retained")
 def _():
-    state = controller.next_source_state("collection", "c", "7", "s", "o")
-    check("string episode increments", state["episode"] == "8")
-
-
-@test("next_source_state: invalid episode yields blank suggestion")
-def _():
-    state = controller.next_source_state("collection", "c", "abc", "s", "o")
-    check("blank episode", state["episode"] == "")
+    # Whether the caller passes an int, a string, or junk, the collection
+    # output episode is always blank (hidden system identifier).
+    for ep in (7, "7", "abc", None):
+        state = controller.next_source_state("collection", "c", ep, "s", "o")
+        check(f"episode blank for {ep!r}", state["episode"] == "")
 
 
 @test("next_source_state: standalone blanks source name, retains metadata")
@@ -398,10 +395,10 @@ def _():
 def _():
     root, sources, saved = setup()
     try:
+        sources.mkdir(parents=True, exist_ok=True)
         for ep in (1, 2, 5):
-            controller.create_collection_source(
-                "teppei_beginner", ep, "clean_text",
-                "con_teppei_podcast", f"text {ep}\n")
+            (sources / controller.generate_filename("teppei_beginner", ep))\
+                .write_text("x\n", encoding="utf-8")
         check("max plus one, gap ignored",
               controller.next_auto_sequence("teppei_beginner") == 6)
     finally:
@@ -412,9 +409,9 @@ def _():
 def _():
     root, sources, saved = setup()
     try:
-        controller.create_collection_source(
-            "teppei_beginner", 7, "clean_text",
-            "con_teppei_podcast", "text\n")
+        sources.mkdir(parents=True, exist_ok=True)
+        (sources / controller.generate_filename("teppei_beginner", 7))\
+            .write_text("x\n", encoding="utf-8")
         (sources / "notes.txt").write_text("not an episode\n",
                                            encoding="utf-8")
         (sources / "other_collection_ep9999.txt").write_text(

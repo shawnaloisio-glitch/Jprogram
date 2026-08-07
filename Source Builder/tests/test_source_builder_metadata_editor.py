@@ -5,7 +5,7 @@ test_source_builder_metadata_editor.py
 Deterministic tests for the Source Builder metadata editor data layer:
 
 - Collections: load, add, edit, duplicate rejection, delete validation,
-  preset reference protection, sequencing default/validation.
+  preset reference protection.
 - Source Types: add/edit/delete validation.
 - Creators: add/edit/delete validation.
 - Config persistence: save, reload, atomic write, backup, format preservation.
@@ -199,15 +199,7 @@ def _():
         check("not found message", "not found" in str(exc))
 
 
-@test("collections: load defaults sequencing to episodic")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    items = metadata_editor.load_collections(conf_path(conf_dir, "collections"))
-    check("default sequencing", items[0]["sequencing"] == "episodic")
-
-
-@test("collections: load reads explicit sequencing")
+@test("collections: legacy sequencing keys are ignored on read")
 def _():
     conf_dir = temp_config_dir()
     conf_dir.mkdir(parents=True, exist_ok=True)
@@ -218,112 +210,24 @@ def _():
         ]
     }), encoding="utf-8")
     items = metadata_editor.load_collections(conf_path(conf_dir, "collections"))
-    check("auto sequencing", items[0]["sequencing"] == "auto")
+    check("one collection", len(items) == 1)
+    check("no sequencing key", "sequencing" not in items[0])
+    check("id", items[0]["collection_id"] == "cij_corpus")
+    check("display", items[0]["display_name"] == "CIJ Corpus")
 
 
-@test("collections: add defaults sequencing to episodic")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    items = metadata_editor.add_collection(
-        "nhk_beginner", "NHK Beginner",
-        path=conf_path(conf_dir, "collections"))
-    check("added default sequencing", items[1]["sequencing"] == "episodic")
-    reloaded = metadata_editor.load_collections(
-        conf_path(conf_dir, "collections"))
-    check("persisted default sequencing",
-          reloaded[1]["sequencing"] == "episodic")
-
-
-@test("collections: add accepts auto sequencing")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    items = metadata_editor.add_collection(
-        "cij_corpus", "CIJ Corpus", sequencing="auto",
-        path=conf_path(conf_dir, "collections"))
-    check("added auto", items[1]["sequencing"] == "auto")
-    reloaded = metadata_editor.load_collections(
-        conf_path(conf_dir, "collections"))
-    check("persisted auto", reloaded[1]["sequencing"] == "auto")
-
-
-@test("collections: add rejects invalid sequencing")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    try:
-        metadata_editor.add_collection(
-            "cij_corpus", "CIJ Corpus", sequencing="bogus",
-            path=conf_path(conf_dir, "collections"))
-        check("invalid sequencing rejected", False)
-    except metadata_editor.MetadataError as exc:
-        check("sequencing message",
-              "sequencing must be 'episodic' or 'auto'" in str(exc))
-    check("no partial add",
-          len(metadata_editor.load_collections(
-              conf_path(conf_dir, "collections"))) == 1)
-
-
-@test("collections: edit preserves sequencing when not given")
-def _():
-    conf_dir = temp_config_dir()
-    conf_dir.mkdir(parents=True, exist_ok=True)
-    (conf_dir / "collections.json").write_text(json.dumps({
-        "collections": [
-            {"collection_id": "cij_corpus", "name": "CIJ Corpus",
-             "source_type": "clean_text", "sequencing": "auto"},
-        ]
-    }), encoding="utf-8")
-    metadata_editor.edit_collection(
-        "cij_corpus", "CIJ Renamed",
-        path=conf_path(conf_dir, "collections"))
-    reloaded = metadata_editor.load_collections(
-        conf_path(conf_dir, "collections"))
-    check("display changed", reloaded[0]["display_name"] == "CIJ Renamed")
-    check("sequencing preserved", reloaded[0]["sequencing"] == "auto")
-
-
-@test("collections: edit updates sequencing when given")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    metadata_editor.edit_collection(
-        "teppei_beginner", "Renamed", sequencing="auto",
-        path=conf_path(conf_dir, "collections"))
-    reloaded = metadata_editor.load_collections(
-        conf_path(conf_dir, "collections"))
-    check("sequencing updated", reloaded[0]["sequencing"] == "auto")
-
-
-@test("collections: edit rejects invalid sequencing")
-def _():
-    conf_dir = temp_config_dir()
-    write_initial(conf_dir)
-    try:
-        metadata_editor.edit_collection(
-            "teppei_beginner", "Renamed", sequencing="bogus",
-            path=conf_path(conf_dir, "collections"))
-        check("invalid sequencing rejected", False)
-    except metadata_editor.MetadataError as exc:
-        check("sequencing message",
-              "sequencing must be 'episodic' or 'auto'" in str(exc))
-
-
-@test("collections: sequencing round-trips to disk")
+@test("collections: saved output omits sequencing entirely")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     metadata_editor.add_collection(
-        "cij_corpus", "CIJ Corpus", sequencing="auto",
+        "nhk_beginner", "NHK Beginner",
         path=conf_path(conf_dir, "collections"))
     data = json.loads(conf_path(conf_dir, "collections").read_text(
         encoding="utf-8"))
-    by_id = {c["collection_id"]: c for c in data["collections"]}
-    check("new entry stores auto",
-          by_id["cij_corpus"]["sequencing"] == "auto")
-    check("legacy entry gains episodic",
-          by_id["teppei_beginner"]["sequencing"] == "episodic")
+    check("two entries", len(data["collections"]) == 2)
+    check("no sequencing key stored",
+          all("sequencing" not in c for c in data["collections"]))
 
 
 @test("collections: delete unused")

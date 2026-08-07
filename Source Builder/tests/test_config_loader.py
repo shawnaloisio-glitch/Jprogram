@@ -4,9 +4,8 @@ test_config_loader.py
 
 Deterministic tests for the Source Builder config loader:
 
-- load_collections returns collection_id / name / sequencing,
-- sequencing defaults to "episodic" when a collection does not declare it,
-- explicit "auto" / "episodic" values are read back,
+- load_collections returns collection_id / name,
+- legacy "sequencing" keys in on-disk JSON are ignored,
 - empty and missing collection configs load as empty lists,
 - collection ordering is preserved.
 
@@ -90,8 +89,7 @@ def check(name, cond, detail=""):
 def _():
     restore = patch_collections_config([
         {"collection_id": "teppei_beginner",
-         "name": "Con Teppei for Beginner",
-         "sequencing": "auto"},
+         "name": "Con Teppei for Beginner"},
     ])
     try:
         items = config_loader.load_collections()
@@ -99,40 +97,25 @@ def _():
         item = items[0]
         check("collection_id", item["collection_id"] == "teppei_beginner")
         check("name", item["name"] == "Con Teppei for Beginner")
-        check("sequencing", item["sequencing"] == "auto")
     finally:
         restore()
 
 
-@test("load_collections: sequencing defaults to episodic when absent")
+@test("load_collections: legacy sequencing keys are ignored")
 def _():
     restore = patch_collections_config([
         {"collection_id": "cijapanese", "name": "CI Japanese",
-         "source_type": "cij_transcript"},
-    ])
-    try:
-        items = config_loader.load_collections()
-        check("one collection", len(items) == 1)
-        check("default sequencing", items[0]["sequencing"] == "episodic")
-        check("legacy source_type ignored", "source_type" not in items[0])
-    finally:
-        restore()
-
-
-@test("load_collections: reads explicit episodic and auto values")
-def _():
-    restore = patch_collections_config([
+         "source_type": "cij_transcript", "sequencing": "auto"},
         {"collection_id": "episodic_series", "name": "Episodic Series",
          "sequencing": "episodic"},
-        {"collection_id": "auto_series", "name": "Auto Series",
-         "sequencing": "auto"},
     ])
     try:
         items = config_loader.load_collections()
-        by_id = {c["collection_id"]: c for c in items}
-        check("episodic preserved",
-              by_id["episodic_series"]["sequencing"] == "episodic")
-        check("auto preserved", by_id["auto_series"]["sequencing"] == "auto")
+        check("two collections", len(items) == 2)
+        check("no sequencing key",
+              all("sequencing" not in c for c in items))
+        check("legacy source_type ignored",
+              all("source_type" not in c for c in items))
     finally:
         restore()
 

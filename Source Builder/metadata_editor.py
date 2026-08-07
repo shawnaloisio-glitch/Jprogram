@@ -16,10 +16,9 @@ before modification.
 Canonical on-disk forms (preserving the existing top-level structure):
 
 - Config\\collections.json:
-    {"collections": [{"collection_id": str, "name": str,
-                      "sequencing": str}]}
-  "name" is the display name; "sequencing" is "episodic" or "auto"
-  (default "episodic" when absent).
+    {"collections": [{"collection_id": str, "name": str}]}
+  "name" is the display name. Legacy "sequencing" keys in old files are
+  ignored on read.
 - Config\\source_types.json:
     {"source_types": [{"source_type_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
@@ -56,8 +55,6 @@ FILES = {
 }
 
 MACHINE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-
-SEQUENCING_VALUES = ("episodic", "auto")
 
 
 class MetadataError(Exception):
@@ -133,8 +130,9 @@ def _write_json(path, data):
 def load_collections(path=None):
     """
     Load collections as a list of dicts:
-        [{"collection_id": str, "display_name": str,
-          "sequencing": str}, ...]
+        [{"collection_id": str, "display_name": str}, ...]
+
+    Legacy "sequencing" keys in on-disk JSON are ignored on read.
     """
     data = _read_json(_config_path("collections", path))
     if data is None:
@@ -156,7 +154,6 @@ def load_collections(path=None):
             "collection_id": collection_id,
             "display_name": display_name if isinstance(display_name, str)
             else collection_id,
-            "sequencing": item.get("sequencing", "episodic"),
         })
     return result
 
@@ -290,8 +287,7 @@ def _check_unique(value, existing, original=None, label=None):
 
 
 def validate_collection(collection_id, display_name, existing_ids,
-                        original_id=None, sequencing=None,
-                        existing_display_names=None,
+                        original_id=None, existing_display_names=None,
                         original_display_name=None):
     """Validate a collection entry; return list of errors."""
     errors = validate_id(collection_id, "collection_id")
@@ -302,9 +298,6 @@ def validate_collection(collection_id, display_name, existing_ids,
             else display_name
         errors += _check_unique(normalized, existing_display_names,
                                 original_display_name, label="display name")
-    if sequencing is not None and sequencing not in SEQUENCING_VALUES:
-        errors.append(
-            f"sequencing must be 'episodic' or 'auto' (got {sequencing!r})")
     return errors
 
 
@@ -356,7 +349,6 @@ def _raw_collection(item):
     return {
         "collection_id": item["collection_id"],
         "name": item["display_name"],
-        "sequencing": item.get("sequencing", "episodic"),
     }
 
 
@@ -407,31 +399,28 @@ def save_styles(items, path=None):
 # CRUD
 # ============================================================
 
-def add_collection(collection_id, display_name, path=None, sequencing=None):
+def add_collection(collection_id, display_name, path=None):
     """Add a collection; raises MetadataError on invalid input."""
     items = load_collections(path)
     existing = [c["collection_id"] for c in items]
     existing_names = [c["display_name"] for c in items]
-    errors = validate_collection(
-        collection_id, display_name, existing, sequencing=sequencing,
-        existing_display_names=existing_names)
+    errors = validate_collection(collection_id, display_name, existing,
+                                 existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({
         "collection_id": collection_id,
         "display_name": display_name.strip(),
-        "sequencing": sequencing if sequencing is not None else "episodic",
     })
     save_collections(items, path)
     return items
 
 
-def edit_collection(original_id, display_name, path=None, sequencing=None):
+def edit_collection(original_id, display_name, path=None):
     """
     Edit a collection's editable fields by original_id.
 
     The collection_id is immutable after creation and cannot be changed.
-    sequencing=None preserves the collection's existing value.
     """
     items = load_collections(path)
     for item in items:
@@ -440,14 +429,12 @@ def edit_collection(original_id, display_name, path=None, sequencing=None):
             existing_names = [c["display_name"] for c in items]
             errors = validate_collection(
                 item["collection_id"], display_name, existing_ids,
-                original_id=item["collection_id"], sequencing=sequencing,
+                original_id=item["collection_id"],
                 existing_display_names=existing_names,
                 original_display_name=item["display_name"])
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
-            if sequencing is not None:
-                item["sequencing"] = sequencing
             break
     else:
         raise MetadataError(f"collection not found: {original_id}")
@@ -670,7 +657,6 @@ def preset_references(presets=None):
 __all__ = [
     "CONFIG_DIR",
     "FILES",
-    "SEQUENCING_VALUES",
     "MetadataError",
     "is_valid_machine_id",
     "is_processable",

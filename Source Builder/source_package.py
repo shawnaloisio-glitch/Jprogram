@@ -43,7 +43,7 @@ from project_config import (
 )
 
 ARTIFACT_TYPE = "source_package"
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 PACKAGE_SUFFIX = ".source.json"
 FORMAT = "txt"
 
@@ -121,7 +121,7 @@ def build_package(source_type, creator, language, canonical_path,
                   cleaning_profile, cleaner_version, material_level,
                   source_id=None, collection_id=None, episode=None,
                   source_name=None, style_id=None, duration_seconds=None,
-                  created_at=None):
+                  episode_number=None, season_number=None, created_at=None):
     """
     Build a Source Package dict.
 
@@ -136,14 +136,16 @@ def build_package(source_type, creator, language, canonical_path,
         source_name (str|None, standalone mode),
         style_id (int|None),
         duration_seconds (int|float|None, non-negative),
+        episode_number (int|None, optional user-entered metadata),
+        season_number (int|None, optional user-entered metadata),
         created_at (str|None, auto now).
 
     Output: the source package dict.
 
     The sha256 is computed from the canonical file. format is fixed to "txt".
-    material_level / style_id / duration_seconds are always present in the
-    package (None when not given); collection_id/episode/source_name are
-    only included by identity mode.
+    material_level / style_id / duration_seconds / episode_number /
+    season_number are always present in the package (None when not given);
+    collection_id/episode/source_name are only included by identity mode.
     """
     canonical = Path(canonical_path)
     if not canonical.is_file():
@@ -178,6 +180,8 @@ def build_package(source_type, creator, language, canonical_path,
         "material_level": material_level,
         "style_id": style_id,
         "duration_seconds": duration_seconds,
+        "episode_number": episode_number,
+        "season_number": season_number,
     }
     if collection_id is not None:
         package["collection_id"] = collection_id
@@ -250,6 +254,17 @@ def validate_package(package):
             errors.append("duration_seconds must be a number")
         elif duration_seconds < 0:
             errors.append("duration_seconds must be non-negative")
+
+    # episode_number / season_number are optional user-entered metadata:
+    # None is valid, but when present they must be non-negative integers
+    # (not bools). They are never required.
+    for field in ("episode_number", "season_number"):
+        value = package.get(field)
+        if value is not None:
+            if isinstance(value, bool) or not isinstance(value, int):
+                errors.append(f"{field} must be an integer")
+            elif value < 0:
+                errors.append(f"{field} must be non-negative")
 
     return errors
 

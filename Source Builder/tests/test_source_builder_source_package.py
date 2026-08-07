@@ -78,13 +78,15 @@ def check(name, cond, detail=""):
 def _():
     root, sources, saved = setup()
     try:
+        # The caller-supplied episode (58) is ignored; the controller
+        # auto-increments, so the first save lands on episode 1.
         result = controller.create_collection_source(
             "teppei_beginner", 58, "clean_text",
             "con_teppei_podcast", "こんにちは。\n", material_level=1)
         check("save success", result["success"] is True)
         check("no package error", "package_error" not in result)
-        canonical = sources / "teppei_beginner_ep0058.txt"
-        package_path = sources / "teppei_beginner_ep0058.source.json"
+        canonical = sources / "teppei_beginner_ep0001.txt"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         check("canonical exists", canonical.is_file())
         check("package exists", package_path.is_file())
         data = json.loads(package_path.read_text(encoding="utf-8"))
@@ -100,19 +102,19 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "clean_text",
             "con_teppei_podcast", "こんにちは。\n", material_level=1)
-        package_path = sources / "teppei_beginner_ep0058.source.json"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         for field in REQUIRED_FIELDS:
             check(f"field {field} present",
                   field in data and data[field] not in (None, ""))
         check("artifact_type", data["artifact_type"] == "source_package")
-        check("schema_version", data["schema_version"] == "3")
+        check("schema_version", data["schema_version"] == "4")
         check("source_type", data["source_type"] == "clean_text")
         check("creator", data["creator"] == "con_teppei_podcast")
         check("language", data["language"] == "ja")
         check("format", data["format"] == "txt")
         check("collection_id", data["collection_id"] == "teppei_beginner")
-        check("episode", data["episode"] == 58)
+        check("episode", data["episode"] == 1)
         check("cleaning_profile",
               data["cleaning_profile"] == "transcript_standard_v1")
         check("cleaner_version", data["cleaner_version"] == "1.0")
@@ -128,14 +130,14 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "clean_text",
             "con_teppei_podcast", "text\n", material_level=1)
-        package_path = sources / "teppei_beginner_ep0058.source.json"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("source_id",
-              data["source_id"] == "clean_text_teppei-beginner_ep058")
+              data["source_id"] == "clean_text_teppei-beginner_ep001")
         check("matches helper",
               data["source_id"] == controller.source_id_for(
                   "clean_text", collection_id="teppei_beginner",
-                  episode=58))
+                  episode=1))
     finally:
         restore(saved)
 
@@ -148,12 +150,12 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "clean_text",
             "con_teppei_podcast", text, material_level=1)
-        canonical = sources / "teppei_beginner_ep0058.txt"
-        package_path = sources / "teppei_beginner_ep0058.source.json"
+        canonical = sources / "teppei_beginner_ep0001.txt"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("sha256", data["sha256"] == sha256_of(text))
         check("canonical_path", data["canonical_path"] == str(canonical))
-        check("original_filename", data["original_filename"] == "teppei_beginner_ep0058.txt")
+        check("original_filename", data["original_filename"] == "teppei_beginner_ep0001.txt")
     finally:
         restore(saved)
 
@@ -205,7 +207,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 2, "clean_text",
             "con_teppei_podcast", "b\n", material_level=1)
-        package_path = sources / "teppei_beginner_ep0002.source.json"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         check("no .tmp", not package_path.with_name(
             package_path.name + ".tmp").exists())
     finally:
@@ -237,7 +239,7 @@ def _():
             "teppei_beginner", 3, "clean_text",
             "con_teppei_podcast", "keepme\n", material_level=1)
         check("save success", result["success"] is True)
-        canonical = sources / "teppei_beginner_ep0003.txt"
+        canonical = sources / "teppei_beginner_ep0001.txt"
         check("canonical intact",
               canonical.read_text(encoding="utf-8") == "keepme\n")
     finally:
@@ -252,7 +254,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 4, "clean_text",
             "con_teppei_podcast", text, material_level=1)
-        canonical = sources / "teppei_beginner_ep0004.txt"
+        canonical = sources / "teppei_beginner_ep0001.txt"
         check("text unchanged", canonical.read_text(encoding="utf-8") == text)
     finally:
         restore(saved)
@@ -279,10 +281,10 @@ def _():
 
 
 def valid_package(**overrides):
-    """Return a full schema-v3 package dict that passes validation."""
+    """Return a full schema-v4 package dict that passes validation."""
     package = {
         "artifact_type": "source_package",
-        "schema_version": "3",
+        "schema_version": "4",
         "source_id": "podcast_transcript_teppei-beginner_ep058",
         "source_type": "podcast_transcript",
         "creator": "con_teppei_podcast",
@@ -300,6 +302,8 @@ def valid_package(**overrides):
         "material_level": 1,
         "style_id": None,
         "duration_seconds": None,
+        "episode_number": None,
+        "season_number": None,
     }
     package.update(overrides)
     return package
@@ -312,7 +316,7 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
             "con_teppei_podcast", "こんにちは。\n", material_level=0)
-        package_path = sources / "teppei_beginner_ep0058.source.json"
+        package_path = sources / "teppei_beginner_ep0001.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("material_level key", "material_level" in data)
         check("material_level value", data["material_level"] == 0)
@@ -320,8 +324,60 @@ def _():
         check("style_id None", data["style_id"] is None)
         check("duration_seconds key", "duration_seconds" in data)
         check("duration_seconds None", data["duration_seconds"] is None)
+        check("episode_number key", "episode_number" in data)
+        check("episode_number None", data["episode_number"] is None)
+        check("season_number key", "season_number" in data)
+        check("season_number None", data["season_number"] is None)
     finally:
         restore(saved)
+
+
+@test("build_package: episode_number/season_number are stored when given")
+def _():
+    root, sources, saved = setup()
+    try:
+        sources.mkdir(parents=True, exist_ok=True)
+        (sources / "teppei_beginner_ep0001.txt").write_text("x\n",
+                                                            encoding="utf-8")
+        package = source_package.build_package(
+            source_type="clean_text", creator="con_teppei_podcast",
+            language="ja", canonical_path=sources / "teppei_beginner_ep0001.txt",
+            cleaning_profile="transcript_standard_v1",
+            cleaner_version="1.0", material_level=0,
+            collection_id="teppei_beginner", episode=1,
+            episode_number=5, season_number=2)
+        check("episode_number stored", package["episode_number"] == 5)
+        check("season_number stored", package["season_number"] == 2)
+        check("valid", source_package.validate_package(package) == [])
+    finally:
+        restore(saved)
+
+
+@test("validate_package: episode_number/season_number optional non-negative int")
+def _():
+    check("absent ok", source_package.validate_package(valid_package()) == [])
+    check("null ok", source_package.validate_package(
+        valid_package(episode_number=None, season_number=None)) == [])
+    check("int ok", source_package.validate_package(
+        valid_package(episode_number=5, season_number=2)) == [])
+    check("zero ok", source_package.validate_package(
+        valid_package(episode_number=0, season_number=0)) == [])
+    errors = source_package.validate_package(valid_package(episode_number=-1))
+    check("negative episode rejected",
+          any("episode_number" in e and "non-negative" in e for e in errors))
+    errors = source_package.validate_package(valid_package(season_number=-1))
+    check("negative season rejected",
+          any("season_number" in e and "non-negative" in e for e in errors))
+    errors = source_package.validate_package(valid_package(episode_number="5"))
+    check("non-int episode rejected",
+          any("episode_number" in e for e in errors))
+    errors = source_package.validate_package(valid_package(season_number="2"))
+    check("non-int season rejected",
+          any("season_number" in e for e in errors))
+    errors = source_package.validate_package(valid_package(episode_number=True))
+    check("bool episode rejected", any("episode_number" in e for e in errors))
+    errors = source_package.validate_package(valid_package(season_number=True))
+    check("bool season rejected", any("season_number" in e for e in errors))
 
 
 @test("validate_package: material_level required")

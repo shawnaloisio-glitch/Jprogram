@@ -117,27 +117,6 @@ def _():
     check("message", result["message"] == "Waiting for collection.")
 
 
-@test("blocking: missing episode")
-def _():
-    result = ev(controller.ReadyStateEngine(), episode="")
-    check("state", result["state"] == "INCOMPLETE")
-    check("message", result["message"] == "Waiting for episode number.")
-
-
-@test("blocking: invalid episode")
-def _():
-    result = ev(controller.ReadyStateEngine(), episode="abc")
-    check("state", result["state"] == "INCOMPLETE")
-    check("message", result["message"] == "Episode number must be an integer.")
-
-
-@test("blocking: negative episode")
-def _():
-    result = ev(controller.ReadyStateEngine(), episode="-3")
-    check("state", result["state"] == "INCOMPLETE")
-    check("message", result["message"] == "Episode number must be non-negative.")
-
-
 @test("blocking: missing source name (standalone)")
 def _():
     result = ev(controller.ReadyStateEngine(), identity_type="standalone",
@@ -164,17 +143,18 @@ def _():
     check("message", result["message"] == "Waiting for source text.")
 
 
-@test("blocking: filename already exists (collection)")
+@test("episode is never a blocking reason")
 def _():
     root, sources, saved = setup()
     try:
-        controller.create_collection_source(
-            "teppei_beginner", 1, "clean_text",
-            "con_teppei_podcast", "ja", "existing\n")
-        result = ev(controller.ReadyStateEngine(), episode="1")
-        check("state", result["state"] == "INCOMPLETE")
-        check("message", result["message"] == "Filename already exists.")
-        check("save disabled", result["save_enabled"] is False)
+        # episode is a hidden auto-incrementing system identifier; empty,
+        # non-numeric, and negative values never block collection readiness.
+        result = ev(controller.ReadyStateEngine(), episode="")
+        check("empty episode ready", result["state"] == "READY")
+        result = ev(controller.ReadyStateEngine(), episode="abc")
+        check("non-numeric episode ready", result["state"] == "READY")
+        result = ev(controller.ReadyStateEngine(), episode="-3")
+        check("negative episode ready", result["state"] == "READY")
     finally:
         restore(saved)
 
@@ -383,7 +363,7 @@ def _():
     root, sources, saved = setup()
     try:
         engine = controller.ReadyStateEngine()
-        check("incomplete: save off", ev(engine, episode="")["save_enabled"] is False)
+        check("incomplete: save off", ev(engine, source_text="")["save_enabled"] is False)
         check("ready: save on", ev(engine)["save_enabled"] is True)
         engine.mark_saved({
             "identity_type": "collection",
@@ -408,7 +388,7 @@ def _():
     root, sources, saved = setup()
     try:
         engine = controller.ReadyStateEngine()
-        check("incomplete: next off", ev(engine, episode="")["next_enabled"] is False)
+        check("incomplete: next off", ev(engine, source_text="")["next_enabled"] is False)
         check("ready: next off", ev(engine)["next_enabled"] is False)
         engine.mark_saved({
             "identity_type": "collection",

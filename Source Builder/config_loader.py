@@ -71,10 +71,9 @@ def load_collections():
     separate from the repository product configuration.
 
     Returns a list of collection dicts:
-        [{"collection_id": str, "name": str, "sequencing": str}, ...]
+        [{"collection_id": str, "name": str}, ...]
 
-    "sequencing" is "episodic" or "auto", defaulting to "episodic" when a
-    collection does not declare it.
+    Legacy "sequencing" keys in on-disk JSON are ignored.
     """
     path = paths.COLLECTIONS_CONFIG
     if not path.is_file():
@@ -100,7 +99,6 @@ def load_collections():
             result.append({
                 "collection_id": collection_id,
                 "name": item.get("name", collection_id),
-                "sequencing": item.get("sequencing", "episodic"),
             })
     return result
 

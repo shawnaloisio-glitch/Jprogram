@@ -83,21 +83,15 @@ def standalone_source_path(source_name):
 
 def validate_collection_fields(collection_id, episode, source_type, creator,
                                source_text):
-    """Validate required fields for a collection-mode source."""
+    """Validate required fields for a collection-mode source.
+
+    episode is a hidden auto-incrementing system identifier computed at save
+    time; it is never required or validated as user input.
+    """
     errors = []
 
     if not collection_id:
         errors.append("collection is required")
-    if episode is None or episode == "":
-        errors.append("episode number is required")
-    else:
-        try:
-            episode_value = int(episode)
-        except (TypeError, ValueError):
-            errors.append("episode number must be an integer")
-            episode_value = None
-        if episode_value is not None and episode_value < 0:
-            errors.append("episode number must be non-negative")
 
     errors.extend(_validate_common(source_type, creator, source_text))
     return errors
@@ -212,14 +206,20 @@ def _try_write_source_package(source_type, creator, canonical_path,
 def create_collection_source(collection_id, episode, source_type, creator,
                              source_text, overwrite=False, material_level=0,
                              style_id=None, duration_seconds=None):
-    """Validate and create a canonical collection source file."""
+    """Validate and create a canonical collection source file.
+
+    episode is a hidden auto-incrementing system identifier: the value is
+    always sourced by the controller via next_auto_sequence(collection_id),
+    never from the caller-supplied parameter (which is retained only for
+    backward compatibility and is ignored).
+    """
     errors = validate_collection_fields(collection_id, episode, source_type,
                                         creator, source_text)
     if errors:
         return {"success": False, "filename": None, "path": None,
                 "errors": errors}
 
-    episode_value = int(episode)
+    episode_value = next_auto_sequence(collection_id)
     path = source_path(collection_id, episode_value)
 
     if path.exists() and not overwrite:
@@ -306,7 +306,8 @@ def next_source_state(identity_type, collection_id, episode,
     material_level, style_id) and resets source-specific fields. Returns
     only state data; no file is created and no save occurs.
 
-    Collection mode: suggests the next episode number (episode + 1).
+    Collection mode: episode is not retained or suggested (it is a hidden
+    auto-incrementing system identifier, so the output episode is blank).
     Standalone mode: blank source name.
 
     duration_seconds always resets to blank: each source's duration is
@@ -321,7 +322,7 @@ def next_source_state(identity_type, collection_id, episode,
         {
             "identity_type": str,
             "collection_id": str,   # retained or ""
-            "episode": str,          # suggested next (collection) or ""
+            "episode": str,          # always blank (hidden system identifier)
             "source_name": str,      # "" (standalone) or "" (collection)
             "source_type": str,
             "creator": str,
@@ -345,18 +346,12 @@ def next_source_state(identity_type, collection_id, episode,
             "source_text": "",
         }
 
-    # collection mode
-    next_episode = ""
-    if episode is not None and episode != "":
-        try:
-            next_episode = str(int(episode) + 1)
-        except (TypeError, ValueError):
-            next_episode = ""
-
+    # collection mode: episode is a hidden auto-incrementing system
+    # identifier, never retained or suggested form state.
     return {
         "identity_type": "collection",
         "collection_id": collection_id,
-        "episode": next_episode,
+        "episode": "",
         "source_name": "",
         "source_type": source_type,
         "creator": creator,
@@ -450,6 +445,8 @@ class ReadyStateEngine:
                 "style_id": int | None,         # optional
                 "duration_seconds": int | float | None,  # optional
             }
+        episode is tracked internally so a new save that produces a genuinely
+        new file is detected, but it is never a user-facing blocking reason.
         The engine returns SAVED only while the form still matches this
         snapshot (i.e. until the user edits a field).
         """
@@ -544,21 +541,18 @@ class ReadyStateEngine:
     def _first_blocking_reason(self, identity_type, collection_id,
                                source_name, episode, source_type, creator,
                                source_text, material_level=None):
-        """Return the first blocking reason string, or None when ready."""
+        """Return the first blocking reason string, or None when ready.
+
+        episode is a hidden auto-incrementing system identifier and is never
+        a user-facing blocking reason (it is not required, validated, or
+        collision-checked here).
+        """
         if identity_type not in IDENTITY_TYPES:
             return "Waiting for identity type."
 
         if identity_type == "collection":
             if not collection_id:
                 return "Waiting for collection."
-            if episode is None or episode == "":
-                return "Waiting for episode number."
-            try:
-                episode_value = int(episode)
-            except (TypeError, ValueError):
-                return "Episode number must be an integer."
-            if episode_value < 0:
-                return "Episode number must be non-negative."
         else:
             if not source_name:
                 return "Waiting for source name."
@@ -575,10 +569,7 @@ class ReadyStateEngine:
             return ("That source type is not currently available for "
                     "processing.")
 
-        if identity_type == "collection":
-            if collision_exists(collection_id, int(episode)):
-                return "Filename already exists."
-        else:
+        if identity_type == "standalone":
             if standalone_collision_exists(source_name):
                 return "Filename already exists."
 
