@@ -102,7 +102,7 @@ def _():
         check("collection combo", hasattr(sb, "collection_combo"))
         check("episode entry", hasattr(sb, "episode_entry"))
         check("source type var", hasattr(sb, "source_type_var"))
-        check("origin combo", hasattr(sb, "origin_combo"))
+        check("creator combo", hasattr(sb, "creator_combo"))
     finally:
         root.destroy()
 
@@ -123,7 +123,7 @@ def _():
             sb.collection_var.set("teppei_beginner")
             sb.episode_var.set("63")
             sb.source_type_var.set("clean_text")
-            sb.origin_var.set("con_teppei_podcast")
+            sb.creator_var.set("con_teppei_podcast")
             sb.material_level_var.set("1")
             sb.text_area.insert("1.0", "第六十三回のテストです。\n")
             sb._on_text_changed()

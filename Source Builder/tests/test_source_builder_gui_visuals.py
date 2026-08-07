@@ -58,7 +58,7 @@ def ev(engine, **overrides):
         "source_name": "",
         "episode": "1",
         "source_type": "clean_text",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
         "material_level": 2,
     }
@@ -68,7 +68,7 @@ def ev(engine, **overrides):
 
 def ev_incomplete(engine):
     """Evaluate with an empty (INCOMPLETE) collection form."""
-    return ev(engine, collection_id="", episode="", source_type="", origin="",
+    return ev(engine, collection_id="", episode="", source_type="", creator="",
               source_text="")
 
 
@@ -131,7 +131,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -165,7 +165,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -195,7 +195,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -308,7 +308,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",

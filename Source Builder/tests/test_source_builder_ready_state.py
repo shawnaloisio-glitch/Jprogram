@@ -59,7 +59,7 @@ def ev(engine, **overrides):
         "source_name": "",
         "episode": "1",
         "source_type": "clean_text",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
         "material_level": 2,
     }
@@ -74,7 +74,7 @@ def ev(engine, **overrides):
 @test("empty form is INCOMPLETE")
 def _():
     result = ev(controller.ReadyStateEngine(), collection_id="", episode="",
-                source_type="", origin="", source_text="")
+                source_type="", creator="", source_text="")
     check("state", result["state"] == "INCOMPLETE")
     check("save disabled", result["save_enabled"] is False)
     check("next disabled", result["next_enabled"] is False)
@@ -152,10 +152,10 @@ def _():
     check("message", result["message"] == "Waiting for source type.")
 
 
-@test("blocking: missing origin")
+@test("blocking: missing creator")
 def _():
-    result = ev(controller.ReadyStateEngine(), origin="")
-    check("message", result["message"] == "Waiting for origin.")
+    result = ev(controller.ReadyStateEngine(), creator="")
+    check("message", result["message"] == "Waiting for creator.")
 
 
 @test("empty source text")
@@ -229,7 +229,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -256,7 +256,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -281,7 +281,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -304,7 +304,7 @@ def _():
             "source_name": "",
             "episode": "5",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0005.txt",
@@ -364,7 +364,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -391,7 +391,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -416,7 +416,7 @@ def _():
             "source_name": "",
             "episode": "1",
             "source_type": "clean_text",
-            "origin": "con_teppei_podcast",
+            "creator": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
             "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
@@ -453,7 +453,7 @@ def saved_snapshot(**overrides):
         "source_name": "",
         "episode": "1",
         "source_type": "clean_text",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
         "filename": "teppei_beginner_ep0001.txt",
         "material_level": 2,
@@ -486,13 +486,13 @@ def _():
         restore(saved)
 
 
-@test("material_level: blocking reason is ordered after origin")
+@test("material_level: blocking reason is ordered after creator")
 def _():
     root, sources, saved = setup()
     try:
-        result = ev(controller.ReadyStateEngine(), origin="",
+        result = ev(controller.ReadyStateEngine(), creator="",
                     material_level=None)
-        check("message", result["message"] == "Waiting for origin.")
+        check("message", result["message"] == "Waiting for creator.")
     finally:
         restore(saved)
 

@@ -36,7 +36,7 @@ import controller
 import source_package
 
 REQUIRED_FIELDS = (
-    "source_id", "source_type", "origin", "language", "canonical_path",
+    "source_id", "source_type", "creator", "language", "canonical_path",
     "original_filename", "format", "cleaning_profile", "cleaner_version",
     "sha256", "created_at", "created_by_version",
 )
@@ -106,9 +106,9 @@ def _():
             check(f"field {field} present",
                   field in data and data[field] not in (None, ""))
         check("artifact_type", data["artifact_type"] == "source_package")
-        check("schema_version", data["schema_version"] == "2")
+        check("schema_version", data["schema_version"] == "3")
         check("source_type", data["source_type"] == "clean_text")
-        check("origin", data["origin"] == "con_teppei_podcast")
+        check("creator", data["creator"] == "con_teppei_podcast")
         check("language", data["language"] == "ja")
         check("format", data["format"] == "txt")
         check("collection_id", data["collection_id"] == "teppei_beginner")
@@ -224,7 +224,7 @@ def _():
         # raises without touching anything.
         try:
             source_package.build_package(
-                source_type="clean_text", origin="o",
+                source_type="clean_text", creator="o",
                 language="ja", canonical_path="C:/definitely/missing.txt",
                 cleaning_profile="transcript_standard_v1",
                 cleaner_version="1.0", material_level=0,
@@ -279,13 +279,13 @@ def _():
 
 
 def valid_package(**overrides):
-    """Return a full schema-v2 package dict that passes validation."""
+    """Return a full schema-v3 package dict that passes validation."""
     package = {
         "artifact_type": "source_package",
-        "schema_version": "2",
+        "schema_version": "3",
         "source_id": "podcast_transcript_teppei-beginner_ep058",
         "source_type": "podcast_transcript",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "language": "ja",
         "canonical_path": "C:/sources/teppei_beginner_ep0058.txt",
         "original_filename": "teppei_beginner_ep0058.txt",

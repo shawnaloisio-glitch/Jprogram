@@ -5,7 +5,7 @@ metadata_editor.py
 Japanese Corpus Pipeline - Source Builder metadata editor data layer.
 
 Manages the controlled vocabularies that populate Source Builder dropdowns
-and Quick Presets: Collections, Source Types, and Origins.
+and Quick Presets: Collections, Source Types, and Creators.
 
 Language is a project-level property and is NOT managed here.
 
@@ -23,8 +23,8 @@ Canonical on-disk forms (preserving the existing top-level structure):
 - Config\\source_types.json:
     {"source_types": [{"source_type_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
-- Workspace Config\\origins.json (customer data, like collections):
-    {"origins": [{"origin_id": str, "display_name": str}]}
+- Workspace Config\\creators.json (customer data, like collections):
+    {"creators": [{"creator_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
 - Config\\styles.json:
     {"styles": [{"style_id": int, "display_name": str}]}
@@ -51,7 +51,7 @@ CONFIG_DIR = paths.PROJECT_ROOT / "Config"
 FILES = {
     "collections": "collections.json",
     "source_types": "source_types.json",
-    "origins": "origins.json",
+    "creators": "creators.json",
     "styles": "styles.json",
 }
 
@@ -67,8 +67,8 @@ class MetadataError(Exception):
 def _config_path(name, path=None):
     """Return the config path for a named vocabulary.
 
-    Collections and origins are customer/runtime configuration and resolve
-    to the workspace (paths.COLLECTIONS_CONFIG / paths.ORIGINS_CONFIG) when
+    Collections and creators are customer/runtime configuration and resolve
+    to the workspace (paths.COLLECTIONS_CONFIG / paths.CREATORS_CONFIG) when
     no explicit path is given. source_types remains repository product
     configuration.
     """
@@ -76,8 +76,8 @@ def _config_path(name, path=None):
         return Path(path)
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
-    if name == "origins":
-        return paths.ORIGINS_CONFIG
+    if name == "creators":
+        return paths.CREATORS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -87,8 +87,8 @@ def _sibling_path(path, name):
         return Path(path).with_name(FILES[name])
     if name == "collections":
         return paths.COLLECTIONS_CONFIG
-    if name == "origins":
-        return paths.ORIGINS_CONFIG
+    if name == "creators":
+        return paths.CREATORS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -180,23 +180,23 @@ def load_source_types(path=None):
             range(len(values)) if _item_to_named(values[i], "source_type_id")]
 
 
-def load_origins(path=None):
+def load_creators(path=None):
     """
-    Load origins as a list of dicts:
-        [{"origin_id": str, "display_name": str}, ...]
+    Load creators as a list of dicts:
+        [{"creator_id": str, "display_name": str}, ...]
     Accepts plain-string entries for backward compatibility.
     """
-    data = _read_json(_config_path("origins", path))
+    data = _read_json(_config_path("creators", path))
     if data is None:
         return []
     if isinstance(data, dict):
-        values = data.get("origins")
+        values = data.get("creators")
     else:
         values = data
     if not isinstance(values, list):
-        raise MetadataError("origins.json must contain a list")
-    return [_item_to_named(values[i], "origin_id") for i in
-            range(len(values)) if _item_to_named(values[i], "origin_id")]
+        raise MetadataError("creators.json must contain a list")
+    return [_item_to_named(values[i], "creator_id") for i in
+            range(len(values)) if _item_to_named(values[i], "creator_id")]
 
 
 def load_styles(path=None):
@@ -323,11 +323,11 @@ def validate_source_type(source_type_id, display_name, existing_ids,
     return errors
 
 
-def validate_origin(origin_id, display_name, existing_ids, original_id=None,
-                    existing_display_names=None, original_display_name=None):
-    """Validate an origin entry; return list of errors."""
-    errors = validate_id(origin_id, "origin_id")
-    errors += _check_unique(origin_id, existing_ids, original_id)
+def validate_creator(creator_id, display_name, existing_ids, original_id=None,
+                     existing_display_names=None, original_display_name=None):
+    """Validate a creator entry; return list of errors."""
+    errors = validate_id(creator_id, "creator_id")
+    errors += _check_unique(creator_id, existing_ids, original_id)
     errors += validate_display_name(display_name, "display_name")
     if existing_display_names is not None:
         normalized = display_name.strip() if isinstance(display_name, str) \
@@ -365,8 +365,8 @@ def _raw_source_type(item):
             "display_name": item["display_name"]}
 
 
-def _raw_origin(item):
-    return {"origin_id": item["origin_id"], "display_name": item["display_name"]}
+def _raw_creator(item):
+    return {"creator_id": item["creator_id"], "display_name": item["display_name"]}
 
 
 def _raw_style(item):
@@ -393,9 +393,9 @@ def save_source_types(items, path=None):
     _save("source_types", items, _raw_source_type, path)
 
 
-def save_origins(items, path=None):
-    """Persist origins (normalized dicts). Returns the raw count."""
-    _save("origins", items, _raw_origin, path)
+def save_creators(items, path=None):
+    """Persist creators (normalized dicts). Returns the raw count."""
+    _save("creators", items, _raw_creator, path)
 
 
 def save_styles(items, path=None):
@@ -544,34 +544,35 @@ def delete_source_type(source_type_id, path=None, presets=None):
     return remaining
 
 
-def add_origin(origin_id, display_name, path=None):
-    """Add an origin; raises MetadataError on invalid input."""
-    items = load_origins(path)
-    existing = [o["origin_id"] for o in items]
+def add_creator(creator_id, display_name, path=None):
+    """Add a creator; raises MetadataError on invalid input."""
+    items = load_creators(path)
+    existing = [o["creator_id"] for o in items]
     existing_names = [o["display_name"] for o in items]
-    errors = validate_origin(origin_id, display_name, existing,
-                             existing_display_names=existing_names)
+    errors = validate_creator(creator_id, display_name, existing,
+                              existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
-    items.append({"origin_id": origin_id, "display_name": display_name.strip()})
-    save_origins(items, path)
+    items.append({"creator_id": creator_id,
+                  "display_name": display_name.strip()})
+    save_creators(items, path)
     return items
 
 
-def edit_origin(original_id, display_name, path=None):
+def edit_creator(original_id, display_name, path=None):
     """
-    Edit an origin's display name by original_id.
+    Edit a creator's display name by original_id.
 
-    The origin_id is immutable after creation and cannot be changed.
+    The creator_id is immutable after creation and cannot be changed.
     """
-    items = load_origins(path)
+    items = load_creators(path)
     for item in items:
-        if item["origin_id"] == original_id:
-            existing_ids = [o["origin_id"] for o in items]
+        if item["creator_id"] == original_id:
+            existing_ids = [o["creator_id"] for o in items]
             existing_names = [o["display_name"] for o in items]
-            errors = validate_origin(
-                item["origin_id"], display_name, existing_ids,
-                original_id=item["origin_id"],
+            errors = validate_creator(
+                item["creator_id"], display_name, existing_ids,
+                original_id=item["creator_id"],
                 existing_display_names=existing_names,
                 original_display_name=item["display_name"])
             if errors:
@@ -579,8 +580,8 @@ def edit_origin(original_id, display_name, path=None):
             item["display_name"] = display_name.strip()
             break
     else:
-        raise MetadataError(f"origin not found: {original_id}")
-    save_origins(items, path)
+        raise MetadataError(f"creator not found: {original_id}")
+    save_creators(items, path)
     return items
 
 
@@ -624,18 +625,18 @@ def edit_style(style_id, display_name, path=None):
     return items
 
 
-def delete_origin(origin_id, path=None, presets=None):
-    """Delete an origin; blocked with a warning when referenced by presets."""
-    items = load_origins(path)
+def delete_creator(creator_id, path=None, presets=None):
+    """Delete a creator; blocked with a warning when referenced by presets."""
+    items = load_creators(path)
     references = preset_references(presets)
-    if origin_id in references["origins"]:
+    if creator_id in references["creators"]:
         raise MetadataError(
-            f"origin {origin_id} is referenced by a preset; edit the preset "
+            f"creator {creator_id} is referenced by a preset; edit the preset "
             f"first")
-    remaining = [o for o in items if o["origin_id"] != origin_id]
+    remaining = [o for o in items if o["creator_id"] != creator_id]
     if len(remaining) == len(items):
-        raise MetadataError(f"origin not found: {origin_id}")
-    save_origins(remaining, path)
+        raise MetadataError(f"creator not found: {creator_id}")
+    save_creators(remaining, path)
     return remaining
 
 
@@ -648,10 +649,10 @@ def preset_references(presets=None):
     Return the vocabulary ids referenced by presets.
 
     Input: presets (iterable of preset dicts) or None.
-    Output: dict with "collections", "source_types", "origins" sets.
+    Output: dict with "collections", "source_types", "creators" sets.
     """
     references = {"collections": set(), "source_types": set(),
-                  "origins": set()}
+                  "creators": set()}
     if not presets:
         return references
     for preset in presets:
@@ -661,8 +662,8 @@ def preset_references(presets=None):
             references["collections"].add(preset["collection_id"])
         if preset.get("source_type"):
             references["source_types"].add(preset["source_type"])
-        if preset.get("origin"):
-            references["origins"].add(preset["origin"])
+        if preset.get("creator"):
+            references["creators"].add(preset["creator"])
     return references
 
 
@@ -675,11 +676,11 @@ __all__ = [
     "is_processable",
     "load_collections",
     "load_source_types",
-    "load_origins",
+    "load_creators",
     "load_styles",
     "save_collections",
     "save_source_types",
-    "save_origins",
+    "save_creators",
     "save_styles",
     "add_collection",
     "edit_collection",
@@ -688,9 +689,9 @@ __all__ = [
     "add_source_type",
     "edit_source_type",
     "delete_source_type",
-    "add_origin",
-    "edit_origin",
-    "delete_origin",
+    "add_creator",
+    "edit_creator",
+    "delete_creator",
     "add_style",
     "edit_style",
     "preset_references",

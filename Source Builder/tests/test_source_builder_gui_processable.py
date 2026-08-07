@@ -49,7 +49,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
-        paths.ORIGINS_CONFIG,
+        paths.CREATORS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -66,11 +66,11 @@ def sandbox():
             {"source_type_id": "article", "display_name": "article"},
         ],
     }), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps({
-        "origins": [
-            {"origin_id": "user_transcription",
+    (config_dir / "creators.json").write_text(json.dumps({
+        "creators": [
+            {"creator_id": "user_transcription",
              "display_name": "user_transcription"},
-            {"origin_id": "subtitle", "display_name": "subtitle"},
+            {"creator_id": "subtitle", "display_name": "subtitle"},
         ],
     }), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
@@ -81,12 +81,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
-    paths.ORIGINS_CONFIG = config_dir / "origins.json"
+    paths.CREATORS_CONFIG = config_dir / "creators.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.CREATORS_CONFIG) = saved
 
     return restore
 
@@ -129,16 +129,16 @@ def _():
         restore()
 
 
-@test("all configured origins are shown, no format-id filtering")
+@test("all configured creators are shown, no format-id filtering")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            # origins.json is authoritative curated config. A value that
+            # creators.json is authoritative curated config. A value that
             # coincidentally matches an import format id ("subtitle") is a
-            # legitimate provenance origin and must still be shown.
-            values = app.origin_combo.cget("values")
+            # legitimate provenance creator and must still be shown.
+            values = app.creator_combo.cget("values")
             check("user_transcription shown", "user_transcription" in values)
             check("subtitle shown", "subtitle" in values)
         finally:
@@ -157,7 +157,7 @@ def _():
             app.collection_var.set("my_collection")
             app.episode_var.set("1")
             app.source_type_var.set("cij_transcript")
-            app.origin_var.set("user_transcription")
+            app.creator_var.set("user_transcription")
             app.material_level_var.set("1")
             app.text_area.insert("1.0", "これはテストです。\n")
             app._on_text_changed()
@@ -185,7 +185,7 @@ def _():
             app.collection_var.set("my_collection")
             app.episode_var.set("1")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("user_transcription")
+            app.creator_var.set("user_transcription")
             app.material_level_var.set("1")
             app.text_area.insert("1.0", "これはテストです。\n")
             app._on_text_changed()
@@ -199,7 +199,7 @@ def _():
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package source type",
                   data["source_type"] == "clean_text")
-            check("package origin", data["origin"] == "user_transcription")
+            check("package creator", data["creator"] == "user_transcription")
             check("package has profile", data["cleaning_profile"] is not None)
         finally:
             root.destroy()

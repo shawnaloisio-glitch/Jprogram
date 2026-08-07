@@ -81,7 +81,7 @@ def standalone_source_path(source_name):
 # Validation
 # ============================================================
 
-def validate_collection_fields(collection_id, episode, source_type, origin,
+def validate_collection_fields(collection_id, episode, source_type, creator,
                                source_text):
     """Validate required fields for a collection-mode source."""
     errors = []
@@ -99,38 +99,38 @@ def validate_collection_fields(collection_id, episode, source_type, origin,
         if episode_value is not None and episode_value < 0:
             errors.append("episode number must be non-negative")
 
-    errors.extend(_validate_common(source_type, origin, source_text))
+    errors.extend(_validate_common(source_type, creator, source_text))
     return errors
 
 
-def validate_standalone_fields(source_name, source_type, origin, source_text):
+def validate_standalone_fields(source_name, source_type, creator, source_text):
     """Validate required fields for a standalone-mode source."""
     errors = []
     if not source_name:
         errors.append("source name is required")
-    errors.extend(_validate_common(source_type, origin, source_text))
+    errors.extend(_validate_common(source_type, creator, source_text))
     return errors
 
 
-def _validate_common(source_type, origin, source_text):
+def _validate_common(source_type, creator, source_text):
     errors = []
     if not source_type:
         errors.append("source type is required")
-    if not origin:
-        errors.append("origin is required")
+    if not creator:
+        errors.append("creator is required")
     if source_text is None or source_text.strip() == "":
         errors.append("source text is empty")
     return errors
 
 
-def validate_fields(collection_id, episode, source_type, origin, source_text):
+def validate_fields(collection_id, episode, source_type, creator, source_text):
     """
     Validate required fields for a collection-mode source.
 
     Retained for backward compatibility.
     """
     return validate_collection_fields(collection_id, episode, source_type,
-                                      origin, source_text)
+                                      creator, source_text)
 
 
 # ============================================================
@@ -175,7 +175,7 @@ def source_id_for(source_type, collection_id=None, episode=None,
     return source_package.derive_source_id(source_type, source_name)
 
 
-def _try_write_source_package(source_type, origin, canonical_path,
+def _try_write_source_package(source_type, creator, canonical_path,
                               collection_id=None, episode=None,
                               source_name=None, material_level=None,
                               style_id=None, duration_seconds=None):
@@ -191,7 +191,7 @@ def _try_write_source_package(source_type, origin, canonical_path,
         cleaner_version = source_package.cleaner_version_for(cleaning_profile)
         package = source_package.build_package(
             source_type=source_type,
-            origin=origin,
+            creator=creator,
             language=PROJECT_LANGUAGE,
             canonical_path=canonical_path,
             cleaning_profile=cleaning_profile,
@@ -209,12 +209,12 @@ def _try_write_source_package(source_type, origin, canonical_path,
     return None
 
 
-def create_collection_source(collection_id, episode, source_type, origin,
+def create_collection_source(collection_id, episode, source_type, creator,
                              source_text, overwrite=False, material_level=0,
                              style_id=None, duration_seconds=None):
     """Validate and create a canonical collection source file."""
     errors = validate_collection_fields(collection_id, episode, source_type,
-                                        origin, source_text)
+                                        creator, source_text)
     if errors:
         return {"success": False, "filename": None, "path": None,
                 "errors": errors}
@@ -229,7 +229,7 @@ def create_collection_source(collection_id, episode, source_type, origin,
     _write_atomic(path, source_text)
     package_error = _try_write_source_package(
         source_type=source_type,
-        origin=origin,
+        creator=creator,
         canonical_path=path,
         collection_id=collection_id,
         episode=episode_value,
@@ -244,11 +244,11 @@ def create_collection_source(collection_id, episode, source_type, origin,
     return result
 
 
-def create_standalone_source(source_name, source_type, origin, source_text,
+def create_standalone_source(source_name, source_type, creator, source_text,
                              overwrite=False, material_level=0,
                              style_id=None, duration_seconds=None):
     """Validate and create a canonical standalone source file."""
-    errors = validate_standalone_fields(source_name, source_type, origin,
+    errors = validate_standalone_fields(source_name, source_type, creator,
                                         source_text)
     if errors:
         return {"success": False, "filename": None, "path": None,
@@ -263,7 +263,7 @@ def create_standalone_source(source_name, source_type, origin, source_text,
     _write_atomic(path, source_text)
     package_error = _try_write_source_package(
         source_type=source_type,
-        origin=origin,
+        creator=creator,
         canonical_path=path,
         source_name=source_name,
         material_level=material_level,
@@ -277,7 +277,7 @@ def create_standalone_source(source_name, source_type, origin, source_text,
     return result
 
 
-def create_source(collection_id, episode, source_type, origin, source_text,
+def create_source(collection_id, episode, source_type, creator, source_text,
                   overwrite=False, material_level=None, style_id=None,
                   duration_seconds=None):
     """
@@ -286,7 +286,7 @@ def create_source(collection_id, episode, source_type, origin, source_text,
     Retained for backward compatibility (collection mode).
     """
     return create_collection_source(collection_id, episode, source_type,
-                                    origin, source_text, overwrite=overwrite,
+                                    creator, source_text, overwrite=overwrite,
                                     material_level=material_level,
                                     style_id=style_id,
                                     duration_seconds=duration_seconds)
@@ -297,12 +297,12 @@ def create_source(collection_id, episode, source_type, origin, source_text,
 # ============================================================
 
 def next_source_state(identity_type, collection_id, episode,
-                      source_type, origin, material_level=None,
+                      source_type, creator, material_level=None,
                       style_id=None):
     """
     Prepare the state for the next source after a successful save.
 
-    Retains stable metadata (identity type, collection, source_type, origin,
+    Retains stable metadata (identity type, collection, source_type, creator,
     material_level, style_id) and resets source-specific fields. Returns
     only state data; no file is created and no save occurs.
 
@@ -314,7 +314,7 @@ def next_source_state(identity_type, collection_id, episode,
 
     Input:
         identity_type (str), collection_id (str), episode (int/str),
-        source_type (str), origin (str), material_level (int|None),
+        source_type (str), creator (str), material_level (int|None),
         style_id (int|None).
 
     Output: dict:
@@ -324,7 +324,7 @@ def next_source_state(identity_type, collection_id, episode,
             "episode": str,          # suggested next (collection) or ""
             "source_name": str,      # "" (standalone) or "" (collection)
             "source_type": str,
-            "origin": str,
+            "creator": str,
             "material_level": int | None,   # retained
             "style_id": int | None,         # retained
             "duration_seconds": "",         # always reset
@@ -338,7 +338,7 @@ def next_source_state(identity_type, collection_id, episode,
             "episode": "",
             "source_name": "",
             "source_type": source_type,
-            "origin": origin,
+            "creator": creator,
             "material_level": material_level,
             "style_id": style_id,
             "duration_seconds": "",
@@ -359,7 +359,7 @@ def next_source_state(identity_type, collection_id, episode,
         "episode": next_episode,
         "source_name": "",
         "source_type": source_type,
-        "origin": origin,
+        "creator": creator,
         "material_level": material_level,
         "style_id": style_id,
         "duration_seconds": "",
@@ -443,7 +443,7 @@ class ReadyStateEngine:
                 "source_name": str,
                 "episode": str,
                 "source_type": str,
-                "origin": str,
+                "creator": str,
                 "source_text": str,
                 "filename": str,
                 "material_level": int | None,   # optional
@@ -461,7 +461,7 @@ class ReadyStateEngine:
         self._error_message = str(message)
 
     def evaluate(self, identity_type, collection_id, source_name, episode,
-                 source_type, origin, source_text, material_level=0,
+                 source_type, creator, source_text, material_level=0,
                  style_id=None, duration_seconds=None):
         """
         Return the current workflow state for the given form fields.
@@ -490,7 +490,7 @@ class ReadyStateEngine:
 
         if self._saved_snapshot is not None and self._matches_saved(
                 identity_type, collection_id, source_name, episode,
-                source_type, origin, source_text, material_level, style_id,
+                source_type, creator, source_text, material_level, style_id,
                 duration_seconds):
             return {
                 "state": "SAVED",
@@ -502,7 +502,7 @@ class ReadyStateEngine:
 
         blocking = self._first_blocking_reason(
             identity_type, collection_id, source_name, episode,
-            source_type, origin, source_text, material_level)
+            source_type, creator, source_text, material_level)
         if blocking is not None:
             return {
                 "state": "INCOMPLETE",
@@ -521,7 +521,7 @@ class ReadyStateEngine:
         }
 
     def _matches_saved(self, identity_type, collection_id, source_name,
-                       episode, source_type, origin, source_text,
+                       episode, source_type, creator, source_text,
                        material_level=None, style_id=None,
                        duration_seconds=None):
         snap = self._saved_snapshot
@@ -531,7 +531,7 @@ class ReadyStateEngine:
             and (source_name or "") == (snap.get("source_name") or "")
             and (episode or "") == (snap.get("episode") or "")
             and (source_type or "") == (snap.get("source_type") or "")
-            and (origin or "") == (snap.get("origin") or "")
+            and (creator or "") == (snap.get("creator") or "")
             and (source_text or "") == (snap.get("source_text") or "")
             and _snapshot_or_blank(material_level) == _snapshot_or_blank(
                 snap.get("material_level", 0))
@@ -542,7 +542,7 @@ class ReadyStateEngine:
         )
 
     def _first_blocking_reason(self, identity_type, collection_id,
-                               source_name, episode, source_type, origin,
+                               source_name, episode, source_type, creator,
                                source_text, material_level=None):
         """Return the first blocking reason string, or None when ready."""
         if identity_type not in IDENTITY_TYPES:
@@ -565,8 +565,8 @@ class ReadyStateEngine:
 
         if not source_type:
             return "Waiting for source type."
-        if not origin:
-            return "Waiting for origin."
+        if not creator:
+            return "Waiting for creator."
         if material_level is None:
             return "Waiting for material level."
         if source_text is None or source_text.strip() == "":

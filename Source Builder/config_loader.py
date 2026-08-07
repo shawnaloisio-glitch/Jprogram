@@ -26,7 +26,7 @@ CONFIG_DIR = paths.PROJECT_ROOT / "Config"
 CONFIG_FILES = {
     "collections": "collections.json",
     "source_types": "source_types.json",
-    "origins": "origins.json",
+    "creators": "creators.json",
     "styles": "styles.json",
 }
 
@@ -37,10 +37,10 @@ class ConfigError(Exception):
 
 def config_path(name):
     """Return the path for a named config file."""
-    if name == "origins":
-        # Origins are customer/runtime configuration in the workspace, like
+    if name == "creators":
+        # Creators are customer/runtime configuration in the workspace, like
         # collections; only source_types remains repository product config.
-        return paths.ORIGINS_CONFIG
+        return paths.CREATORS_CONFIG
     return CONFIG_DIR / CONFIG_FILES[name]
 
 
@@ -128,26 +128,26 @@ def load_source_types():
             if _vocab_id(v, "source_type_id")]
 
 
-def load_origins():
+def load_creators():
     """
-    Return the ordered list of origin values.
+    Return the ordered list of creator values.
 
-    Origins are customer data in the workspace; a fresh install has no
-    origins.json yet, which is an empty list, not an error (exactly like
+    Creators are customer data in the workspace; a fresh install has no
+    creators.json yet, which is an empty list, not an error (exactly like
     collections). Accepts both plain-string entries and object entries
-    {"origin_id": str, "display_name": str}.
+    {"creator_id": str, "display_name": str}.
     """
-    data = _load_origins_raw()
+    data = _load_creators_raw()
     if data is None:
         return []
     if isinstance(data, dict):
-        values = data.get("origins")
+        values = data.get("creators")
     else:
         values = data
     if not isinstance(values, list):
-        raise ConfigError("origins.json must contain a list")
-    return [_vocab_id(v, "origin_id") for v in values
-            if _vocab_id(v, "origin_id")]
+        raise ConfigError("creators.json must contain a list")
+    return [_vocab_id(v, "creator_id") for v in values
+            if _vocab_id(v, "creator_id")]
 
 
 def load_source_types_full():
@@ -172,30 +172,30 @@ def load_source_types_full():
             if _vocab_full(v, "source_type_id")]
 
 
-def load_origins_full():
+def load_creators_full():
     """
-    Return the ordered list of origin entries WITH display names.
+    Return the ordered list of creator entries WITH display names.
 
-    Origins are customer data in the workspace; a fresh install has no
-    origins.json yet, which is an empty list, not an error (exactly like
+    Creators are customer data in the workspace; a fresh install has no
+    creators.json yet, which is an empty list, not an error (exactly like
     collections). Accepts both plain-string entries and object entries
-    {"origin_id": str, "display_name": str}. display_name falls back to
+    {"creator_id": str, "display_name": str}. display_name falls back to
     the id when the entry is a bare string or omits/empties display_name.
 
     Returns:
-        [{"origin_id": str, "display_name": str}, ...]
+        [{"creator_id": str, "display_name": str}, ...]
     """
-    data = _load_origins_raw()
+    data = _load_creators_raw()
     if data is None:
         return []
     if isinstance(data, dict):
-        values = data.get("origins")
+        values = data.get("creators")
     else:
         values = data
     if not isinstance(values, list):
-        raise ConfigError("origins.json must contain a list")
-    return [_vocab_full(v, "origin_id") for v in values
-            if _vocab_full(v, "origin_id")]
+        raise ConfigError("creators.json must contain a list")
+    return [_vocab_full(v, "creator_id") for v in values
+            if _vocab_full(v, "creator_id")]
 
 
 def load_styles():
@@ -273,13 +273,13 @@ def _style_id(item):
     return value
 
 
-def _load_origins_raw():
-    """Read the origins payload, or None when no origins file exists yet.
+def _load_creators_raw():
+    """Read the creators payload, or None when no creators file exists yet.
 
-    Origins are customer data; a fresh install has none, which reads as an
+    Creators are customer data; a fresh install has none, which reads as an
     empty list rather than an error. A corrupt file still raises.
     """
-    path = config_path("origins")
+    path = config_path("creators")
     if not path.is_file():
         return None
     try:
@@ -326,9 +326,9 @@ __all__ = [
     "load_collections",
     "load_collection_ids",
     "load_source_types",
-    "load_origins",
+    "load_creators",
     "load_source_types_full",
-    "load_origins_full",
+    "load_creators_full",
     "load_styles",
     "load_styles_full",
     "load_material_levels_full",

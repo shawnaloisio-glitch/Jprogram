@@ -50,7 +50,7 @@ def sandbox():
         quick_presets.PRESETS_PATH,
         config_loader.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
-        paths.ORIGINS_CONFIG,
+        paths.CREATORS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -69,8 +69,8 @@ def sandbox():
     (config_dir / "source_types.json").write_text(json.dumps({
         "source_types": ["clean_text"],
     }), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps({
-        "origins": ["con_teppei_podcast"],
+    (config_dir / "creators.json").write_text(json.dumps({
+        "creators": ["con_teppei_podcast"],
     }), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
                                             encoding="utf-8")
@@ -80,12 +80,12 @@ def sandbox():
     quick_presets.PRESETS_PATH = tmp / "quick_presets.json"
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
-    paths.ORIGINS_CONFIG = config_dir / "origins.json"
+    paths.CREATORS_CONFIG = config_dir / "creators.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
-         paths.COLLECTIONS_CONFIG, paths.ORIGINS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.CREATORS_CONFIG) = saved
 
     return restore
 
@@ -233,7 +233,7 @@ def _():
             app.collection_var.set("auto_series")
             check("starts at 1", app.episode_var.get() == "1")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("con_teppei_podcast")
+            app.creator_var.set("con_teppei_podcast")
             app.material_level_var.set("1")
             app.text_area.insert("1.0", "こんにちは。\n")
             app._on_text_changed()
@@ -269,7 +269,7 @@ def _():
             check("episode shown", is_visible(app.episode_label))
             app.episode_var.set("7")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("con_teppei_podcast")
+            app.creator_var.set("con_teppei_podcast")
             app.material_level_var.set("1")
             app.text_area.insert("1.0", "こんにちは。\n")
             app._on_text_changed()

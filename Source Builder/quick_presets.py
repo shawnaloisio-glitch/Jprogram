@@ -7,7 +7,7 @@ Japanese Corpus Pipeline - Source Builder quick presets storage.
 Presets are one-shot field-population templates. They are NOT linked state
 and are NOT live bindings: after a preset is applied, the preset has no
 further control over the form. Presets reference existing Config vocabulary
-values (collection_id, source_type, origin); they never duplicate full
+values (collection_id, source_type, creator); they never duplicate full
 metadata. Resolution against Config tables happens at population time.
 
 Language is a project-level property, not source metadata, and is never
@@ -34,7 +34,7 @@ EMPTY_SLOT_NAME = "Empty Slot"
 IDENTITY_TYPES = ("collection", "standalone")
 PRESET_KEYS = (
     "slot", "display_name", "identity_type", "collection_id", "source_name",
-    "source_type", "origin",
+    "source_type", "creator",
 )
 
 
@@ -68,7 +68,7 @@ def _normalize_preset(item):
         "collection_id": _as_str(item.get("collection_id")),
         "source_name": _as_str(item.get("source_name")),
         "source_type": _as_str(item.get("source_type")),
-        "origin": _as_str(item.get("origin")),
+        "creator": _as_str(item.get("creator")),
     }
 
 
@@ -109,7 +109,7 @@ def load_slot(slot, path=None):
 
 
 def save_slot(slot, display_name, identity_type, collection_id="",
-              source_name="", source_type="", origin="", path=None):
+              source_name="", source_type="", creator="", path=None):
     """
     Validate and save a single preset slot (atomic write).
 
@@ -132,7 +132,7 @@ def save_slot(slot, display_name, identity_type, collection_id="",
         "collection_id": _as_str(collection_id),
         "source_name": _as_str(source_name),
         "source_type": _as_str(source_type),
-        "origin": _as_str(origin),
+        "creator": _as_str(creator),
     }
     _write_presets(presets, path)
     return presets
@@ -157,7 +157,7 @@ def _write_presets(presets, path):
             f"cannot write presets: {presets_path}: {exc}") from exc
 
 
-def preset_population(preset, collection_ids, source_types, origins):
+def preset_population(preset, collection_ids, source_types, creators):
     """
     Compute the one-shot field updates a preset applies (pure, testable).
 
@@ -167,12 +167,12 @@ def preset_population(preset, collection_ids, source_types, origins):
         preset (dict|None),
         collection_ids (list of str),
         source_types (list of str),
-        origins (list of str).
+        creators (list of str).
 
     Output: dict with any of identity_type, collection_id, source_type,
-    origin keys that should be populated. Empty dict when nothing applies.
+    creator keys that should be populated. Empty dict when nothing applies.
     A standalone preset never populates source_name: presets are reusable
-    templates (source_type/origin), not pinned to one specific source name.
+    templates (source_type/creator), not pinned to one specific source name.
     """
     if not isinstance(preset, dict):
         return {}
@@ -190,8 +190,8 @@ def preset_population(preset, collection_ids, source_types, origins):
     if source_type in source_types:
         updates["source_type"] = source_type
 
-    if preset.get("origin") in origins:
-        updates["origin"] = preset["origin"]
+    if preset.get("creator") in creators:
+        updates["creator"] = preset["creator"]
 
     return updates
 

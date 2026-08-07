@@ -29,7 +29,7 @@ import quick_presets
 SAMPLE_CONFIG = {
     "collection_ids": ["teppei_beginner", "other_collection"],
     "source_types": ["clean_text", "subtitle", "article"],
-    "origins": ["con_teppei_podcast", "nhk_news"],
+    "creators": ["con_teppei_podcast", "nhk_news"],
 }
 
 
@@ -86,7 +86,7 @@ def _():
     path = temp_path()
     quick_presets.save_slot(
         1, "Teppei_Beginner", "collection", collection_id="teppei_beginner",
-        source_type="clean_text", origin="con_teppei_podcast",
+        source_type="clean_text", creator="con_teppei_podcast",
         path=path)
     presets = quick_presets.load_presets(path)
     preset = presets[1]
@@ -95,7 +95,7 @@ def _():
     check("identity", preset["identity_type"] == "collection")
     check("collection", preset["collection_id"] == "teppei_beginner")
     check("source type", preset["source_type"] == "clean_text")
-    check("origin", preset["origin"] == "con_teppei_podcast")
+    check("creator", preset["creator"] == "con_teppei_podcast")
 
 
 @test("legacy language key is dropped on load")
@@ -105,7 +105,7 @@ def _():
         "presets": [
             {"slot": 1, "display_name": "Old", "identity_type": "collection",
              "collection_id": "teppei_beginner", "source_type": "subtitle",
-             "origin": "nhk_news", "language": "ja"}
+             "creator": "nhk_news", "language": "ja"}
         ]
     }), encoding="utf-8")
     presets = quick_presets.load_presets(path)
@@ -192,13 +192,13 @@ def _():
     preset = {
         "slot": 1, "display_name": "Teppei_Beginner",
         "identity_type": "collection", "collection_id": "teppei_beginner",
-        "source_type": "clean_text", "origin": "con_teppei_podcast",
+        "source_type": "clean_text", "creator": "con_teppei_podcast",
     }
     updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity", updates["identity_type"] == "collection")
     check("collection", updates["collection_id"] == "teppei_beginner")
     check("source type", updates["source_type"] == "clean_text")
-    check("origin", updates["origin"] == "con_teppei_podcast")
+    check("creator", updates["creator"] == "con_teppei_podcast")
     check("no language", "language" not in updates)
 
 
@@ -207,13 +207,13 @@ def _():
     preset = {
         "slot": 2, "display_name": "NHK", "identity_type": "standalone",
         "source_name": "nhk_news_article",
-        "source_type": "article", "origin": "nhk_news",
+        "source_type": "article", "creator": "nhk_news",
     }
     updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity", updates["identity_type"] == "standalone")
     check("no source name", "source_name" not in updates)
     check("source type", updates["source_type"] == "article")
-    check("origin", updates["origin"] == "nhk_news")
+    check("creator", updates["creator"] == "nhk_news")
 
 
 @test("population: unknown config values are dropped")
@@ -221,13 +221,13 @@ def _():
     preset = {
         "slot": 1, "display_name": "X", "identity_type": "collection",
         "collection_id": "unknown_collection", "source_type": "not_a_type",
-        "origin": "not_an_origin",
+        "creator": "not_a_creator",
     }
     updates = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     check("identity still set", updates["identity_type"] == "collection")
     check("unknown collection dropped", "collection_id" not in updates)
     check("unknown source type dropped", "source_type" not in updates)
-    check("unknown origin dropped", "origin" not in updates)
+    check("unknown creator dropped", "creator" not in updates)
 
 
 @test("population: None preset yields empty updates")
@@ -248,7 +248,7 @@ def _():
     preset = {
         "slot": 1, "display_name": "Teppei_Beginner",
         "identity_type": "collection", "collection_id": "teppei_beginner",
-        "source_type": "clean_text", "origin": "con_teppei_podcast",
+        "source_type": "clean_text", "creator": "con_teppei_podcast",
     }
     first = quick_presets.preset_population(preset, **SAMPLE_CONFIG)
     second = quick_presets.preset_population(preset, **SAMPLE_CONFIG)

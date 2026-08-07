@@ -83,11 +83,11 @@ INTAKE = WORKSPACE_ROOT / "Intake"
 
 RAW_IMPORTS = WORKSPACE_ROOT / "Raw Imports"
 
-# Customer/runtime configuration (workspace). Collections and origins are
+# Customer/runtime configuration (workspace). Collections and creators are
 # customer data; only source_types.json remains repository product config.
 COLLECTIONS_CONFIG = WORKSPACE_ROOT / "Config" / "collections.json"
 
-ORIGINS_CONFIG = WORKSPACE_ROOT / "Config" / "origins.json"
+CREATORS_CONFIG = WORKSPACE_ROOT / "Config" / "creators.json"
 
 
 # --------------------------------------------------

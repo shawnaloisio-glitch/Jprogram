@@ -7,13 +7,13 @@ GUI-level tests for friendly display names in the Source Builder:
 - the source type has no visible field anymore: it is tracked internally as
   a raw id from Config (single real value), which downstream save logic
   persists raw (never the display label),
-- the Origin dropdown shows display names, not raw ids,
-- the origin id var keeps holding the raw id through every round trip,
+- the Creator dropdown shows display names, not raw ids,
+- the creator id var keeps holding the raw id through every round trip,
 - a saved source persists the raw ids (never the display labels),
 - display names that equal the id still show the id, and unknown/legacy ids
   display as-is without blanking or crashing.
 
-The sandboxed Config includes a source type and an origin whose display_name
+The sandboxed Config includes a source type and a creator whose display_name
 differs from their id, so the label behaviour is actually exercised (the real
 Config data is never touched).
 
@@ -54,7 +54,7 @@ def sandbox():
         config_loader.CONFIG_DIR,
         metadata_editor.CONFIG_DIR,
         paths.COLLECTIONS_CONFIG,
-        paths.ORIGINS_CONFIG,
+        paths.CREATORS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -77,10 +77,10 @@ def sandbox():
         ],
     }), encoding="utf-8")
     # cijsub (label != id), nhk_news (label == id).
-    (config_dir / "origins.json").write_text(json.dumps({
-        "origins": [
-            {"origin_id": "cijsub", "display_name": "CiJapanese Subs"},
-            {"origin_id": "nhk_news", "display_name": "nhk_news"},
+    (config_dir / "creators.json").write_text(json.dumps({
+        "creators": [
+            {"creator_id": "cijsub", "display_name": "CiJapanese Subs"},
+            {"creator_id": "nhk_news", "display_name": "nhk_news"},
         ],
     }), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({
@@ -96,13 +96,13 @@ def sandbox():
     config_loader.CONFIG_DIR = config_dir
     metadata_editor.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
-    paths.ORIGINS_CONFIG = config_dir / "origins.json"
+    paths.CREATORS_CONFIG = config_dir / "creators.json"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
          metadata_editor.CONFIG_DIR, paths.COLLECTIONS_CONFIG,
-         paths.ORIGINS_CONFIG) = saved
+         paths.CREATORS_CONFIG) = saved
 
     return restore
 
@@ -148,7 +148,7 @@ def find_combo_by_values(widget, values):
     return None
 
 
-@test("source type id comes from config; origin combo shows display names")
+@test("source type id comes from config; creator combo shows display names")
 def _():
     restore = sandbox()
     try:
@@ -157,17 +157,17 @@ def _():
             check("source type id from config",
                   app.source_type_var.get() == "clean_text")
 
-            og_values = app.origin_combo.cget("values")
-            check("origin labels shown",
+            og_values = app.creator_combo.cget("values")
+            check("creator labels shown",
                   og_values == ("CiJapanese Subs", "nhk_news"))
-            check("origin raw id hidden", "cijsub" not in og_values)
+            check("creator raw id hidden", "cijsub" not in og_values)
         finally:
             root.destroy()
     finally:
         restore()
 
 
-@test("programmatic id set keeps the raw source type id and origin label")
+@test("programmatic id set keeps the raw source type id and creator label")
 def _():
     restore = sandbox()
     try:
@@ -175,59 +175,59 @@ def _():
         try:
             # Same pattern settings/snapshot/preset restore use.
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             check("source type id retained",
                   app.source_type_var.get() == "clean_text")
-            check("origin label shown",
-                  app.origin_display_var.get() == "CiJapanese Subs")
-            check("origin combo shows label",
-                  app.origin_combo.get() == "CiJapanese Subs")
-            check("origin id retained",
-                  app.origin_var.get() == "cijsub")
+            check("creator label shown",
+                  app.creator_display_var.get() == "CiJapanese Subs")
+            check("creator combo shows label",
+                  app.creator_combo.get() == "CiJapanese Subs")
+            check("creator id retained",
+                  app.creator_var.get() == "cijsub")
         finally:
             root.destroy()
     finally:
         restore()
 
 
-@test("origin label selection maps back to the raw id in the id var")
+@test("creator label selection maps back to the raw id in the id var")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            # Simulate picking a label from the origin dropdown (the
+            # Simulate picking a label from the creator dropdown (the
             # <<ComboboxSelected>> handler reads the shown label and maps it
             # back to the id). The source type has no visible field, so
             # there is nothing to select for it.
-            app.origin_combo.set("CiJapanese Subs")
-            app._on_origin_selected()
-            check("origin id from label",
-                  app.origin_var.get() == "cijsub")
+            app.creator_combo.set("CiJapanese Subs")
+            app._on_creator_selected()
+            check("creator id from label",
+                  app.creator_var.get() == "cijsub")
             check("display stays the label",
-                  app.origin_display_var.get() == "CiJapanese Subs")
+                  app.creator_display_var.get() == "CiJapanese Subs")
         finally:
             root.destroy()
     finally:
         restore()
 
 
-@test("persisted settings restore keeps the raw source type id and origin label")
+@test("persisted settings restore keeps the raw source type id and creator label")
 def _():
     restore = sandbox()
     try:
         # Pre-seed the settings file exactly as a prior session would have
         # written it: raw ids.
         gui_settings.save_settings(
-            {"source_type": "clean_text", "origin": "cijsub"})
+            {"source_type": "clean_text", "creator": "cijsub"})
         root, app = make_app(restore)
         try:
             check("source type id restored",
                   app.source_type_var.get() == "clean_text")
-            check("origin id restored",
-                  app.origin_var.get() == "cijsub")
-            check("origin label shown",
-                  app.origin_combo.get() == "CiJapanese Subs")
+            check("creator id restored",
+                  app.creator_var.get() == "cijsub")
+            check("creator label shown",
+                  app.creator_combo.get() == "CiJapanese Subs")
         finally:
             root.destroy()
     finally:
@@ -243,7 +243,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("70")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("1")
             app.text_area.insert("1.0", "こんにちは。\n元気です。\n")
             app._on_text_changed()
@@ -255,18 +255,18 @@ def _():
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package source type is the raw id",
                   data["source_type"] == "clean_text")
-            check("package origin is the raw id",
-                  data["origin"] == "cijsub")
+            check("package creator is the raw id",
+                  data["creator"] == "cijsub")
             check("no display label leaked into source type",
                   data["source_type"] != "Clean Text")
-            check("no display label leaked into origin",
-                  data["origin"] != "CiJapanese Subs")
+            check("no display label leaked into creator",
+                  data["creator"] != "CiJapanese Subs")
             # Settings persisted during the save also hold raw ids.
             persisted = gui_settings.load_settings()
             check("settings source type raw",
                   persisted["source_type"] == "clean_text")
-            check("settings origin raw",
-                  persisted["origin"] == "cijsub")
+            check("settings creator raw",
+                  persisted["creator"] == "cijsub")
         finally:
             root.destroy()
     finally:
@@ -280,10 +280,10 @@ def _():
         root, app = make_app(restore)
         try:
             # nhk_news is configured with display_name == id and is shown
-            # as-is in the origin dropdown.
-            app.origin_var.set("nhk_news")
-            check("origin shows id",
-                  app.origin_combo.get() == "nhk_news")
+            # as-is in the creator dropdown.
+            app.creator_var.set("nhk_news")
+            check("creator shows id",
+                  app.creator_combo.get() == "nhk_news")
         finally:
             root.destroy()
     finally:
@@ -297,26 +297,26 @@ def _():
         root, app = make_app(restore)
         try:
             app.source_type_var.set("obsolete_type")
-            app.origin_var.set("stale_origin")
+            app.creator_var.set("stale_creator")
             check("unknown source type id retained",
                   app.source_type_var.get() == "obsolete_type")
-            check("unknown origin shows as-is",
-                  app.origin_combo.get() == "stale_origin")
-            check("unknown origin id retained",
-                  app.origin_var.get() == "stale_origin")
+            check("unknown creator shows as-is",
+                  app.creator_combo.get() == "stale_creator")
+            check("unknown creator id retained",
+                  app.creator_var.get() == "stale_creator")
         finally:
             root.destroy()
     finally:
         restore()
 
 
-@test("preset editor origin combo shows labels and stores raw ids")
+@test("preset editor creator combo shows labels and stores raw ids")
 def _():
     restore = sandbox()
     try:
         quick_presets.save_slot(
             1, "Subs Preset", "standalone",
-            source_type="clean_text", origin="cijsub")
+            source_type="clean_text", creator="cijsub")
         root, app = make_visible_app(restore)
         try:
             app._open_preset_editor()
@@ -324,9 +324,9 @@ def _():
                       if isinstance(w, tk.Toplevel)][0]
             og_combo = find_combo_by_values(
                 editor, ("CiJapanese Subs", "nhk_news"))
-            check("origin combo shows labels", og_combo is not None)
+            check("creator combo shows labels", og_combo is not None)
             if og_combo is not None:
-                check("origin label loaded",
+                check("creator label loaded",
                       og_combo.get() == "CiJapanese Subs")
         finally:
             root.destroy()
@@ -421,7 +421,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("80")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("1")
             app.style_combo.set("Documentary")
             app._apply_label_to_id(
@@ -453,7 +453,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("81")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("2")
             # Style left at the default "(none)" entry.
             app.text_area.insert("1.0", "本文。\n")
@@ -478,7 +478,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("82")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("2")
             app.text_area.insert("1.0", "本文。\n")
             app._on_text_changed()
@@ -501,7 +501,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("83")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("2")
             app.text_area.insert("1.0", "本文。\n")
             app.duration_var.set("abc")
@@ -529,7 +529,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("84")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("2")
             app.text_area.insert("1.0", "本文。\n")
             app.duration_var.set("-5")
@@ -585,7 +585,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("85")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("cijsub")
+            app.creator_var.set("cijsub")
             app.material_level_var.set("1")
             app.style_combo.set("Documentary")
             app._apply_label_to_id(

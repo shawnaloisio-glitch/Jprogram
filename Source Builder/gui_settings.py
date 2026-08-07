@@ -4,7 +4,7 @@ gui_settings.py
 
 Japanese Corpus Pipeline - Source Builder GUI settings persistence.
 
-Stores user-level GUI state (source_type, origin, material_level) so it is
+Stores user-level GUI state (source_type, creator, material_level) so it is
 restored automatically when the Source Builder starts. Collection is
 intentionally NOT persisted. Language is a project-level property, not
 source metadata, so it is not stored here.
@@ -24,7 +24,7 @@ import paths
 
 SETTINGS_PATH = paths.PROJECT_ROOT / "Source Builder" / "gui_settings.json"
 
-PERSISTED_KEYS = ("source_type", "origin", "material_level")
+PERSISTED_KEYS = ("source_type", "creator", "material_level")
 
 
 class SettingsError(Exception):
@@ -65,7 +65,7 @@ def save_settings(settings, path=None):
     """
     Persist GUI settings.
 
-    Input: settings (dict) containing zero or more of source_type, origin,
+    Input: settings (dict) containing zero or more of source_type, creator,
     material_level.
     Only non-empty string values are written. Atomic write convention.
     """

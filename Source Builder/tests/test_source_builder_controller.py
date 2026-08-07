@@ -80,7 +80,7 @@ def _():
     check("missing collection", "collection" in " ".join(errors))
     check("missing episode", any("episode" in e for e in errors))
     check("missing source type", any("source type" in e for e in errors))
-    check("missing origin", any("origin" in e for e in errors))
+    check("missing creator", any("creator" in e for e in errors))
 
 
 @test("validation: empty source text")
@@ -217,7 +217,7 @@ def _():
     errors = controller.validate_standalone_fields("", "", "", "text")
     check("missing source name", any("source name" in e for e in errors))
     check("missing source type", any("source type" in e for e in errors))
-    check("missing origin", any("origin" in e for e in errors))
+    check("missing creator", any("creator" in e for e in errors))
 
 
 @test("standalone validation: empty text")
@@ -304,7 +304,7 @@ def _():
     check("collection retained", state["collection_id"] == "teppei_beginner")
     check("episode incremented", state["episode"] == "52")
     check("source type retained", state["source_type"] == "clean_text")
-    check("origin retained", state["origin"] == "con_teppei_podcast")
+    check("creator retained", state["creator"] == "con_teppei_podcast")
     check("source text reset", state["source_text"] == "")
 
 
@@ -329,7 +329,7 @@ def _():
     check("collection blank", state["collection_id"] == "")
     check("episode blank", state["episode"] == "")
     check("source type retained", state["source_type"] == "article")
-    check("origin retained", state["origin"] == "nhk_news")
+    check("creator retained", state["creator"] == "nhk_news")
     check("source text reset", state["source_text"] == "")
 
 

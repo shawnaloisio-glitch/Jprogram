@@ -227,7 +227,7 @@ def _():
             app.collection_var.set("teppei_beginner")
             app.episode_var.set("1")
             app.source_type_var.set("clean_text")
-            app.origin_var.set("con_teppei_podcast")
+            app.creator_var.set("con_teppei_podcast")
             app.material_level_var.set("1")
             check("still incomplete without text",
                   app._current_state == "INCOMPLETE")

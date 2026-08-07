@@ -200,8 +200,8 @@ class SourceBuilderApp:
         self.identity_var = tk.StringVar(value="collection")
         self.collection_var = tk.StringVar()
         self.source_name_var = tk.StringVar()
-        self.origin_var = tk.StringVar()
-        self.origin_display_var = tk.StringVar()
+        self.creator_var = tk.StringVar()
+        self.creator_display_var = tk.StringVar()
         self.material_level_var = tk.StringVar()
         self.style_id_var = tk.StringVar()
         self.duration_var = tk.StringVar()
@@ -230,12 +230,12 @@ class SourceBuilderApp:
         self._refresh_recent_sources()
 
     def _restore_persisted_metadata(self):
-        """Restore saved source_type/origin/material_level if still valid."""
+        """Restore saved source_type/creator/material_level if still valid."""
         settings = gui_settings.load_settings()
         if settings["source_type"] in self.source_types:
             self.source_type_var.set(settings["source_type"])
-        if settings["origin"] in self.origins:
-            self.origin_var.set(settings["origin"])
+        if settings["creator"] in self.creators:
+            self.creator_var.set(settings["creator"])
         if settings["material_level"] in self.material_level_label_map:
             self.material_level_var.set(settings["material_level"])
 
@@ -243,10 +243,10 @@ class SourceBuilderApp:
         """Load controlled vocabulary; disable the window on config errors."""
         self.collections = []
         self.source_types = []
-        self.origins = []
+        self.creators = []
         self.styles = []
-        self.origin_label_map = {}
-        self.origin_id_map = {}
+        self.creator_label_map = {}
+        self.creator_id_map = {}
         self.material_level_label_map = {}
         self.material_level_id_map = {}
         self.style_label_map = {}
@@ -255,7 +255,7 @@ class SourceBuilderApp:
             self.collections = config_loader.load_collections()
             self.source_types = _processable_source_types(
                 config_loader.load_source_types())
-            self.origins = config_loader.load_origins()
+            self.creators = config_loader.load_creators()
             self.styles = config_loader.load_styles()
             self._build_vocab_maps()
             self.config_error = None
@@ -273,19 +273,19 @@ class SourceBuilderApp:
     def _build_vocab_maps(self):
         """Build the id<->display-label maps for the form combos.
 
-        self.origins stays the raw id list used for membership and logic;
+        self.creators stays the raw id list used for membership and logic;
         the map is used only to show friendly display names in the form.
 
         Material level ids and style ids are integers; both maps store their
         ids as strings so the StringVar-backed combos translate cleanly.
         """
-        self.origin_label_map = {}
-        self.origin_id_map = {}
-        for entry in config_loader.load_origins_full():
-            vid = entry["origin_id"]
+        self.creator_label_map = {}
+        self.creator_id_map = {}
+        for entry in config_loader.load_creators_full():
+            vid = entry["creator_id"]
             label = entry["display_name"]
-            self.origin_label_map[vid] = label
-            self.origin_id_map[label] = vid
+            self.creator_label_map[vid] = label
+            self.creator_id_map[label] = vid
         self.material_level_label_map = {}
         self.material_level_id_map = {}
         for entry in config_loader.load_material_levels_full():
@@ -370,15 +370,15 @@ class SourceBuilderApp:
         row += 1
 
         # Shared metadata
-        self.origin_label = ttk.Label(body, text="Origin:")
-        self.origin_label.grid(row=row, column=0, sticky="w")
-        self.origin_combo = ttk.Combobox(
-            body, textvariable=self.origin_display_var,
+        self.creator_label = ttk.Label(body, text="Creator:")
+        self.creator_label.grid(row=row, column=0, sticky="w")
+        self.creator_combo = ttk.Combobox(
+            body, textvariable=self.creator_display_var,
             state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
-        self.origin_combo.grid(row=row, column=1, sticky="w")
+        self.creator_combo.grid(row=row, column=1, sticky="w")
         self._wire_label_combo(
-            self.origin_combo, self.origin_var, self.origin_display_var,
-            "origin_label_map", "origin_id_map")
+            self.creator_combo, self.creator_var, self.creator_display_var,
+            "creator_label_map", "creator_id_map")
         row += 1
 
         # Episode (collection mode field)
@@ -660,22 +660,22 @@ class SourceBuilderApp:
         label = display_var.get()
         id_var.set(id_map.get(label, label))
 
-    def _sync_origin_display(self, *args):
-        """Show the display label for the current origin id."""
-        raw = self.origin_var.get()
-        self.origin_display_var.set(self.origin_label_map.get(raw, raw))
+    def _sync_creator_display(self, *args):
+        """Show the display label for the current creator id."""
+        raw = self.creator_var.get()
+        self.creator_display_var.set(self.creator_label_map.get(raw, raw))
 
-    def _on_origin_selected(self, event=None):
-        """Translate the picked origin label back into its id."""
+    def _on_creator_selected(self, event=None):
+        """Translate the picked creator label back into its id."""
         self._apply_label_to_id(
-            self.origin_display_var, self.origin_id_map, self.origin_var)
+            self.creator_display_var, self.creator_id_map, self.creator_var)
 
     def _bind_events(self):
         for var, callback in (
             (self.source_name_var, self._on_metadata_changed),
             (self.episode_var, self._on_metadata_changed),
             (self.source_type_var, self._on_metadata_changed),
-            (self.origin_var, self._on_metadata_changed),
+            (self.creator_var, self._on_metadata_changed),
             (self.material_level_var, self._on_metadata_changed),
             (self.style_id_var, self._on_metadata_changed),
             (self.duration_var, self._on_metadata_changed),
@@ -715,14 +715,14 @@ class SourceBuilderApp:
         self.next_button.configure(text=text)
 
     def _persist_metadata(self):
-        """Save current source_type/origin/material_level for the next
+        """Save current source_type/creator/material_level for the next
         session."""
         if self.config_error is not None:
             return
         try:
             gui_settings.save_settings({
                 "source_type": self.source_type_var.get(),
-                "origin": self.origin_var.get(),
+                "creator": self.creator_var.get(),
                 "material_level": self.material_level_var.get(),
             })
         except gui_settings.SettingsError:
@@ -772,7 +772,7 @@ class SourceBuilderApp:
             "source_name": self.source_name_var.get(),
             "episode": self.episode_var.get(),
             "source_type": self.source_type_var.get(),
-            "origin": self.origin_var.get(),
+            "creator": self.creator_var.get(),
             "source_text": self.text_area.get("1.0", "end"),
             "material_level": self._current_material_level(),
             "style_id": self._current_style_id(),
@@ -1117,7 +1117,7 @@ class SourceBuilderApp:
                     collection_id=self.collection_var.get(),
                     episode=self.episode_var.get(),
                     source_type=self.source_type_var.get(),
-                    origin=self.origin_var.get(),
+                    creator=self.creator_var.get(),
                     source_text=source_text,
                     overwrite=False,
                     material_level=material_level,
@@ -1128,7 +1128,7 @@ class SourceBuilderApp:
                 result = controller.create_standalone_source(
                     source_name=self.source_name_var.get(),
                     source_type=self.source_type_var.get(),
-                    origin=self.origin_var.get(),
+                    creator=self.creator_var.get(),
                     source_text=source_text,
                     overwrite=False,
                     material_level=material_level,
@@ -1149,7 +1149,7 @@ class SourceBuilderApp:
                 "source_name": self.source_name_var.get(),
                 "episode": self.episode_var.get(),
                 "source_type": self.source_type_var.get(),
-                "origin": self.origin_var.get(),
+                "creator": self.creator_var.get(),
                 "source_text": source_text,
                 "filename": result["filename"],
                 "material_level": material_level,
@@ -1180,7 +1180,7 @@ class SourceBuilderApp:
             collection_id=self.collection_var.get(),
             episode=self.episode_var.get(),
             source_type=self.source_type_var.get(),
-            origin=self.origin_var.get(),
+            creator=self.creator_var.get(),
             material_level=self._current_material_level(),
             style_id=self._current_style_id(),
         )
@@ -1190,7 +1190,7 @@ class SourceBuilderApp:
         self.source_name_var.set(state["source_name"])
         self.episode_var.set(state["episode"])
         self.source_type_var.set(state["source_type"])
-        self.origin_var.set(state["origin"])
+        self.creator_var.set(state["creator"])
         self.material_level_var.set(
             "" if state["material_level"] is None
             else str(state["material_level"]))
@@ -1214,7 +1214,7 @@ class SourceBuilderApp:
             preset,
             [c["collection_id"] for c in self.collections],
             self.source_types,
-            self.origins,
+            self.creators,
         )
         if not updates:
             self.status_var.set("Preset has no valid values to apply.")
@@ -1230,8 +1230,8 @@ class SourceBuilderApp:
             self.source_name_var.set(updates["source_name"])
         if "source_type" in updates:
             self.source_type_var.set(updates["source_type"])
-        if "origin" in updates:
-            self.origin_var.set(updates["origin"])
+        if "creator" in updates:
+            self.creator_var.set(updates["creator"])
         self._refresh_ready_state()
         self.status_var.set(
             f"Preset loaded: {preset.get('display_name')}\n"
@@ -1270,8 +1270,8 @@ class SourceBuilderApp:
         identity_var = tk.StringVar(value="collection")
         collection_var = tk.StringVar()
         source_type_var = tk.StringVar()
-        origin_var = tk.StringVar()
-        origin_display_var = tk.StringVar()
+        creator_var = tk.StringVar()
+        creator_display_var = tk.StringVar()
         feedback_var = tk.StringVar()
 
         body = ttk.Frame(editor, padding=12)
@@ -1313,14 +1313,14 @@ class SourceBuilderApp:
         self._preset_editor_collection = (collection_label, collection_combo)
         row += 1
 
-        ttk.Label(body, text="Origin:").grid(row=row, column=0, sticky="w")
-        origin_combo = ttk.Combobox(
-            body, textvariable=origin_display_var,
+        ttk.Label(body, text="Creator:").grid(row=row, column=0, sticky="w")
+        creator_combo = ttk.Combobox(
+            body, textvariable=creator_display_var,
             state="readonly", width=30)
-        origin_combo.grid(row=row, column=1, sticky="w")
+        creator_combo.grid(row=row, column=1, sticky="w")
         self._wire_label_combo(
-            origin_combo, origin_var, origin_display_var,
-            "origin_label_map", "origin_id_map")
+            creator_combo, creator_var, creator_display_var,
+            "creator_label_map", "creator_id_map")
         row += 1
 
         feedback_label = ttk.Label(body, textvariable=feedback_var,
@@ -1335,7 +1335,7 @@ class SourceBuilderApp:
         ttk.Button(buttons, text="Save Preset",
                    command=lambda: self._save_preset_from_editor(
                        editor, slot_var, name_var, identity_var,
-                       collection_var, source_type_var, origin_var,
+                       collection_var, source_type_var, creator_var,
                        feedback_var)).pack(
             side="left", padx=4)
 
@@ -1351,13 +1351,13 @@ class SourceBuilderApp:
                 identity_var.set("collection")
                 collection_var.set("")
                 source_type_var.set("")
-                origin_var.set("")
+                creator_var.set("")
             else:
                 name_var.set(preset.get("display_name", ""))
                 identity_var.set(preset.get("identity_type", "collection"))
                 collection_var.set(preset.get("collection_id", ""))
                 source_type_var.set(preset.get("source_type", ""))
-                origin_var.set(preset.get("origin", ""))
+                creator_var.set(preset.get("creator", ""))
             self._apply_preset_editor_mode()
 
         slot_combo.bind("<<ComboboxSelected>>", lambda e: load_current())
@@ -1372,7 +1372,7 @@ class SourceBuilderApp:
 
         The collection field is shown only for collection presets. There is
         no source_name field in this editor: presets are reusable templates
-        (source_type/origin), never pinned to a specific source name.
+        (source_type/creator), never pinned to a specific source name.
         """
         if not hasattr(self, "_preset_editor_collection"):
             return
@@ -1390,7 +1390,7 @@ class SourceBuilderApp:
 
     def _save_preset_from_editor(self, editor, slot_var, name_var,
                                  identity_var, collection_var, source_type_var,
-                                 origin_var, feedback_var):
+                                 creator_var, feedback_var):
         """Validate and save the preset; refresh the panel on success."""
         try:
             slot = int(slot_var.get())
@@ -1402,7 +1402,7 @@ class SourceBuilderApp:
                 slot, name_var.get(), identity_var.get(),
                 collection_id=collection_var.get(),
                 source_type=source_type_var.get(),
-                origin=origin_var.get())
+                creator=creator_var.get())
         except quick_presets.PresetError as exc:
             feedback_var.set(str(exc))
             return
@@ -1426,7 +1426,7 @@ class SourceBuilderApp:
         os.startfile(str(folder))
 
     def _open_metadata_editor(self):
-        """Launch the metadata editor window (Collections/Origins/Styles)."""
+        """Launch the metadata editor window (Collections/Creators/Styles)."""
         metadata_editor_gui.MetadataEditorWindow(self)
 
     def _open_processing(self):
@@ -1444,14 +1444,14 @@ class SourceBuilderApp:
         """Update combobox value lists from the freshly loaded config."""
         self.collection_combo.configure(
             values=[c["collection_id"] for c in self.collections])
-        self.origin_combo.configure(
-            values=[self.origin_label_map[o] for o in self.origins])
+        self.creator_combo.configure(
+            values=[self.creator_label_map[o] for o in self.creators])
         self.material_level_combo.configure(
             values=list(self.material_level_label_map.values()))
         self.style_combo.configure(
             values=list(self.style_label_map.values()))
         # The vocabulary may have changed; re-show the current ids' labels.
-        self._sync_origin_display()
+        self._sync_creator_display()
         self.material_level_display_var.set(
             self.material_level_label_map.get(
                 self.material_level_var.get(), self.material_level_var.get()))

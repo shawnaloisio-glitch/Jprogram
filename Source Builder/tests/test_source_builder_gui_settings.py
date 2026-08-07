@@ -3,7 +3,7 @@
 test_source_builder_gui_settings.py
 
 Deterministic tests for the Source Builder GUI settings persistence
-(persistent metadata: source_type, origin, material_level).
+(persistent metadata: source_type, creator, material_level).
 
 Collection is intentionally NOT persisted.
 
@@ -44,7 +44,7 @@ def check(name, cond, detail=""):
 
 
 def default_settings():
-    return {"source_type": "", "origin": "", "material_level": ""}
+    return {"source_type": "", "creator": "", "material_level": ""}
 
 
 @test("missing settings file yields empty defaults")
@@ -57,19 +57,19 @@ def _():
 def _():
     path = temp_path()
     gui_settings.save_settings(
-        {"source_type": "subtitle", "origin": "nhk_news",
+        {"source_type": "subtitle", "creator": "nhk_news",
          "material_level": "2"},
         path=path)
     settings = gui_settings.load_settings(path)
     check("source_type", settings["source_type"] == "subtitle")
-    check("origin", settings["origin"] == "nhk_news")
+    check("creator", settings["creator"] == "nhk_news")
     check("material_level", settings["material_level"] == "2")
 
 
 @test("empty values are not persisted")
 def _():
     path = temp_path()
-    gui_settings.save_settings({"source_type": "", "origin": "",
+    gui_settings.save_settings({"source_type": "", "creator": "",
                                 "material_level": ""},
                                path=path)
     check("file empty keys",
@@ -98,24 +98,24 @@ def _():
 @test("non-string persisted values are ignored")
 def _():
     path = temp_path()
-    path.write_text(json.dumps({"source_type": 5, "origin": None,
+    path.write_text(json.dumps({"source_type": 5, "creator": None,
                                 "material_level": None}),
                     encoding="utf-8")
     settings = gui_settings.load_settings(path)
     check("source_type ignored", settings["source_type"] == "")
-    check("origin ignored", settings["origin"] == "")
+    check("creator ignored", settings["creator"] == "")
     check("material_level ignored", settings["material_level"] == "")
 
 
 @test("unknown persisted keys are ignored (e.g. legacy language)")
 def _():
     path = temp_path()
-    path.write_text(json.dumps({"source_type": "article", "origin": "nhk_news",
+    path.write_text(json.dumps({"source_type": "article", "creator": "nhk_news",
                                 "material_level": "1", "language": "ja"}),
                     encoding="utf-8")
     settings = gui_settings.load_settings(path)
     check("source_type", settings["source_type"] == "article")
-    check("origin", settings["origin"] == "nhk_news")
+    check("creator", settings["creator"] == "nhk_news")
     check("material_level", settings["material_level"] == "1")
     check("no language key", "language" not in settings)
 
@@ -131,7 +131,7 @@ def _():
 def _():
     check("keys",
           gui_settings.PERSISTED_KEYS ==
-          ("source_type", "origin", "material_level"))
+          ("source_type", "creator", "material_level"))
 
 
 def main():

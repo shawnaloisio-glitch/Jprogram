@@ -43,7 +43,7 @@ from project_config import (
 )
 
 ARTIFACT_TYPE = "source_package"
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 PACKAGE_SUFFIX = ".source.json"
 FORMAT = "txt"
 
@@ -117,7 +117,7 @@ def sha256_file(file_path):
     return digest.hexdigest()
 
 
-def build_package(source_type, origin, language, canonical_path,
+def build_package(source_type, creator, language, canonical_path,
                   cleaning_profile, cleaner_version, material_level,
                   source_id=None, collection_id=None, episode=None,
                   source_name=None, style_id=None, duration_seconds=None,
@@ -126,7 +126,7 @@ def build_package(source_type, origin, language, canonical_path,
     Build a Source Package dict.
 
     Input:
-        source_type (str), origin (str), language (str),
+        source_type (str), creator (str), language (str),
         canonical_path (str), cleaning_profile (str|None),
         cleaner_version (str|None), material_level (int, one of the levels
         in project_config.MATERIAL_LEVELS),
@@ -165,7 +165,7 @@ def build_package(source_type, origin, language, canonical_path,
         "schema_version": SCHEMA_VERSION,
         "source_id": source_id,
         "source_type": source_type,
-        "origin": origin,
+        "creator": creator,
         "language": language,
         "canonical_path": str(canonical),
         "original_filename": canonical.name,
@@ -202,7 +202,7 @@ def validate_package(package):
         errors.append(f"schema_version must be '{SCHEMA_VERSION}'")
 
     required_strings = (
-        "source_id", "source_type", "origin", "language", "canonical_path",
+        "source_id", "source_type", "creator", "language", "canonical_path",
         "original_filename", "format", "sha256", "created_at",
         "created_by_version",
     )

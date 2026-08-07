@@ -5,7 +5,7 @@ test_index_builder.py
 Deterministic tests for the standalone SQLite index builder.
 
 Builds run against a sandboxed workspace root (temporary Sources root,
-temporary Config with collections.json/origins.json, temporary indexes)
+temporary Config with collections.json/creators.json, temporary indexes)
 passed explicitly to build_index(); the real Workspace is never touched.
 
 Coverage:
@@ -58,9 +58,9 @@ def write_collections_config(root, entries):
     return path
 
 
-def write_origins_config(root, entries):
-    path = root / "Config" / "origins.json"
-    path.write_text(json.dumps({"origins": entries}, ensure_ascii=False),
+def write_creators_config(root, entries):
+    path = root / "Config" / "creators.json"
+    path.write_text(json.dumps({"creators": entries}, ensure_ascii=False),
                     encoding="utf-8")
     return path
 
@@ -109,7 +109,7 @@ def _():
     summary = index_builder.build_index(workspace_root=root)
     with db(root) as conn:
         names = table_names(conn)
-        for expected in ("sources", "collections", "origins",
+        for expected in ("sources", "collections", "creators",
                          "material_levels", "styles"):
             check(f"table {expected}", expected in names)
         levels = conn.execute(
@@ -122,9 +122,9 @@ def _():
         check("collections empty",
               conn.execute(
                   "SELECT COUNT(*) FROM collections").fetchone()[0] == 0)
-        check("origins empty",
+        check("creators empty",
               conn.execute(
-                  "SELECT COUNT(*) FROM origins").fetchone()[0] == 0)
+                  "SELECT COUNT(*) FROM creators").fetchone()[0] == 0)
         check("styles empty",
               conn.execute("SELECT COUNT(*) FROM styles").fetchone()[0] == 0)
     check("summary material_levels", summary["material_levels"] == 5)
@@ -140,11 +140,11 @@ def _():
          "name": "Con Teppei for Beginner",
          "source_type": "podcast_transcript", "sequencing": "episodic"},
     ])
-    write_origins_config(root, ["con_teppei_podcast", "nhk_news"])
+    write_creators_config(root, ["con_teppei_podcast", "nhk_news"])
     write_source_package(root, {
         "source_id": "podcast_transcript_teppei-beginner_ep001",
         "source_type": "podcast_transcript",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "collection_id": "teppei_beginner",
         "episode": 1,
         "created_at": "2026-08-01T10:00:00",
@@ -152,7 +152,7 @@ def _():
     write_source_package(root, {
         "source_id": "article_nhk-weather",
         "source_type": "article",
-        "origin": "nhk_news",
+        "creator": "nhk_news",
         "source_name": "nhk_weather",
         "created_at": "2026-08-02T10:00:00",
     }, "nhk_weather.source.json")
@@ -160,18 +160,18 @@ def _():
     summary = index_builder.build_index(workspace_root=root)
     check("two sources", summary["sources"] == 2)
     check("one collection", summary["collections"] == 1)
-    check("two origins", summary["origins"] == 2)
+    check("two creators", summary["creators"] == 2)
 
     with db(root) as conn:
         rows = conn.execute(
             "SELECT source_id, collection_id, episode, source_name, "
-            "origin_id, material_level, style_id, duration_seconds "
+            "creator_id, material_level, style_id, duration_seconds "
             "FROM sources ORDER BY source_id").fetchall()
         check("two rows", len(rows) == 2)
         collection_row = [r for r in rows if r[1] == "teppei_beginner"][0]
         check("collection episode", collection_row[2] == 1)
         check("collection source_name NULL", collection_row[3] is None)
-        check("collection origin", collection_row[4] == "con_teppei_podcast")
+        check("collection creator", collection_row[4] == "con_teppei_podcast")
         check("material_level NULL", collection_row[5] is None)
         check("style_id NULL", collection_row[6] is None)
         check("duration NULL", collection_row[7] is None)
@@ -185,10 +185,10 @@ def _():
             "FROM collections").fetchall()
         check("collection row", collections == [
             ("teppei_beginner", "Con Teppei for Beginner", "episodic")])
-        origins = conn.execute(
-            "SELECT origin_id, display_name FROM origins "
-            "ORDER BY origin_id").fetchall()
-        check("origin rows", origins == [
+        creators = conn.execute(
+            "SELECT creator_id, display_name FROM creators "
+            "ORDER BY creator_id").fetchall()
+        check("creator rows", creators == [
             ("con_teppei_podcast", "con_teppei_podcast"),
             ("nhk_news", "nhk_news"),
         ])
@@ -200,7 +200,7 @@ def _():
     write_source_package(root, {
         "source_id": "article_nhk-weather",
         "source_type": "article",
-        "origin": "nhk_news",
+        "creator": "nhk_news",
         "source_name": "nhk_weather",
         "created_at": "2026-08-02T10:00:00",
     }, "nhk_weather.source.json")
@@ -225,11 +225,11 @@ def _():
          "name": "Con Teppei for Beginner",
          "source_type": "podcast_transcript"},
     ])
-    write_origins_config(root, ["con_teppei_podcast"])
+    write_creators_config(root, ["con_teppei_podcast"])
     write_source_package(root, {
         "source_id": "podcast_transcript_teppei-beginner_ep001",
         "source_type": "podcast_transcript",
-        "origin": "con_teppei_podcast",
+        "creator": "con_teppei_podcast",
         "collection_id": "teppei_beginner",
         "episode": 1,
         "created_at": "2026-08-01T10:00:00",
@@ -240,7 +240,7 @@ def _():
     check("same source count", first["sources"] == second["sources"])
     check("same collection count",
           first["collections"] == second["collections"])
-    check("same origin count", first["origins"] == second["origins"])
+    check("same creator count", first["creators"] == second["creators"])
     check("same skipped count", first["skipped"] == second["skipped"])
     check("no leftover temp",
           not (root / "indexes" / "jprogram.db.tmp").exists())

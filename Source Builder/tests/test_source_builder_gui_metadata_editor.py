@@ -6,7 +6,7 @@ GUI-level tests for the Source Builder metadata editor window:
 
 - window opens from the app,
 - window is centred over the parent,
-- tabs are present (Collections / Origins),
+- tabs are present (Collections / Creators),
 - refreshing after a metadata save updates Source Builder dropdowns.
 
 These tests build the actual Tk window. Config files are redirected to a
@@ -49,7 +49,7 @@ def sandbox():
     saved_config_dir = metadata_editor.CONFIG_DIR
     saved_loader_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
-    saved_origins_config = paths.ORIGINS_CONFIG
+    saved_creators_config = paths.CREATORS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     conf_dir = tmp / "Config"
@@ -65,8 +65,8 @@ def sandbox():
         "source_types": ["clean_text", "cij_transcript",
                          "subtitle", "article"],
     }), encoding="utf-8")
-    (conf_dir / "origins.json").write_text(json.dumps({
-        "origins": ["con_teppei_podcast", "nhk_news"],
+    (conf_dir / "creators.json").write_text(json.dumps({
+        "creators": ["con_teppei_podcast", "nhk_news"],
     }), encoding="utf-8")
     (conf_dir / "styles.json").write_text(json.dumps({"styles": []}),
                                           encoding="utf-8")
@@ -77,7 +77,7 @@ def sandbox():
     metadata_editor.CONFIG_DIR = conf_dir
     config_loader.CONFIG_DIR = conf_dir
     paths.COLLECTIONS_CONFIG = conf_dir / "collections.json"
-    paths.ORIGINS_CONFIG = conf_dir / "origins.json"
+    paths.CREATORS_CONFIG = conf_dir / "creators.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -86,7 +86,7 @@ def sandbox():
         metadata_editor.CONFIG_DIR = saved_config_dir
         config_loader.CONFIG_DIR = saved_loader_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
-        paths.ORIGINS_CONFIG = saved_origins_config
+        paths.CREATORS_CONFIG = saved_creators_config
 
     return restore
 
@@ -139,7 +139,7 @@ def _():
             notebook = notebooks[0]
             tabs = [notebook.tab(tab_id, "text") for tab_id in notebook.tabs()]
             check("collections tab", "Collections" in tabs)
-            check("origins tab", "Origins" in tabs)
+            check("creators tab", "Creators" in tabs)
             check("styles tab", "Styles" in tabs)
             check("no source types tab", "Source Types" not in tabs)
         finally:
@@ -191,30 +191,30 @@ def _():
     try:
         root, app = make_app(restore)
         try:
-            # Only processable source types are used by the GUI; origins
+            # Only processable source types are used by the GUI; creators
             # exclude format-id values (none here).
             check("source type before",
                   app.source_type_var.get() == "clean_text")
-            check("origins before",
-                  app.origin_combo.cget("values")
+            check("creators before",
+                  app.creator_combo.cget("values")
                   == ("con_teppei_podcast", "nhk_news"))
 
-            # Add a non-processable source type plus a new origin, then
+            # Add a non-processable source type plus a new creator, then
             # refresh. Source types added through the editor never gain a
             # processing profile, so clean_text (the single processable
             # type) stays the fixed source type.
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
-            metadata_editor.add_origin(
+            metadata_editor.add_creator(
                 "nhk_radio", "NHK Radio", path=metadata_editor.CONFIG_DIR /
-                metadata_editor.FILES["origins"])
+                metadata_editor.FILES["creators"])
             app._refresh_metadata()
 
             check("processable type kept",
                   app.source_type_var.get() == "clean_text")
-            check("origins after",
-                  "NHK Radio" in app.origin_combo.cget("values"))
+            check("creators after",
+                  "NHK Radio" in app.creator_combo.cget("values"))
             check("collections unchanged",
                   app.collection_combo.cget("values") == ("teppei_beginner",))
         finally:
@@ -438,7 +438,7 @@ def _():
         restore()
 
 
-@test("add valid source type and origin through editor data layer")
+@test("add valid source type and creator through editor data layer")
 def _():
     restore = sandbox()
     try:
@@ -449,15 +449,15 @@ def _():
             metadata_editor.add_source_type(
                 "video", "Video", path=metadata_editor.CONFIG_DIR /
                 metadata_editor.FILES["source_types"])
-            metadata_editor.add_origin(
+            metadata_editor.add_creator(
                 "nhk_radio", "NHK Radio", path=metadata_editor.CONFIG_DIR /
-                metadata_editor.FILES["origins"])
+                metadata_editor.FILES["creators"])
             st = metadata_editor.load_source_types()
-            og = metadata_editor.load_origins()
+            og = metadata_editor.load_creators()
             check("source type added",
                   any(s["source_type_id"] == "video" for s in st))
-            check("origin added",
-                  any(o["origin_id"] == "nhk_radio" for o in og))
+            check("creator added",
+                  any(o["creator_id"] == "nhk_radio" for o in og))
         finally:
             root.destroy()
     finally:
@@ -680,7 +680,7 @@ def _():
         restore()
 
 
-@test("source type and origin add forms show internal-id helper text")
+@test("source type and creator add forms show internal-id helper text")
 def _():
     restore = sandbox()
     try:
@@ -719,7 +719,7 @@ def _():
 
             def open_og():
                 me._open_form("Add",
-                              [("origin_id", "Origin ID", "entry"),
+                              [("creator_id", "Creator ID", "entry"),
                                ("display_name", "Display Name", "entry")],
                               helper_text=helper_og)
 
@@ -733,7 +733,7 @@ def _():
 
             check("source type helper", "used by presets and validation"
                   in results.get("st", ""))
-            check("origin helper", "used for source tracking"
+            check("creator helper", "used for source tracking"
                   in results.get("og", ""))
         finally:
             root.destroy()

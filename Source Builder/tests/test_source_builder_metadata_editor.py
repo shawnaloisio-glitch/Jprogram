@@ -7,7 +7,7 @@ Deterministic tests for the Source Builder metadata editor data layer:
 - Collections: load, add, edit, duplicate rejection, delete validation,
   preset reference protection, sequencing default/validation.
 - Source Types: add/edit/delete validation.
-- Origins: add/edit/delete validation.
+- Creators: add/edit/delete validation.
 - Config persistence: save, reload, atomic write, backup, format preservation.
 
 All tests run against sandboxed Config directories; the real Config\\ files
@@ -48,8 +48,8 @@ def write_initial(conf_dir):
     (conf_dir / "source_types.json").write_text(json.dumps({
         "source_types": ["clean_text", "subtitle", "article"],
     }), encoding="utf-8")
-    (conf_dir / "origins.json").write_text(json.dumps({
-        "origins": ["con_teppei_podcast", "nhk_news"],
+    (conf_dir / "creators.json").write_text(json.dumps({
+        "creators": ["con_teppei_podcast", "nhk_news"],
     }), encoding="utf-8")
 
 
@@ -540,113 +540,114 @@ def _():
 
 
 # ============================================================
-# Origins: add / edit / delete validation
+# Creators: add / edit / delete validation
 # ============================================================
 
-@test("origins: missing workspace file loads empty list")
+@test("creators: missing workspace file loads empty list")
 def _():
-    saved = paths.ORIGINS_CONFIG
-    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
-    paths.ORIGINS_CONFIG = missing
+    saved = paths.CREATORS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "creators.json"
+    paths.CREATORS_CONFIG = missing
     try:
-        check("loads empty", metadata_editor.load_origins() == [])
+        check("loads empty", metadata_editor.load_creators() == [])
     finally:
-        paths.ORIGINS_CONFIG = saved
+        paths.CREATORS_CONFIG = saved
 
 
-@test("origins: add creates the file from an empty workspace")
+@test("creators: add creates the file from an empty workspace")
 def _():
-    saved = paths.ORIGINS_CONFIG
+    saved = paths.CREATORS_CONFIG
     tmp = pathlib.Path(tempfile.mkdtemp())
-    origins_file = tmp / "Config" / "origins.json"
-    paths.ORIGINS_CONFIG = origins_file
+    creators_file = tmp / "Config" / "creators.json"
+    paths.CREATORS_CONFIG = creators_file
     try:
-        metadata_editor.add_origin("nhk_radio", "NHK Radio")
-        check("file created", origins_file.is_file())
-        reloaded = metadata_editor.load_origins()
-        check("added", [o["origin_id"] for o in reloaded] == ["nhk_radio"])
+        metadata_editor.add_creator("nhk_radio", "NHK Radio")
+        check("file created", creators_file.is_file())
+        reloaded = metadata_editor.load_creators()
+        check("added", [o["creator_id"] for o in reloaded] == ["nhk_radio"])
     finally:
-        paths.ORIGINS_CONFIG = saved
+        paths.CREATORS_CONFIG = saved
 
 
-@test("origins: add")
+@test("creators: add")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    metadata_editor.add_origin(
-        "nhk_radio", "NHK Radio", path=conf_path(conf_dir, "origins"))
-    reloaded = metadata_editor.load_origins(conf_path(conf_dir, "origins"))
+    metadata_editor.add_creator(
+        "nhk_radio", "NHK Radio", path=conf_path(conf_dir, "creators"))
+    reloaded = metadata_editor.load_creators(
+        conf_path(conf_dir, "creators"))
     check("added", len(reloaded) == 3)
-    check("added id", reloaded[2]["origin_id"] == "nhk_radio")
+    check("added id", reloaded[2]["creator_id"] == "nhk_radio")
     check("added display", reloaded[2]["display_name"] == "NHK Radio")
 
 
-@test("origins: edit display name only")
+@test("creators: edit display name only")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    metadata_editor.edit_origin(
-        "nhk_news", "NHK News JP", path=conf_path(conf_dir, "origins"))
-    reloaded = metadata_editor.load_origins(conf_path(conf_dir, "origins"))
-    check("id unchanged", reloaded[1]["origin_id"] == "nhk_news")
+    metadata_editor.edit_creator(
+        "nhk_news", "NHK News JP", path=conf_path(conf_dir, "creators"))
+    reloaded = metadata_editor.load_creators(conf_path(conf_dir, "creators"))
+    check("id unchanged", reloaded[1]["creator_id"] == "nhk_news")
     check("display changed", reloaded[1]["display_name"] == "NHK News JP")
 
 
-@test("origins: id is immutable after creation")
+@test("creators: id is immutable after creation")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    metadata_editor.edit_origin(
-        "nhk_news", "Renamed", path=conf_path(conf_dir, "origins"))
-    reloaded = metadata_editor.load_origins(conf_path(conf_dir, "origins"))
-    check("id unchanged", reloaded[1]["origin_id"] == "nhk_news")
+    metadata_editor.edit_creator(
+        "nhk_news", "Renamed", path=conf_path(conf_dir, "creators"))
+    reloaded = metadata_editor.load_creators(conf_path(conf_dir, "creators"))
+    check("id unchanged", reloaded[1]["creator_id"] == "nhk_news")
 
 
-@test("origins: duplicate rejected")
+@test("creators: duplicate rejected")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     try:
-        metadata_editor.add_origin(
-            "nhk_news", "NHK News", path=conf_path(conf_dir, "origins"))
+        metadata_editor.add_creator(
+            "nhk_news", "NHK News", path=conf_path(conf_dir, "creators"))
         check("duplicate rejected", False)
     except metadata_editor.MetadataError as exc:
         check("duplicate message", "already exists" in str(exc))
 
 
-@test("origins: bad id rejected")
+@test("creators: bad id rejected")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     try:
-        metadata_editor.add_origin(
-            "1bad", "Bad", path=conf_path(conf_dir, "origins"))
+        metadata_editor.add_creator(
+            "1bad", "Bad", path=conf_path(conf_dir, "creators"))
         check("bad id rejected", False)
     except metadata_editor.MetadataError as exc:
         check("machine-friendly message", "machine-friendly" in str(exc))
 
 
-@test("origins: delete referenced by preset blocked")
+@test("creators: delete referenced by preset blocked")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    presets = [{"slot": 1, "origin": "nhk_news"}]
+    presets = [{"slot": 1, "creator": "nhk_news"}]
     try:
-        metadata_editor.delete_origin(
-            "nhk_news", path=conf_path(conf_dir, "origins"), presets=presets)
+        metadata_editor.delete_creator(
+            "nhk_news", path=conf_path(conf_dir, "creators"), presets=presets)
         check("referenced delete blocked", False)
     except metadata_editor.MetadataError as exc:
         check("reference message", "referenced by a preset" in str(exc))
 
 
-@test("origins: delete unused allowed")
+@test("creators: delete unused allowed")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
-    metadata_editor.add_origin(
-        "extra_origin", "Extra", path=conf_path(conf_dir, "origins"))
-    remaining = metadata_editor.delete_origin(
-        "extra_origin", path=conf_path(conf_dir, "origins"))
+    metadata_editor.add_creator(
+        "extra_creator", "Extra", path=conf_path(conf_dir, "creators"))
+    remaining = metadata_editor.delete_creator(
+        "extra_creator", path=conf_path(conf_dir, "creators"))
     check("unused deleted", len(remaining) == 2)
 
 
@@ -720,13 +721,13 @@ def _():
 def _():
     presets = [
         {"slot": 1, "identity_type": "collection",
-         "collection_id": "a", "source_type": "subtitle", "origin": "x"},
-        {"slot": 2, "source_type": "article", "origin": "y"},
+         "collection_id": "a", "source_type": "subtitle", "creator": "x"},
+        {"slot": 2, "source_type": "article", "creator": "y"},
     ]
     refs = metadata_editor.preset_references(presets)
     check("collections", refs["collections"] == {"a"})
     check("source types", refs["source_types"] == {"subtitle", "article"})
-    check("origins", refs["origins"] == {"x", "y"})
+    check("creators", refs["creators"] == {"x", "y"})
 
 
 @test("preset_references handles None")
@@ -734,7 +735,7 @@ def _():
     refs = metadata_editor.preset_references(None)
     check("empty collections", refs["collections"] == set())
     check("empty source types", refs["source_types"] == set())
-    check("empty origins", refs["origins"] == set())
+    check("empty creators", refs["creators"] == set())
 
 
 # ============================================================
@@ -919,26 +920,26 @@ def _():
         check("message", "already exists" in str(exc))
 
 
-@test("origins: add duplicate display name rejected")
+@test("creators: add duplicate display name rejected")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     try:
-        metadata_editor.add_origin(
-            "new_origin", "nhk_news", path=conf_path(conf_dir, "origins"))
+        metadata_editor.add_creator(
+            "new_creator", "nhk_news", path=conf_path(conf_dir, "creators"))
         check("duplicate display rejected", False)
     except metadata_editor.MetadataError as exc:
         check("message", "already exists" in str(exc))
 
 
-@test("origins: edit to another origin's display name rejected")
+@test("creators: edit to another creator's display name rejected")
 def _():
     conf_dir = temp_config_dir()
     write_initial(conf_dir)
     try:
-        metadata_editor.edit_origin(
+        metadata_editor.edit_creator(
             "nhk_news", "con_teppei_podcast",
-            path=conf_path(conf_dir, "origins"))
+            path=conf_path(conf_dir, "creators"))
         check("edit duplicate display rejected", False)
     except metadata_editor.MetadataError as exc:
         check("message", "already exists" in str(exc))

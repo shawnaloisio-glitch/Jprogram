@@ -11,7 +11,7 @@ into a temp file and atomically replaces the live database.
 
 No FOREIGN KEY constraints are declared because the index rebuilds from
 potentially messy source data and must not hard-fail when a source
-references a collection_id or origin_id that config no longer has.
+references a collection_id or creator_id that config no longer has.
 
 material_level, style_id, and duration_seconds are reserved columns and
 are always NULL in this task; the styles table stays schema only (zero
@@ -54,7 +54,7 @@ SCHEMA_STATEMENTS = (
         collection_id TEXT,
         episode INTEGER,
         source_name TEXT,
-        origin_id TEXT,
+        creator_id TEXT,
         material_level INTEGER,
         style_id INTEGER,
         duration_seconds REAL,
@@ -69,8 +69,8 @@ SCHEMA_STATEMENTS = (
     )
     """,
     """
-    CREATE TABLE origins (
-        origin_id TEXT PRIMARY KEY,
+    CREATE TABLE creators (
+        creator_id TEXT PRIMARY KEY,
         display_name TEXT NOT NULL
     )
     """,
@@ -102,35 +102,37 @@ def _collections_config_path(workspace_root):
     return None
 
 
-def _origins_config_path(workspace_root):
-    """Return the origins.json path, or None for the loader default."""
+def _creators_config_path(workspace_root):
+    """Return the creators.json path, or None for the loader default."""
     if workspace_root is not None:
-        return Path(workspace_root) / "Config" / "origins.json"
+        return Path(workspace_root) / "Config" / "creators.json"
     return None
 
 
-def _populate_origins(conn, path):
-    """Populate origins via the workspace-aware config_loader.
+def _populate_creators(conn, path):
+    """Populate creators via the workspace-aware config_loader.
 
-    config_loader resolves origins from the workspace (paths.ORIGINS_CONFIG),
-    the same customer-data location metadata_editor uses. The optional path
-    is applied by temporarily pointing paths.ORIGINS_CONFIG at it so
-    sandboxed rebuilds (workspace_root=...) stay isolated.
+    config_loader resolves creators from the workspace
+    (paths.CREATORS_CONFIG), the same customer-data location metadata_editor
+    uses. The optional path is applied by temporarily pointing
+    paths.CREATORS_CONFIG at it so sandboxed rebuilds (workspace_root=...)
+    stay isolated.
     """
-    saved = paths.ORIGINS_CONFIG
+    saved = paths.CREATORS_CONFIG
     if path is not None:
-        paths.ORIGINS_CONFIG = path
+        paths.CREATORS_CONFIG = path
     try:
-        for origin in config_loader.load_origins_full():
+        for creator in config_loader.load_creators_full():
             conn.execute(
-                "INSERT INTO origins (origin_id, display_name) VALUES (?, ?)",
+                "INSERT INTO creators (creator_id, display_name) "
+                "VALUES (?, ?)",
                 (
-                    origin.get("origin_id"),
-                    origin.get("display_name"),
+                    creator.get("creator_id"),
+                    creator.get("display_name"),
                 ),
             )
     finally:
-        paths.ORIGINS_CONFIG = saved
+        paths.CREATORS_CONFIG = saved
 
 
 def _indexes_dir(workspace_root):
@@ -218,7 +220,7 @@ def _populate_sources(conn, sources_root):
         conn.execute(
             "INSERT INTO sources ("
             "    source_id, source_type, collection_id, episode, source_name,"
-            "    origin_id, material_level, style_id, duration_seconds,"
+            "    creator_id, material_level, style_id, duration_seconds,"
             "    created_at"
             ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
@@ -227,7 +229,7 @@ def _populate_sources(conn, sources_root):
                 collection_id,
                 episode,
                 source_name,
-                package.get("origin"),
+                package.get("creator"),
                 None,
                 None,
                 None,
@@ -243,8 +245,8 @@ def _table_counts(conn):
         "sources": conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0],
         "collections": conn.execute(
             "SELECT COUNT(*) FROM collections").fetchone()[0],
-        "origins": conn.execute(
-            "SELECT COUNT(*) FROM origins").fetchone()[0],
+        "creators": conn.execute(
+            "SELECT COUNT(*) FROM creators").fetchone()[0],
         "material_levels": conn.execute(
             "SELECT COUNT(*) FROM material_levels").fetchone()[0],
         "styles": conn.execute(
@@ -282,7 +284,7 @@ def build_index(workspace_root=None):
             _seed_material_levels(conn)
             _populate_collections(conn,
                                   _collections_config_path(workspace_root))
-            _populate_origins(conn, _origins_config_path(workspace_root))
+            _populate_creators(conn, _creators_config_path(workspace_root))
             skipped = _populate_sources(conn, sources_root)
             conn.commit()
             counts = _table_counts(conn)
@@ -299,7 +301,7 @@ def build_index(workspace_root=None):
     return {
         "sources": counts["sources"],
         "collections": counts["collections"],
-        "origins": counts["origins"],
+        "creators": counts["creators"],
         "material_levels": counts["material_levels"],
         "styles": counts["styles"],
         "skipped": skipped,
@@ -313,7 +315,7 @@ def main():
     print("Index rebuild complete.")
     print(f"sources: {summary['sources']}")
     print(f"collections: {summary['collections']}")
-    print(f"origins: {summary['origins']}")
+    print(f"creators: {summary['creators']}")
     print(f"material_levels: {summary['material_levels']}")
     print(f"styles: {summary['styles']}")
     print(f"source packages skipped (unparseable): {summary['skipped']}")

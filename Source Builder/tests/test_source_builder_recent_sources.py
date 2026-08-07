@@ -62,8 +62,8 @@ def setup():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = (controller.SOURCES_ROOT, config_loader.CONFIG_DIR,
              paths.COLLECTIONS_CONFIG)

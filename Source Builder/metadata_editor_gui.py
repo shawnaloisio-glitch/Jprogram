@@ -5,7 +5,7 @@ metadata_editor_gui.py
 Japanese Corpus Pipeline - Source Builder metadata editor window.
 
 A child window opened from Source Builder -> Edit Metadata... It manages the
-controlled vocabularies (Collections, Origins, Styles) that populate Source
+controlled vocabularies (Collections, Creators, Styles) that populate Source
 Builder dropdowns and Quick Presets.
 
 This window only presents and drives metadata_editor.py; it contains no
@@ -54,7 +54,7 @@ def _raw_value(field, display):
 
 
 class MetadataEditorWindow:
-    """Tabs: Collections / Origins / Styles."""
+    """Tabs: Collections / Creators / Styles."""
 
     def __init__(self, parent_app):
         self.parent_app = parent_app
@@ -69,7 +69,7 @@ class MetadataEditorWindow:
         self.notebook.pack(fill="both", expand=True)
 
         self._build_collections_tab()
-        self._build_origins_tab()
+        self._build_creators_tab()
         self._build_styles_tab()
 
         ttk.Button(self.window, text="Close",
@@ -317,27 +317,27 @@ class MetadataEditorWindow:
             display, metadata_editor.load_collections, add, edit, fields,
             helper_text=helper)
 
-    def _build_origins_tab(self):
+    def _build_creators_tab(self):
         def display(item):
-            return (item["origin_id"], item["display_name"])
+            return (item["creator_id"], item["display_name"])
 
         def add(**kw):
-            return metadata_editor.add_origin(kw["origin_id"],
-                                              kw["display_name"])
+            return metadata_editor.add_creator(kw["creator_id"],
+                                               kw["display_name"])
 
         def edit(original_id, **kw):
-            return metadata_editor.edit_origin(
+            return metadata_editor.edit_creator(
                 original_id, kw["display_name"])
 
         fields = [
-            ("origin_id", "Origin ID", "entry"),
+            ("creator_id", "Creator ID", "entry"),
             ("display_name", "Display Name", "entry"),
         ]
         helper = "Internal identifier used for source tracking."
         self._build_tree_tab(
-            "Origins",
-            [("col_id", "Origin ID"), ("display_name", "Display Name")],
-            display, metadata_editor.load_origins, add, edit, fields,
+            "Creators",
+            [("col_id", "Creator ID"), ("display_name", "Display Name")],
+            display, metadata_editor.load_creators, add, edit, fields,
             helper_text=helper)
 
     def _build_styles_tab(self):

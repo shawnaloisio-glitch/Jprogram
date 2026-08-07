@@ -95,8 +95,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
@@ -125,8 +125,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
@@ -157,8 +157,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
@@ -391,8 +391,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
@@ -447,8 +447,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:
@@ -509,8 +509,8 @@ def _():
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
-    (config_dir / "origins.json").write_text(json.dumps(
-        {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "creators.json").write_text(json.dumps(
+        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
 
     saved = patch_root(sources_root, config_dir)
     try:

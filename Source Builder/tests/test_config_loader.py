@@ -48,25 +48,25 @@ def patch_collections_config(collections):
     return restore
 
 
-def patch_vocab_config(source_types, origins, styles=None):
-    """Point config_loader.CONFIG_DIR and paths.ORIGINS_CONFIG at a sandbox."""
-    saved = (config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG)
+def patch_vocab_config(source_types, creators, styles=None):
+    """Point config_loader.CONFIG_DIR and paths.CREATORS_CONFIG at a sandbox."""
+    saved = (config_loader.CONFIG_DIR, paths.CREATORS_CONFIG)
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "source_types.json").write_text(
         json.dumps({"source_types": source_types}), encoding="utf-8")
-    origins_file = config_dir / "origins.json"
-    origins_file.write_text(
-        json.dumps({"origins": origins}), encoding="utf-8")
+    creators_file = config_dir / "creators.json"
+    creators_file.write_text(
+        json.dumps({"creators": creators}), encoding="utf-8")
     if styles is not None:
         (config_dir / "styles.json").write_text(
             json.dumps({"styles": styles}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
-    paths.ORIGINS_CONFIG = origins_file
+    paths.CREATORS_CONFIG = creators_file
 
     def restore():
-        config_loader.CONFIG_DIR, paths.ORIGINS_CONFIG = saved
+        config_loader.CONFIG_DIR, paths.CREATORS_CONFIG = saved
 
     return restore
 
@@ -157,17 +157,17 @@ def _():
         paths.COLLECTIONS_CONFIG = saved
 
 
-@test("load_origins: missing origins file loads empty")
+@test("load_creators: missing creators file loads empty")
 def _():
-    saved = paths.ORIGINS_CONFIG
-    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "origins.json"
-    paths.ORIGINS_CONFIG = missing
+    saved = paths.CREATORS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "creators.json"
+    paths.CREATORS_CONFIG = missing
     try:
-        check("load_origins empty", config_loader.load_origins() == [])
-        check("load_origins_full empty",
-              config_loader.load_origins_full() == [])
+        check("load_creators empty", config_loader.load_creators() == [])
+        check("load_creators_full empty",
+              config_loader.load_creators_full() == [])
     finally:
-        paths.ORIGINS_CONFIG = saved
+        paths.CREATORS_CONFIG = saved
 
 
 @test("load_collections: ordering preserved")
@@ -218,15 +218,15 @@ def _():
         restore()
 
 
-@test("load_origins_full: returns id + display_name pairs in order")
+@test("load_creators_full: returns id + display_name pairs in order")
 def _():
     restore = patch_vocab_config(
         [],
-        [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"},
-         {"origin_id": "nhk_news", "display_name": "nhk_news"}])
+        [{"creator_id": "cijsub", "display_name": "CiJapanese Subs"},
+         {"creator_id": "nhk_news", "display_name": "nhk_news"}])
     try:
-        entries = config_loader.load_origins_full()
-        check("order", [e["origin_id"] for e in entries]
+        entries = config_loader.load_creators_full()
+        check("order", [e["creator_id"] for e in entries]
               == ["cijsub", "nhk_news"])
         check("display name 1", entries[0]["display_name"] == "CiJapanese Subs")
         check("display name 2", entries[1]["display_name"] == "nhk_news")
@@ -241,8 +241,8 @@ def _():
          {"source_type_id": "article"},
          {"source_type_id": "manga_text", "display_name": ""}],
         ["con_teppei_podcast",
-         {"origin_id": "nhk_news"},
-         {"origin_id": "subtitle", "display_name": ""}])
+         {"creator_id": "nhk_news"},
+         {"creator_id": "subtitle", "display_name": ""}])
     try:
         st = config_loader.load_source_types_full()
         check("plain string fallback",
@@ -250,12 +250,12 @@ def _():
         check("missing display fallback", st[1]["display_name"] == "article")
         check("empty display fallback",
               st[2]["display_name"] == "manga_text")
-        og = config_loader.load_origins_full()
-        check("origin plain fallback",
+        og = config_loader.load_creators_full()
+        check("creator plain fallback",
               og[0]["display_name"] == "con_teppei_podcast")
-        check("origin missing display fallback",
+        check("creator missing display fallback",
               og[1]["display_name"] == "nhk_news")
-        check("origin empty display fallback",
+        check("creator empty display fallback",
               og[2]["display_name"] == "subtitle")
     finally:
         restore()
@@ -266,12 +266,12 @@ def _():
     restore = patch_vocab_config(
         [{"source_type_id": "clean_text",
           "display_name": "Podcast Transcript"}],
-        [{"origin_id": "cijsub", "display_name": "CiJapanese Subs"}])
+        [{"creator_id": "cijsub", "display_name": "CiJapanese Subs"}])
     try:
         check("source types ids",
               config_loader.load_source_types() == ["clean_text"])
-        check("origins ids",
-              config_loader.load_origins() == ["cijsub"])
+        check("creators ids",
+              config_loader.load_creators() == ["cijsub"])
     finally:
         restore()
 
