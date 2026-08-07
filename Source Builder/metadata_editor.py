@@ -27,6 +27,10 @@ Canonical on-disk forms (preserving the existing top-level structure):
 - Config\\origins.json:
     {"origins": [{"origin_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
+- Config\\styles.json:
+    {"styles": [{"style_id": int, "display_name": str}]}
+  (style ids are autoincrement; computed as max(existing ids, default=0) + 1
+  on each add, never a persisted counter)
 """
 
 import json
@@ -49,6 +53,7 @@ FILES = {
     "collections": "collections.json",
     "source_types": "source_types.json",
     "origins": "origins.json",
+    "styles": "styles.json",
 }
 
 MACHINE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -191,6 +196,35 @@ def load_origins(path=None):
             range(len(values)) if _item_to_named(values[i], "origin_id")]
 
 
+def load_styles(path=None):
+    """
+    Load styles as a list of dicts:
+        [{"style_id": int, "display_name": str}, ...]
+    """
+    data = _read_json(_config_path("styles", path))
+    if data is None:
+        return []
+    if not isinstance(data, dict):
+        raise MetadataError("styles.json must be a JSON object")
+    items = data.get("styles")
+    if not isinstance(items, list):
+        raise MetadataError("styles.json must contain a 'styles' list")
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        style_id = item.get("style_id")
+        if not isinstance(style_id, int) or isinstance(style_id, bool):
+            continue
+        display_name = item.get("display_name")
+        result.append({
+            "style_id": style_id,
+            "display_name": display_name if isinstance(display_name, str)
+            else str(style_id),
+        })
+    return result
+
+
 def _item_to_named(item, key):
     """Normalize a string or dict entry into {key: str, display_name: str}."""
     if isinstance(item, str):
@@ -243,20 +277,28 @@ def validate_display_name(value, label):
     return []
 
 
-def _check_unique(value, existing, original=None):
+def _check_unique(value, existing, original=None, label=None):
     """Return an error if value duplicates another entry (ignoring original)."""
     if value and value != original and value in existing:
+        if label:
+            return [f"{label} '{value}' already exists"]
         return [f"{value} already exists"]
     return []
 
 
 def validate_collection(collection_id, display_name, default_source_type,
                         existing_ids, original_id=None, source_type_ids=None,
-                        sequencing=None):
+                        sequencing=None, existing_display_names=None,
+                        original_display_name=None):
     """Validate a collection entry; return list of errors."""
     errors = validate_id(collection_id, "collection_id")
     errors += _check_unique(collection_id, existing_ids, original_id)
     errors += validate_display_name(display_name, "display_name")
+    if existing_display_names is not None:
+        normalized = display_name.strip() if isinstance(display_name, str) \
+            else display_name
+        errors += _check_unique(normalized, existing_display_names,
+                                original_display_name, label="display name")
     if default_source_type and source_type_ids is not None:
         if default_source_type not in source_type_ids:
             errors.append(
@@ -269,19 +311,41 @@ def validate_collection(collection_id, display_name, default_source_type,
 
 
 def validate_source_type(source_type_id, display_name, existing_ids,
-                         original_id=None):
+                         original_id=None, existing_display_names=None,
+                         original_display_name=None):
     """Validate a source type entry; return list of errors."""
     errors = validate_id(source_type_id, "source_type_id")
     errors += _check_unique(source_type_id, existing_ids, original_id)
     errors += validate_display_name(display_name, "display_name")
+    if existing_display_names is not None:
+        normalized = display_name.strip() if isinstance(display_name, str) \
+            else display_name
+        errors += _check_unique(normalized, existing_display_names,
+                                original_display_name, label="display name")
     return errors
 
 
-def validate_origin(origin_id, display_name, existing_ids, original_id=None):
+def validate_origin(origin_id, display_name, existing_ids, original_id=None,
+                    existing_display_names=None, original_display_name=None):
     """Validate an origin entry; return list of errors."""
     errors = validate_id(origin_id, "origin_id")
     errors += _check_unique(origin_id, existing_ids, original_id)
     errors += validate_display_name(display_name, "display_name")
+    if existing_display_names is not None:
+        normalized = display_name.strip() if isinstance(display_name, str) \
+            else display_name
+        errors += _check_unique(normalized, existing_display_names,
+                                original_display_name, label="display name")
+    return errors
+
+
+def validate_style(display_name, existing_display_names):
+    """Validate a style entry; return list of errors."""
+    errors = validate_display_name(display_name, "display_name")
+    normalized = display_name.strip() if isinstance(display_name, str) \
+        else display_name
+    errors += _check_unique(normalized, existing_display_names,
+                            label="display name")
     return errors
 
 
@@ -306,6 +370,10 @@ def _raw_source_type(item):
 
 def _raw_origin(item):
     return {"origin_id": item["origin_id"], "display_name": item["display_name"]}
+
+
+def _raw_style(item):
+    return {"style_id": item["style_id"], "display_name": item["display_name"]}
 
 
 # ============================================================
@@ -333,6 +401,11 @@ def save_origins(items, path=None):
     _save("origins", items, _raw_origin, path)
 
 
+def save_styles(items, path=None):
+    """Persist styles (normalized dicts). Returns the raw count."""
+    _save("styles", items, _raw_style, path)
+
+
 # ============================================================
 # CRUD
 # ============================================================
@@ -342,9 +415,11 @@ def add_collection(collection_id, display_name, default_source_type=None,
     """Add a collection; raises MetadataError on invalid input."""
     items = load_collections(path)
     existing = [c["collection_id"] for c in items]
+    existing_names = [c["display_name"] for c in items]
     errors = validate_collection(
         collection_id, display_name, default_source_type, existing,
-        source_type_ids=source_type_ids, sequencing=sequencing)
+        source_type_ids=source_type_ids, sequencing=sequencing,
+        existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({
@@ -368,16 +443,14 @@ def edit_collection(original_id, display_name, default_source_type=None,
     items = load_collections(path)
     for item in items:
         if item["collection_id"] == original_id:
-            errors = validate_display_name(display_name, "display_name")
-            if default_source_type and source_type_ids is not None:
-                if default_source_type not in source_type_ids:
-                    errors.append(
-                        f"default source type {default_source_type} is not "
-                        f"a known source type")
-            if sequencing is not None and sequencing not in SEQUENCING_VALUES:
-                errors.append(
-                    f"sequencing must be 'episodic' or 'auto' "
-                    f"(got {sequencing!r})")
+            existing_ids = [c["collection_id"] for c in items]
+            existing_names = [c["display_name"] for c in items]
+            errors = validate_collection(
+                item["collection_id"], display_name, default_source_type,
+                existing_ids, original_id=item["collection_id"],
+                source_type_ids=source_type_ids, sequencing=sequencing,
+                existing_display_names=existing_names,
+                original_display_name=item["display_name"])
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
@@ -426,7 +499,9 @@ def add_source_type(source_type_id, display_name, path=None):
     """Add a source type; raises MetadataError on invalid input."""
     items = load_source_types(path)
     existing = [s["source_type_id"] for s in items]
-    errors = validate_source_type(source_type_id, display_name, existing)
+    existing_names = [s["display_name"] for s in items]
+    errors = validate_source_type(source_type_id, display_name, existing,
+                                  existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({"source_type_id": source_type_id,
@@ -444,7 +519,13 @@ def edit_source_type(original_id, display_name, path=None):
     items = load_source_types(path)
     for item in items:
         if item["source_type_id"] == original_id:
-            errors = validate_display_name(display_name, "display_name")
+            existing_ids = [s["source_type_id"] for s in items]
+            existing_names = [s["display_name"] for s in items]
+            errors = validate_source_type(
+                item["source_type_id"], display_name, existing_ids,
+                original_id=item["source_type_id"],
+                existing_display_names=existing_names,
+                original_display_name=item["display_name"])
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
@@ -489,7 +570,9 @@ def add_origin(origin_id, display_name, path=None):
     """Add an origin; raises MetadataError on invalid input."""
     items = load_origins(path)
     existing = [o["origin_id"] for o in items]
-    errors = validate_origin(origin_id, display_name, existing)
+    existing_names = [o["display_name"] for o in items]
+    errors = validate_origin(origin_id, display_name, existing,
+                             existing_display_names=existing_names)
     if errors:
         raise MetadataError("; ".join(errors))
     items.append({"origin_id": origin_id, "display_name": display_name.strip()})
@@ -506,7 +589,13 @@ def edit_origin(original_id, display_name, path=None):
     items = load_origins(path)
     for item in items:
         if item["origin_id"] == original_id:
-            errors = validate_display_name(display_name, "display_name")
+            existing_ids = [o["origin_id"] for o in items]
+            existing_names = [o["display_name"] for o in items]
+            errors = validate_origin(
+                item["origin_id"], display_name, existing_ids,
+                original_id=item["origin_id"],
+                existing_display_names=existing_names,
+                original_display_name=item["display_name"])
             if errors:
                 raise MetadataError("; ".join(errors))
             item["display_name"] = display_name.strip()
@@ -514,6 +603,46 @@ def edit_origin(original_id, display_name, path=None):
     else:
         raise MetadataError(f"origin not found: {original_id}")
     save_origins(items, path)
+    return items
+
+
+def add_style(display_name, path=None):
+    """
+    Add a style; raises MetadataError on invalid input.
+
+    The next style_id is computed as max(existing ids, default=0) + 1 on
+    each add (a live scan, never a persisted counter).
+    """
+    items = load_styles(path)
+    existing = [s["display_name"] for s in items]
+    errors = validate_style(display_name, existing)
+    if errors:
+        raise MetadataError("; ".join(errors))
+    next_id = max((s["style_id"] for s in items), default=0) + 1
+    items.append({"style_id": next_id, "display_name": display_name.strip()})
+    save_styles(items, path)
+    return items
+
+
+def edit_style(style_id, display_name, path=None):
+    """
+    Edit a style's display name by style_id.
+
+    The style_id is autoincrement and immutable after creation.
+    """
+    items = load_styles(path)
+    for item in items:
+        if item["style_id"] == style_id:
+            existing = [s["display_name"] for s in items
+                        if s["style_id"] != style_id]
+            errors = validate_style(display_name, existing)
+            if errors:
+                raise MetadataError("; ".join(errors))
+            item["display_name"] = display_name.strip()
+            break
+    else:
+        raise MetadataError(f"style not found: {style_id}")
+    save_styles(items, path)
     return items
 
 
@@ -569,9 +698,11 @@ __all__ = [
     "load_collections",
     "load_source_types",
     "load_origins",
+    "load_styles",
     "save_collections",
     "save_source_types",
     "save_origins",
+    "save_styles",
     "add_collection",
     "edit_collection",
     "delete_collection",
@@ -582,5 +713,7 @@ __all__ = [
     "add_origin",
     "edit_origin",
     "delete_origin",
+    "add_style",
+    "edit_style",
     "preset_references",
 ]

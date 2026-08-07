@@ -33,7 +33,7 @@ import paths
 def make_collection(ep, text, created_at):
     result = controller.create_collection_source(
         "teppei_beginner", ep, "podcast_transcript", "con_teppei_podcast",
-        text)
+        text, material_level=1)
     package_path = source_package_pkg_path(result)
     package = json.loads(package_path.read_text(encoding="utf-8"))
     package["created_at"] = created_at
@@ -157,7 +157,8 @@ def _():
     try:
         make_collection(64, "b\n", "2026-08-01T11:00:00")
         result = controller.create_standalone_source(
-            "nhk_weather", "podcast_transcript", "nhk_news", "y\n")
+            "nhk_weather", "podcast_transcript", "nhk_news", "y\n",
+            material_level=1)
         # standalone package has a created_at too; strip it to test fallback
         pkg_path = source_package_pkg_path(result)
         package = json.loads(pkg_path.read_text(encoding="utf-8"))

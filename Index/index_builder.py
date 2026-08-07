@@ -35,18 +35,14 @@ sys.path.append(str(PROJECT_ROOT / "Source Builder"))
 import controller
 import metadata_editor
 import paths
+import project_config
 
 INDEX_FILENAME = "jprogram.db"
 TEMP_FILENAME = "jprogram.db.tmp"
 
-# Fixed, hardcoded material levels (never read from a file).
-MATERIAL_LEVELS = (
-    (0, "Ungraded"),
-    (1, "Absolute Beginner"),
-    (2, "Beginner"),
-    (3, "Intermediate"),
-    (4, "Advanced"),
-)
+# Material levels come from the shared project_config constant (single
+# source of truth); never read from a file.
+MATERIAL_LEVELS = project_config.MATERIAL_LEVELS
 
 # Exactly the five canonical tables. No FOREIGN KEY constraints.
 SCHEMA_STATEMENTS = (

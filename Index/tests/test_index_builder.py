@@ -252,6 +252,15 @@ def _():
         check("distinct source_ids", distinct == first["sources"])
 
 
+@test("material_levels seeds from the shared project_config constant")
+def _():
+    import project_config
+    check("same object as project_config",
+          index_builder.MATERIAL_LEVELS == project_config.MATERIAL_LEVELS)
+    check("same five rows",
+          list(index_builder.MATERIAL_LEVELS) == MATERIAL_LEVELS_EXPECTED)
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

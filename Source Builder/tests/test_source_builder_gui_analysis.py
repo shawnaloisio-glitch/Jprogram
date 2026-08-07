@@ -82,7 +82,7 @@ def make_completed_source(ep, jsonl_content="こんにちは。\n"):
     """Create a source package and a fake corpus JSONL for it."""
     result = controller.create_collection_source(
         "teppei_beginner", ep, "podcast_transcript", "con_teppei_podcast",
-        "本文。\n")
+        "本文。\n", material_level=1)
     source_id = controller.source_id_for(
         "podcast_transcript", collection_id="teppei_beginner", episode=ep)
     jsonl = pathlib.Path(tempfile.mkdtemp()) / f"{source_id}.jsonl"

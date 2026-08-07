@@ -65,7 +65,7 @@ def make_package(sandbox_saved, source_type="podcast_transcript",
     """Create a real source + package in the sandbox; return (package_path, package)."""
     result = controller.create_collection_source(
         collection_id, episode, source_type, "con_teppei_podcast",
-        "こんにちは。\n")
+        "こんにちは。\n", material_level=1)
     package_path = source_package.package_path_for(result["path"])
     package = json.loads(package_path.read_text(encoding="utf-8"))
     return package_path, package
@@ -257,7 +257,8 @@ def _():
     saved = setup()
     try:
         result = controller.create_standalone_source(
-            "nhk_weather", "podcast_transcript", "nhk_news", "天気です。\n")
+            "nhk_weather", "podcast_transcript", "nhk_news", "天気です。\n",
+            material_level=1)
         package_path = source_package.package_path_for(result["path"])
         h = handoff.handoff_for_package_path(package_path)
         check("no errors", h["errors"] == [])
@@ -276,7 +277,8 @@ def _():
     saved = setup()
     try:
         result = controller.create_standalone_source(
-            "nhk_weather", "article", "nhk_news", "天気です。\n")
+            "nhk_weather", "article", "nhk_news", "天気です。\n",
+            material_level=1)
         package_path = source_package.package_path_for(result["path"])
         package = json.loads(package_path.read_text(encoding="utf-8"))
         check("no cleaning profile recorded",

@@ -19,6 +19,10 @@ to dig through conversation history.
 
 ## Open
 
+### Piece B GUI wiring deferred — structure built first, UI later (2026-08-07)
+
+- [ ] **Material Level / Style / Duration: wire the new fields into the actual Source Builder GUI.** The backend structure (Source Package schema fields, `ReadyStateEngine` mandatory-field check, Style admin CRUD in `metadata_editor.py`) is being built and tested without any Tkinter changes — Owner's call, to keep this round scoped and testable without touching the GUI. Once that lands, this item is: add Material Level (mandatory dropdown) and Style (optional dropdown) to the main capture form in `gui.py` using the existing `_wire_label_combo()` pattern (same shape as the Source type/Origin dropdowns), add a plain optional numeric Duration field, and add a Styles tab to `metadata_editor_gui.py` using the existing generic `_build_tree_tab()` helper (Add/Edit only, no Delete — matches the existing Collections/Source Types/Origins tabs, see `project_metadata_editor_no_delete` memory). Also still undecided: whether Material Level gets its own small Edit-only admin surface, or stays a hand-edited config file since it's expected to change close to never — see the fuller discussion in the session that scoped this.
+
 ### Recurring pattern: identity/config coupled to raw file structure instead of the token abstraction
 
 Owner identified (2026-08-05) that this session found two instances of one

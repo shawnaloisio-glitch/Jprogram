@@ -433,6 +433,96 @@ def _():
         restore(saved)
 
 
+# ============================================================
+# material_level plumbing (optional; never blocks)
+# ============================================================
+
+@test("material_level: omitted evaluate arg behaves exactly as before")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine())
+        check("state ready", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+    finally:
+        restore(saved)
+
+
+@test("material_level: supplied evaluate arg is non-blocking")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), material_level=2)
+        check("state ready", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+        check("no blocking reason", result["message"] == "Ready to Save.")
+    finally:
+        restore(saved)
+
+
+@test("material_level: snapshot matching includes the field")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved({
+            "identity_type": "collection",
+            "collection_id": "teppei_beginner",
+            "source_name": "",
+            "episode": "1",
+            "source_type": "podcast_transcript",
+            "origin": "con_teppei_podcast",
+            "source_text": "これはテストです。\n",
+            "filename": "teppei_beginner_ep0001.txt",
+            "material_level": 2,
+        })
+        check("same level -> SAVED",
+              ev(engine, material_level=2)["state"] == "SAVED")
+        check("different level breaks match",
+              ev(engine, material_level=3)["state"] != "SAVED")
+        check("omitted level breaks match",
+              ev(engine)["state"] != "SAVED")
+    finally:
+        restore(saved)
+
+
+@test("material_level: snapshot without the key still matches when omitted")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved({
+            "identity_type": "collection",
+            "collection_id": "teppei_beginner",
+            "source_name": "",
+            "episode": "1",
+            "source_type": "podcast_transcript",
+            "origin": "con_teppei_podcast",
+            "source_text": "これはテストです。\n",
+            "filename": "teppei_beginner_ep0001.txt",
+        })
+        # No material_level anywhere: identical to the pre-plumbing behavior.
+        check("saved without the field",
+              ev(engine)["state"] == "SAVED")
+        check("save disabled", ev(engine)["save_enabled"] is False)
+        check("next enabled", ev(engine)["next_enabled"] is True)
+    finally:
+        restore(saved)
+
+
+@test("material_level: no blocking check in _first_blocking_reason")
+def _():
+    root, sources, saved = setup()
+    try:
+        # An incomplete form still reports the first existing blocking reason,
+        # never a material_level one.
+        result = ev(controller.ReadyStateEngine(), collection_id="",
+                    episode="", material_level=None)
+        check("message", result["message"] == "Waiting for collection.")
+    finally:
+        restore(saved)
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

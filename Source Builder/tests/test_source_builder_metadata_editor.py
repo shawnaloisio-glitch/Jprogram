@@ -765,6 +765,213 @@ def _():
     check("empty origins", refs["origins"] == set())
 
 
+# ============================================================
+# Styles: load / add / edit / uniqueness
+# ============================================================
+
+@test("styles: missing file loads empty")
+def _():
+    conf_dir = temp_config_dir()
+    items = metadata_editor.load_styles(conf_path(conf_dir, "styles"))
+    check("empty", items == [])
+
+
+@test("styles: add assigns autoincrement ids from max+1")
+def _():
+    conf_dir = temp_config_dir()
+    items = metadata_editor.add_style(
+        "Documentary", path=conf_path(conf_dir, "styles"))
+    check("first id", items[0]["style_id"] == 1)
+    items = metadata_editor.add_style(
+        "Podcast", path=conf_path(conf_dir, "styles"))
+    check("second id", items[1]["style_id"] == 2)
+    reloaded = metadata_editor.load_styles(conf_path(conf_dir, "styles"))
+    check("persisted two", len(reloaded) == 2)
+    check("persisted ids", [s["style_id"] for s in reloaded] == [1, 2])
+    check("persisted names", [s["display_name"] for s in reloaded]
+          == ["Documentary", "Podcast"])
+
+
+@test("styles: add skips gaps (max+1, no persisted counter)")
+def _():
+    conf_dir = temp_config_dir()
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    (conf_dir / "styles.json").write_text(json.dumps({
+        "styles": [
+            {"style_id": 5, "display_name": "A"},
+            {"style_id": 2, "display_name": "B"},
+        ]
+    }), encoding="utf-8")
+    items = metadata_editor.add_style(
+        "C", path=conf_path(conf_dir, "styles"))
+    check("max plus one", items[-1]["style_id"] == 6)
+
+
+@test("styles: add duplicate display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_style("Documentary", path=conf_path(conf_dir, "styles"))
+    try:
+        metadata_editor.add_style(
+            "Documentary", path=conf_path(conf_dir, "styles"))
+        check("duplicate rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("duplicate message", "already exists" in str(exc))
+
+
+@test("styles: add missing display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    try:
+        metadata_editor.add_style("   ", path=conf_path(conf_dir, "styles"))
+        check("empty display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("display message", "display_name is required" in str(exc))
+
+
+@test("styles: edit display name keeps id")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_style("Documentary", path=conf_path(conf_dir, "styles"))
+    items = metadata_editor.edit_style(
+        1, "Documentary Series", path=conf_path(conf_dir, "styles"))
+    check("id unchanged", items[0]["style_id"] == 1)
+    check("display changed", items[0]["display_name"] == "Documentary Series")
+    reloaded = metadata_editor.load_styles(conf_path(conf_dir, "styles"))
+    check("persisted", reloaded[0]["display_name"] == "Documentary Series")
+
+
+@test("styles: edit to another style's display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_style("Documentary", path=conf_path(conf_dir, "styles"))
+    metadata_editor.add_style("Podcast", path=conf_path(conf_dir, "styles"))
+    try:
+        metadata_editor.edit_style(
+            1, "Podcast", path=conf_path(conf_dir, "styles"))
+        check("edit duplicate rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("duplicate message", "already exists" in str(exc))
+
+
+@test("styles: edit keeping own display name allowed")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_style("Documentary", path=conf_path(conf_dir, "styles"))
+    items = metadata_editor.edit_style(
+        1, "Documentary", path=conf_path(conf_dir, "styles"))
+    check("allowed", items[0]["display_name"] == "Documentary")
+
+
+@test("styles: edit missing style rejected")
+def _():
+    conf_dir = temp_config_dir()
+    try:
+        metadata_editor.edit_style(
+            99, "X", path=conf_path(conf_dir, "styles"))
+        check("missing original rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("not found message", "not found" in str(exc))
+
+
+@test("styles: no delete_style function (dead-code avoidance)")
+def _():
+    check("no delete_style", not hasattr(metadata_editor, "delete_style"))
+
+
+# ============================================================
+# Display-name uniqueness (Part 6 fix, all four vocabularies)
+# ============================================================
+
+@test("collections: add duplicate display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    try:
+        metadata_editor.add_collection(
+            "new_col", "Con Teppei for Beginner",
+            path=conf_path(conf_dir, "collections"))
+        check("duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
+@test("collections: edit to another collection's display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    metadata_editor.add_collection(
+        "nhk_beginner", "NHK Beginner", path=conf_path(conf_dir, "collections"))
+    try:
+        metadata_editor.edit_collection(
+            "nhk_beginner", "Con Teppei for Beginner",
+            path=conf_path(conf_dir, "collections"))
+        check("edit duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
+@test("collections: edit keeping own display name allowed")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    items = metadata_editor.edit_collection(
+        "teppei_beginner", "Con Teppei for Beginner",
+        path=conf_path(conf_dir, "collections"))
+    check("allowed", items[0]["display_name"] == "Con Teppei for Beginner")
+
+
+@test("source types: add duplicate display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    try:
+        metadata_editor.add_source_type(
+            "new_type", "podcast_transcript",
+            path=conf_path(conf_dir, "source_types"))
+        check("duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
+@test("source types: edit to another source type's display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    try:
+        metadata_editor.edit_source_type(
+            "subtitle", "podcast_transcript",
+            path=conf_path(conf_dir, "source_types"))
+        check("edit duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
+@test("origins: add duplicate display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    try:
+        metadata_editor.add_origin(
+            "new_origin", "nhk_news", path=conf_path(conf_dir, "origins"))
+        check("duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
+@test("origins: edit to another origin's display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    write_initial(conf_dir)
+    try:
+        metadata_editor.edit_origin(
+            "nhk_news", "con_teppei_podcast",
+            path=conf_path(conf_dir, "origins"))
+        check("edit duplicate display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("message", "already exists" in str(exc))
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
