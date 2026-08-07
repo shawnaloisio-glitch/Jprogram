@@ -124,6 +124,7 @@ def _():
             sb.episode_var.set("63")
             sb.source_type_var.set("clean_text")
             sb.origin_var.set("con_teppei_podcast")
+            sb.material_level_var.set("1")
             sb.text_area.insert("1.0", "第六十三回のテストです。\n")
             sb._on_text_changed()
             sb.on_save()
