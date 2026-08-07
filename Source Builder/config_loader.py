@@ -19,6 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 import paths
+import project_config
 
 CONFIG_DIR = paths.PROJECT_ROOT / "Config"
 
@@ -26,6 +27,7 @@ CONFIG_FILES = {
     "collections": "collections.json",
     "source_types": "source_types.json",
     "origins": "origins.json",
+    "styles": "styles.json",
 }
 
 
@@ -186,6 +188,81 @@ def load_origins_full():
             if _vocab_full(v, "origin_id")]
 
 
+def load_styles():
+    """
+    Return the ordered list of style_id values.
+
+    Style ids are autoincrement integers, so unlike the string-id
+    vocabularies the entries are always object form
+    {"style_id": int, "display_name": str}. Entries without a valid
+    integer id are skipped.
+    """
+    data = load_json("styles")
+    if isinstance(data, dict):
+        values = data.get("styles")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("styles.json must contain a list")
+    return [item["style_id"] for item in values
+            if _style_id(item) is not None]
+
+
+def load_styles_full():
+    """
+    Return the ordered list of style entries WITH display names.
+
+    Style ids are autoincrement integers. display_name falls back to the
+    stringified id when an entry omits/empties display_name.
+
+    Returns:
+        [{"style_id": int, "display_name": str}, ...]
+    """
+    data = load_json("styles")
+    if isinstance(data, dict):
+        values = data.get("styles")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("styles.json must contain a list")
+    result = []
+    for item in values:
+        style_id = _style_id(item)
+        if style_id is None:
+            continue
+        display_name = str(style_id)
+        if isinstance(item, dict):
+            candidate = item.get("display_name")
+            if isinstance(candidate, str) and candidate:
+                display_name = candidate
+        result.append({"style_id": style_id, "display_name": display_name})
+    return result
+
+
+def load_material_levels_full():
+    """
+    Return the material level vocabulary WITH display names.
+
+    Material levels are a fixed project constant (project_config.
+    MATERIAL_LEVELS), not a JSON config file.
+
+    Returns:
+        [{"level": int, "display_name": str}, ...]
+    """
+    return [{"level": level, "display_name": display_name}
+            for level, display_name in project_config.MATERIAL_LEVELS]
+
+
+def _style_id(item):
+    """Extract a valid integer style id from an entry, or None."""
+    if not isinstance(item, dict):
+        return None
+    value = item.get("style_id")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
 def _vocab_id(item, key):
     """Extract the canonical id from a string or object vocabulary entry."""
     if isinstance(item, str):
@@ -238,5 +315,8 @@ __all__ = [
     "load_origins",
     "load_source_types_full",
     "load_origins_full",
+    "load_styles",
+    "load_styles_full",
+    "load_material_levels_full",
     "default_source_type_for_collection",
 ]

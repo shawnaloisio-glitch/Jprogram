@@ -3,7 +3,7 @@
 test_source_builder_gui_settings.py
 
 Deterministic tests for the Source Builder GUI settings persistence
-(persistent metadata: source_type, origin, language).
+(persistent metadata: source_type, origin, material_level).
 
 Collection is intentionally NOT persisted.
 
@@ -43,32 +43,39 @@ def check(name, cond, detail=""):
         raise AssertionError(f"{name} failed. {detail}")
 
 
+def default_settings():
+    return {"source_type": "", "origin": "", "material_level": ""}
+
+
 @test("missing settings file yields empty defaults")
 def _():
     settings = gui_settings.load_settings(temp_path())
-    check("defaults", settings == {"source_type": "", "origin": ""})
+    check("defaults", settings == default_settings())
 
 
 @test("save then load round-trips persisted keys")
 def _():
     path = temp_path()
     gui_settings.save_settings(
-        {"source_type": "subtitle", "origin": "nhk_news"},
+        {"source_type": "subtitle", "origin": "nhk_news",
+         "material_level": "2"},
         path=path)
     settings = gui_settings.load_settings(path)
     check("source_type", settings["source_type"] == "subtitle")
     check("origin", settings["origin"] == "nhk_news")
+    check("material_level", settings["material_level"] == "2")
 
 
 @test("empty values are not persisted")
 def _():
     path = temp_path()
-    gui_settings.save_settings({"source_type": "", "origin": ""},
+    gui_settings.save_settings({"source_type": "", "origin": "",
+                                "material_level": ""},
                                path=path)
     check("file empty keys",
           json.loads(path.read_text(encoding="utf-8")) == {})
     settings = gui_settings.load_settings(path)
-    check("loads empty", settings == {"source_type": "", "origin": ""})
+    check("loads empty", settings == default_settings())
 
 
 @test("corrupt settings file yields empty defaults")
@@ -76,7 +83,7 @@ def _():
     path = temp_path()
     path.write_text("{ not json", encoding="utf-8")
     settings = gui_settings.load_settings(path)
-    check("corrupt handled", settings == {"source_type": "", "origin": ""})
+    check("corrupt handled", settings == default_settings())
 
 
 @test("non-dict settings file yields empty defaults")
@@ -85,28 +92,31 @@ def _():
     path.write_text("[1, 2, 3]", encoding="utf-8")
     settings = gui_settings.load_settings(path)
     check("non-dict handled",
-          settings == {"source_type": "", "origin": ""})
+          settings == default_settings())
 
 
 @test("non-string persisted values are ignored")
 def _():
     path = temp_path()
-    path.write_text(json.dumps({"source_type": 5, "origin": None}),
+    path.write_text(json.dumps({"source_type": 5, "origin": None,
+                                "material_level": None}),
                     encoding="utf-8")
     settings = gui_settings.load_settings(path)
     check("source_type ignored", settings["source_type"] == "")
     check("origin ignored", settings["origin"] == "")
+    check("material_level ignored", settings["material_level"] == "")
 
 
 @test("unknown persisted keys are ignored (e.g. legacy language)")
 def _():
     path = temp_path()
     path.write_text(json.dumps({"source_type": "article", "origin": "nhk_news",
-                                "language": "ja"}),
+                                "material_level": "1", "language": "ja"}),
                     encoding="utf-8")
     settings = gui_settings.load_settings(path)
     check("source_type", settings["source_type"] == "article")
     check("origin", settings["origin"] == "nhk_news")
+    check("material_level", settings["material_level"] == "1")
     check("no language key", "language" not in settings)
 
 
@@ -119,7 +129,9 @@ def _():
 
 @test("persisted keys constant matches documented scope")
 def _():
-    check("keys", gui_settings.PERSISTED_KEYS == ("source_type", "origin"))
+    check("keys",
+          gui_settings.PERSISTED_KEYS ==
+          ("source_type", "origin", "material_level"))
 
 
 def main():

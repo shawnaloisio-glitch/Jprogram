@@ -204,10 +204,15 @@ class SourceBuilderApp:
         self.source_name_var = tk.StringVar()
         self.source_type_var = tk.StringVar()
         self.origin_var = tk.StringVar()
+        self.material_level_var = tk.StringVar()
+        self.style_id_var = tk.StringVar()
+        self.duration_var = tk.StringVar()
         # Display-only vars bound to the combos; they hold the friendly
         # display names while source_type_var/origin_var keep the raw ids.
         self.source_type_display_var = tk.StringVar()
         self.origin_display_var = tk.StringVar()
+        self.material_level_display_var = tk.StringVar()
+        self.style_display_var = tk.StringVar()
         self.episode_var = tk.StringVar()
         self.status_var = tk.StringVar(value="")
         self.filename_var = tk.StringVar(value="")
@@ -228,27 +233,35 @@ class SourceBuilderApp:
         self._refresh_recent_sources()
 
     def _restore_persisted_metadata(self):
-        """Restore saved source_type/origin if still valid."""
+        """Restore saved source_type/origin/material_level if still valid."""
         settings = gui_settings.load_settings()
         if settings["source_type"] in self.source_types:
             self.source_type_var.set(settings["source_type"])
         if settings["origin"] in self.origins:
             self.origin_var.set(settings["origin"])
+        if settings["material_level"] in self.material_level_label_map:
+            self.material_level_var.set(settings["material_level"])
 
     def _load_config(self):
         """Load controlled vocabulary; disable the window on config errors."""
         self.collections = []
         self.source_types = []
         self.origins = []
+        self.styles = []
         self.source_type_label_map = {}
         self.source_type_id_map = {}
         self.origin_label_map = {}
         self.origin_id_map = {}
+        self.material_level_label_map = {}
+        self.material_level_id_map = {}
+        self.style_label_map = {}
+        self.style_id_map = {}
         try:
             self.collections = config_loader.load_collections()
             self.source_types = _processable_source_types(
                 config_loader.load_source_types())
             self.origins = config_loader.load_origins()
+            self.styles = config_loader.load_styles()
             self._build_vocab_maps()
             self.config_error = None
         except config_loader.ConfigError as exc:
@@ -262,6 +275,9 @@ class SourceBuilderApp:
         membership and logic; these maps are used only to show friendly
         display names in the combos. Source type labels are limited to the
         processable subset, exactly like the id list the combo offers.
+
+        Material level ids and style ids are integers; both maps store their
+        ids as strings so the StringVar-backed combos translate cleanly.
         """
         self.source_type_label_map = {}
         self.source_type_id_map = {}
@@ -278,6 +294,24 @@ class SourceBuilderApp:
             label = entry["display_name"]
             self.origin_label_map[vid] = label
             self.origin_id_map[label] = vid
+        self.material_level_label_map = {}
+        self.material_level_id_map = {}
+        for entry in config_loader.load_material_levels_full():
+            level = str(entry["level"])
+            label = entry["display_name"]
+            self.material_level_label_map[level] = label
+            self.material_level_id_map[label] = level
+        self.style_label_map = {}
+        self.style_id_map = {}
+        # Style is optional: the leading "(none)" entry represents
+        # no-style-selected (id "" maps back to None at save time).
+        self.style_label_map[""] = "(none)"
+        self.style_id_map["(none)"] = ""
+        for entry in config_loader.load_styles_full():
+            style_id = str(entry["style_id"])
+            label = entry["display_name"]
+            self.style_label_map[style_id] = label
+            self.style_id_map[label] = style_id
 
     def _build_widgets(self):
         main = ttk.Frame(self.root, padding=12)
@@ -382,6 +416,35 @@ class SourceBuilderApp:
         self._wire_label_combo(
             self.origin_combo, self.origin_var, self.origin_display_var,
             "origin_label_map", "origin_id_map")
+        row += 1
+
+        ttk.Label(body, text="Material Level:").grid(row=row, column=0,
+                                                     sticky="w")
+        self.material_level_combo = ttk.Combobox(
+            body, textvariable=self.material_level_display_var,
+            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
+        self.material_level_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.material_level_combo, self.material_level_var,
+            self.material_level_display_var, "material_level_label_map",
+            "material_level_id_map")
+        row += 1
+
+        ttk.Label(body, text="Style:").grid(row=row, column=0, sticky="w")
+        self.style_combo = ttk.Combobox(
+            body, textvariable=self.style_display_var,
+            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
+        self.style_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.style_combo, self.style_id_var, self.style_display_var,
+            "style_label_map", "style_id_map")
+        row += 1
+
+        ttk.Label(body, text="Duration (seconds):").grid(row=row, column=0,
+                                                         sticky="w")
+        self.duration_entry = ttk.Entry(body, textvariable=self.duration_var,
+                                        width=10, font=self.combo_font)
+        self.duration_entry.grid(row=row, column=1, sticky="w")
         row += 1
 
         ttk.Separator(body, orient="horizontal").grid(
@@ -638,6 +701,9 @@ class SourceBuilderApp:
             (self.episode_var, self._on_metadata_changed),
             (self.source_type_var, self._on_metadata_changed),
             (self.origin_var, self._on_metadata_changed),
+            (self.material_level_var, self._on_metadata_changed),
+            (self.style_id_var, self._on_metadata_changed),
+            (self.duration_var, self._on_metadata_changed),
         ):
             var.trace_add("write", callback)
         # The collection selection changes field visibility (its sequencing
@@ -674,16 +740,54 @@ class SourceBuilderApp:
         self.next_button.configure(text=text)
 
     def _persist_metadata(self):
-        """Save current source_type/origin for the next session."""
+        """Save current source_type/origin/material_level for the next
+        session."""
         if self.config_error is not None:
             return
         try:
             gui_settings.save_settings({
                 "source_type": self.source_type_var.get(),
                 "origin": self.origin_var.get(),
+                "material_level": self.material_level_var.get(),
             })
         except gui_settings.SettingsError:
             pass
+
+    def _current_material_level(self):
+        """Return the selected material level as int, or None when blank."""
+        raw = self.material_level_var.get()
+        if raw == "":
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _current_style_id(self):
+        """Return the selected style id as int, or None when no style."""
+        raw = self.style_id_var.get()
+        if raw == "":
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _current_duration_seconds(self):
+        """Return the duration as a non-negative number, or None when blank
+        or not a non-negative number."""
+        raw = self.duration_var.get().strip()
+        if raw == "":
+            return None
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            return None
+        if value < 0:
+            return None
+        if value.is_integer():
+            return int(value)
+        return value
 
     def _current_form(self):
         """Collect the current form values for the ready-state engine."""
@@ -695,6 +799,9 @@ class SourceBuilderApp:
             "source_type": self.source_type_var.get(),
             "origin": self.origin_var.get(),
             "source_text": self.text_area.get("1.0", "end"),
+            "material_level": self._current_material_level(),
+            "style_id": self._current_style_id(),
+            "duration_seconds": self._current_duration_seconds(),
         }
 
     def _refresh_ready_state(self):
@@ -996,6 +1103,13 @@ class SourceBuilderApp:
         source_text = self.text_area.get("1.0", "end")
         is_collection = self.identity_var.get() == "collection"
 
+        material_level = self._current_material_level()
+        style_id = self._current_style_id()
+        duration_seconds = self._current_duration_seconds()
+        if self.duration_var.get().strip() != "" and duration_seconds is None:
+            self.status_var.set("Duration must be a non-negative number.")
+            return
+
         try:
             if is_collection:
                 if self._is_auto_collection():
@@ -1011,6 +1125,9 @@ class SourceBuilderApp:
                     origin=self.origin_var.get(),
                     source_text=source_text,
                     overwrite=False,
+                    material_level=material_level,
+                    style_id=style_id,
+                    duration_seconds=duration_seconds,
                 )
             else:
                 result = controller.create_standalone_source(
@@ -1019,6 +1136,9 @@ class SourceBuilderApp:
                     origin=self.origin_var.get(),
                     source_text=source_text,
                     overwrite=False,
+                    material_level=material_level,
+                    style_id=style_id,
+                    duration_seconds=duration_seconds,
                 )
         except Exception as exc:
             self.engine.set_error(f"Unexpected error: {exc}")
@@ -1037,6 +1157,9 @@ class SourceBuilderApp:
                 "origin": self.origin_var.get(),
                 "source_text": source_text,
                 "filename": result["filename"],
+                "material_level": material_level,
+                "style_id": style_id,
+                "duration_seconds": duration_seconds,
             })
             self._refresh_ready_state()
             self._refresh_recent_sources()
@@ -1063,6 +1186,8 @@ class SourceBuilderApp:
             episode=self.episode_var.get(),
             source_type=self.source_type_var.get(),
             origin=self.origin_var.get(),
+            material_level=self._current_material_level(),
+            style_id=self._current_style_id(),
         )
         # Apply the prepared state.
         self.identity_var.set(state["identity_type"])
@@ -1071,6 +1196,12 @@ class SourceBuilderApp:
         self.episode_var.set(state["episode"])
         self.source_type_var.set(state["source_type"])
         self.origin_var.set(state["origin"])
+        self.material_level_var.set(
+            "" if state["material_level"] is None
+            else str(state["material_level"]))
+        self.style_id_var.set(
+            "" if state["style_id"] is None else str(state["style_id"]))
+        self.duration_var.set(state["duration_seconds"])
         self.text_area.delete("1.0", "end")
         self.engine.reset()
         self._apply_mode()
@@ -1311,7 +1442,8 @@ class SourceBuilderApp:
         os.startfile(str(folder))
 
     def _open_metadata_editor(self):
-        """Launch the metadata editor window (Collections/Source Types/Origins)."""
+        """Launch the metadata editor window (Collections/Source Types/
+        Origins/Styles)."""
         metadata_editor_gui.MetadataEditorWindow(self)
 
     def _open_processing(self):
@@ -1333,9 +1465,19 @@ class SourceBuilderApp:
             values=[self.source_type_label_map[st] for st in self.source_types])
         self.origin_combo.configure(
             values=[self.origin_label_map[o] for o in self.origins])
+        self.material_level_combo.configure(
+            values=list(self.material_level_label_map.values()))
+        self.style_combo.configure(
+            values=list(self.style_label_map.values()))
         # The vocabulary may have changed; re-show the current ids' labels.
         self._sync_source_type_display()
         self._sync_origin_display()
+        self.material_level_display_var.set(
+            self.material_level_label_map.get(
+                self.material_level_var.get(), self.material_level_var.get()))
+        self.style_display_var.set(
+            self.style_label_map.get(self.style_id_var.get(),
+                                     self.style_id_var.get()))
         self._apply_mode()
         # A sequencing edit in the metadata editor may have changed the
         # selected collection's mode; ensure the hidden episode value is

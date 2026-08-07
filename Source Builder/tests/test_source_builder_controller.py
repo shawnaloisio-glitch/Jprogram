@@ -341,6 +341,36 @@ def _():
     check("no episode leak", state["episode"] == "")
 
 
+@test("next_source_state: retains material_level and style_id, resets duration")
+def _():
+    state = controller.next_source_state(
+        "collection", "teppei_beginner", 51, "podcast_transcript",
+        "con_teppei_podcast", material_level=2, style_id=3)
+    check("material level retained", state["material_level"] == 2)
+    check("style id retained", state["style_id"] == 3)
+    check("duration always reset", state["duration_seconds"] == "")
+    check("source text reset", state["source_text"] == "")
+
+
+@test("next_source_state: standalone retains material_level and style_id")
+def _():
+    state = controller.next_source_state(
+        "standalone", "", "", "article", "nhk_news",
+        material_level=1, style_id=2)
+    check("material level retained", state["material_level"] == 1)
+    check("style id retained", state["style_id"] == 2)
+    check("duration always reset", state["duration_seconds"] == "")
+    check("source name blank", state["source_name"] == "")
+
+
+@test("next_source_state: defaults when material_level/style_id omitted")
+def _():
+    state = controller.next_source_state("collection", "c", "7", "s", "o")
+    check("material level none", state["material_level"] is None)
+    check("style id none", state["style_id"] is None)
+    check("duration always reset", state["duration_seconds"] == "")
+
+
 @test("next_auto_sequence: empty collection returns 1")
 def _():
     root, sources, saved = setup()

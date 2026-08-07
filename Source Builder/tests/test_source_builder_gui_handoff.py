@@ -19,7 +19,6 @@ import json
 import pathlib
 import sys
 import tempfile
-from contextlib import contextmanager
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
@@ -34,24 +33,6 @@ import gui
 import gui_settings
 import quick_presets
 import source_package
-
-
-@contextmanager
-def _inject_material_level():
-    """Temporary: the GUI has no material-level field yet (WORKING_LIST
-    follow-up), so GUI saves pass no value. Inject a valid level so the
-    save -> package flow still tests end-to-end until the field lands."""
-    original = controller.create_collection_source
-
-    def patched(*args, **kwargs):
-        kwargs.setdefault("material_level", 1)
-        return original(*args, **kwargs)
-
-    controller.create_collection_source = patched
-    try:
-        yield
-    finally:
-        controller.create_collection_source = original
 
 
 def sandbox():
@@ -85,10 +66,10 @@ def fill_and_save(app, collection_id="teppei_beginner", episode="1"):
     app.episode_var.set(episode)
     app.source_type_var.set("podcast_transcript")
     app.origin_var.set("con_teppei_podcast")
+    app.material_level_var.set("1")
     app.text_area.insert("1.0", "こんにちは。\n")
     app._on_text_changed()
-    with _inject_material_level():
-        app.on_save()
+    app.on_save()
 
 
 TESTS = []

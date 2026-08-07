@@ -297,20 +297,25 @@ def create_source(collection_id, episode, source_type, origin, source_text,
 # ============================================================
 
 def next_source_state(identity_type, collection_id, episode,
-                      source_type, origin):
+                      source_type, origin, material_level=None,
+                      style_id=None):
     """
     Prepare the state for the next source after a successful save.
 
-    Retains stable metadata (identity type, collection, source_type, origin)
-    and resets source-specific fields. Returns only state data; no file is
-    created and no save occurs.
+    Retains stable metadata (identity type, collection, source_type, origin,
+    material_level, style_id) and resets source-specific fields. Returns
+    only state data; no file is created and no save occurs.
 
     Collection mode: suggests the next episode number (episode + 1).
     Standalone mode: blank source name.
 
+    duration_seconds always resets to blank: each source's duration is
+    distinct and never a sensible carryover default.
+
     Input:
         identity_type (str), collection_id (str), episode (int/str),
-        source_type (str), origin (str).
+        source_type (str), origin (str), material_level (int|None),
+        style_id (int|None).
 
     Output: dict:
         {
@@ -320,6 +325,9 @@ def next_source_state(identity_type, collection_id, episode,
             "source_name": str,      # "" (standalone) or "" (collection)
             "source_type": str,
             "origin": str,
+            "material_level": int | None,   # retained
+            "style_id": int | None,         # retained
+            "duration_seconds": "",         # always reset
             "source_text": "",       # always reset
         }
     """
@@ -331,6 +339,9 @@ def next_source_state(identity_type, collection_id, episode,
             "source_name": "",
             "source_type": source_type,
             "origin": origin,
+            "material_level": material_level,
+            "style_id": style_id,
+            "duration_seconds": "",
             "source_text": "",
         }
 
@@ -349,6 +360,9 @@ def next_source_state(identity_type, collection_id, episode,
         "source_name": "",
         "source_type": source_type,
         "origin": origin,
+        "material_level": material_level,
+        "style_id": style_id,
+        "duration_seconds": "",
         "source_text": "",
     }
 
@@ -433,6 +447,8 @@ class ReadyStateEngine:
                 "source_text": str,
                 "filename": str,
                 "material_level": int | None,   # optional
+                "style_id": int | None,         # optional
+                "duration_seconds": int | float | None,  # optional
             }
         The engine returns SAVED only while the form still matches this
         snapshot (i.e. until the user edits a field).
@@ -445,12 +461,14 @@ class ReadyStateEngine:
         self._error_message = str(message)
 
     def evaluate(self, identity_type, collection_id, source_name, episode,
-                 source_type, origin, source_text, material_level=None):
+                 source_type, origin, source_text, material_level=None,
+                 style_id=None, duration_seconds=None):
         """
         Return the current workflow state for the given form fields.
 
-        material_level is tracked but never blocks: it is optional plumbing
-        until the GUI provides a field to fill in.
+        material_level is mandatory: the engine stays INCOMPLETE until a
+        level is supplied. style_id and duration_seconds are optional; they
+        are tracked in the saved snapshot but never block.
 
         Output: dict:
             {
@@ -472,7 +490,8 @@ class ReadyStateEngine:
 
         if self._saved_snapshot is not None and self._matches_saved(
                 identity_type, collection_id, source_name, episode,
-                source_type, origin, source_text, material_level):
+                source_type, origin, source_text, material_level, style_id,
+                duration_seconds):
             return {
                 "state": "SAVED",
                 "message": "Saved successfully.",
@@ -483,7 +502,7 @@ class ReadyStateEngine:
 
         blocking = self._first_blocking_reason(
             identity_type, collection_id, source_name, episode,
-            source_type, origin, source_text)
+            source_type, origin, source_text, material_level)
         if blocking is not None:
             return {
                 "state": "INCOMPLETE",
@@ -503,7 +522,8 @@ class ReadyStateEngine:
 
     def _matches_saved(self, identity_type, collection_id, source_name,
                        episode, source_type, origin, source_text,
-                       material_level=None):
+                       material_level=None, style_id=None,
+                       duration_seconds=None):
         snap = self._saved_snapshot
         return (
             identity_type == snap["identity_type"]
@@ -515,11 +535,15 @@ class ReadyStateEngine:
             and (source_text or "") == (snap.get("source_text") or "")
             and _snapshot_or_blank(material_level) == _snapshot_or_blank(
                 snap.get("material_level"))
+            and _snapshot_or_blank(style_id) == _snapshot_or_blank(
+                snap.get("style_id"))
+            and _snapshot_or_blank(duration_seconds) == _snapshot_or_blank(
+                snap.get("duration_seconds"))
         )
 
     def _first_blocking_reason(self, identity_type, collection_id,
                                source_name, episode, source_type, origin,
-                               source_text):
+                               source_text, material_level=None):
         """Return the first blocking reason string, or None when ready."""
         if identity_type not in IDENTITY_TYPES:
             return "Waiting for identity type."
@@ -543,6 +567,8 @@ class ReadyStateEngine:
             return "Waiting for source type."
         if not origin:
             return "Waiting for origin."
+        if material_level is None:
+            return "Waiting for material level."
         if source_text is None or source_text.strip() == "":
             return "Waiting for source text."
         if not source_package.is_processable_source_type(source_type):

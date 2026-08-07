@@ -49,7 +49,7 @@ def patch_collections_config(collections):
     return restore
 
 
-def patch_vocab_config(source_types, origins):
+def patch_vocab_config(source_types, origins, styles=None):
     """Point config_loader.CONFIG_DIR at a sandbox; return restore fn."""
     saved = config_loader.CONFIG_DIR
     tmp = pathlib.Path(tempfile.mkdtemp())
@@ -59,6 +59,9 @@ def patch_vocab_config(source_types, origins):
         json.dumps({"source_types": source_types}), encoding="utf-8")
     (config_dir / "origins.json").write_text(
         json.dumps({"origins": origins}), encoding="utf-8")
+    if styles is not None:
+        (config_dir / "styles.json").write_text(
+            json.dumps({"styles": styles}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
 
     def restore():
@@ -276,6 +279,109 @@ def _():
               config_loader.load_origins() == ["cijsub"])
     finally:
         restore()
+
+
+@test("styles: config file entry present in CONFIG_FILES")
+def _():
+    check("styles file name",
+          config_loader.CONFIG_FILES["styles"] == "styles.json")
+
+
+@test("styles: load returns ordered integer style ids")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        styles=[{"style_id": 3, "display_name": "A"},
+                {"style_id": 1, "display_name": "B"},
+                {"style_id": 2, "display_name": "C"}])
+    try:
+        ids = config_loader.load_styles()
+        check("order", ids == [3, 1, 2])
+        check("int ids", all(isinstance(i, int) for i in ids))
+    finally:
+        restore()
+
+
+@test("styles: load skips non-integer and non-dict entries")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        styles=[{"style_id": 1, "display_name": "A"},
+                {"style_id": "x", "display_name": "Bad"},
+                {"style_id": True, "display_name": "Bool"},
+                "plain",
+                {"display_name": "No id"}])
+    try:
+        check("only valid int ids",
+              config_loader.load_styles() == [1])
+    finally:
+        restore()
+
+
+@test("styles: load_styles_full returns id + display_name pairs in order")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        styles=[{"style_id": 1, "display_name": "Documentary"},
+                {"style_id": 2, "display_name": "Podcast"}])
+    try:
+        entries = config_loader.load_styles_full()
+        check("order", [e["style_id"] for e in entries] == [1, 2])
+        check("display name 1", entries[0]["display_name"] == "Documentary")
+        check("display name 2", entries[1]["display_name"] == "Podcast")
+        check("ids are ints",
+              all(isinstance(e["style_id"], int) for e in entries))
+    finally:
+        restore()
+
+
+@test("styles: load_styles_full falls back to the stringified id")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        styles=[{"style_id": 4},
+                {"style_id": 5, "display_name": ""}])
+    try:
+        entries = config_loader.load_styles_full()
+        check("missing display fallback",
+              entries[0]["display_name"] == "4")
+        check("empty display fallback",
+              entries[1]["display_name"] == "5")
+    finally:
+        restore()
+
+
+@test("styles: missing styles.json raises ConfigError")
+def _():
+    restore = patch_vocab_config([], [])
+    try:
+        try:
+            config_loader.load_styles()
+            check("missing styles file raises", False)
+        except config_loader.ConfigError:
+            check("missing styles file raises", True)
+    finally:
+        restore()
+
+
+@test("load_material_levels_full mirrors project_config.MATERIAL_LEVELS")
+def _():
+    import project_config
+    entries = config_loader.load_material_levels_full()
+    check("count matches",
+          len(entries) == len(project_config.MATERIAL_LEVELS))
+    check("ordered levels",
+          [e["level"] for e in entries] ==
+          [level for level, _ in project_config.MATERIAL_LEVELS])
+    check("display names",
+          [e["display_name"] for e in entries] ==
+          [display_name for _, display_name in project_config.MATERIAL_LEVELS])
+    check("shape",
+          all(set(e) == {"level", "display_name"} for e in entries))
 
 
 def main():

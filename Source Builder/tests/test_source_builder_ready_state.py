@@ -61,6 +61,7 @@ def ev(engine, **overrides):
         "source_type": "podcast_transcript",
         "origin": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
+        "material_level": 2,
     }
     base.update(overrides)
     return engine.evaluate(**base)
@@ -230,6 +231,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         saved_state = ev(engine)
@@ -256,6 +258,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         # Changing the episode breaks the saved snapshot.
@@ -280,6 +283,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         edited = ev(engine, source_text="")
@@ -302,6 +306,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0005.txt",
         })
         check("saved first", ev(engine, episode="5")["state"] == "SAVED")
@@ -361,6 +366,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         check("saved after error", ev(engine)["state"] == "SAVED")
@@ -387,6 +393,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         check("saved: save off", ev(engine)["save_enabled"] is False)
@@ -411,6 +418,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         check("saved: next on", ev(engine)["next_enabled"] is True)
@@ -434,21 +442,62 @@ def _():
 
 
 # ============================================================
-# material_level plumbing (optional; never blocks)
+# material_level (mandatory), style_id / duration_seconds (optional)
 # ============================================================
 
-@test("material_level: omitted evaluate arg behaves exactly as before")
+def saved_snapshot(**overrides):
+    """Build a full saved snapshot for the default collection form."""
+    snap = {
+        "identity_type": "collection",
+        "collection_id": "teppei_beginner",
+        "source_name": "",
+        "episode": "1",
+        "source_type": "podcast_transcript",
+        "origin": "con_teppei_podcast",
+        "source_text": "これはテストです。\n",
+        "filename": "teppei_beginner_ep0001.txt",
+        "material_level": 2,
+    }
+    snap.update(overrides)
+    return snap
+
+
+@test("material_level: missing level is a blocking reason")
 def _():
     root, sources, saved = setup()
     try:
-        result = ev(controller.ReadyStateEngine())
-        check("state ready", result["state"] == "READY")
-        check("save enabled", result["save_enabled"] is True)
+        result = ev(controller.ReadyStateEngine(), material_level=None)
+        check("state", result["state"] == "INCOMPLETE")
+        check("message", result["message"] == "Waiting for material level.")
+        check("save disabled", result["save_enabled"] is False)
+        check("next disabled", result["next_enabled"] is False)
     finally:
         restore(saved)
 
 
-@test("material_level: supplied evaluate arg is non-blocking")
+@test("material_level: missing level blocks even when the rest is ready")
+def _():
+    root, sources, saved = setup()
+    try:
+        # Everything present except the level: only the level check fires.
+        result = ev(controller.ReadyStateEngine(), material_level=None)
+        check("message", result["message"] == "Waiting for material level.")
+    finally:
+        restore(saved)
+
+
+@test("material_level: blocking reason is ordered after origin")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), origin="",
+                    material_level=None)
+        check("message", result["message"] == "Waiting for origin.")
+    finally:
+        restore(saved)
+
+
+@test("material_level: supplied level is not blocking")
 def _():
     root, sources, saved = setup()
     try:
@@ -465,60 +514,101 @@ def _():
     root, sources, saved = setup()
     try:
         engine = controller.ReadyStateEngine()
-        engine.mark_saved({
-            "identity_type": "collection",
-            "collection_id": "teppei_beginner",
-            "source_name": "",
-            "episode": "1",
-            "source_type": "podcast_transcript",
-            "origin": "con_teppei_podcast",
-            "source_text": "これはテストです。\n",
-            "filename": "teppei_beginner_ep0001.txt",
-            "material_level": 2,
-        })
+        engine.mark_saved(saved_snapshot())
         check("same level -> SAVED",
               ev(engine, material_level=2)["state"] == "SAVED")
         check("different level breaks match",
               ev(engine, material_level=3)["state"] != "SAVED")
-        check("omitted level breaks match",
-              ev(engine)["state"] != "SAVED")
+        check("missing level breaks match",
+              ev(engine, material_level=None)["state"] != "SAVED")
     finally:
         restore(saved)
 
 
-@test("material_level: snapshot without the key still matches when omitted")
+@test("material_level: snapshot without the key breaks a filled form")
 def _():
     root, sources, saved = setup()
     try:
         engine = controller.ReadyStateEngine()
-        engine.mark_saved({
-            "identity_type": "collection",
-            "collection_id": "teppei_beginner",
-            "source_name": "",
-            "episode": "1",
-            "source_type": "podcast_transcript",
-            "origin": "con_teppei_podcast",
-            "source_text": "これはテストです。\n",
-            "filename": "teppei_beginner_ep0001.txt",
-        })
-        # No material_level anywhere: identical to the pre-plumbing behavior.
-        check("saved without the field",
-              ev(engine)["state"] == "SAVED")
-        check("save disabled", ev(engine)["save_enabled"] is False)
-        check("next enabled", ev(engine)["next_enabled"] is True)
+        engine.mark_saved(saved_snapshot())
+        # Drop the level key from the stored snapshot entirely: a form that
+        # carries a level cannot match a snapshot that recorded none.
+        snap = saved_snapshot()
+        del snap["material_level"]
+        engine.mark_saved(snap)
+        check("filled form does not match keyless snapshot",
+              ev(engine, material_level=2)["state"] != "SAVED")
     finally:
         restore(saved)
 
 
-@test("material_level: no blocking check in _first_blocking_reason")
+@test("style_id: snapshot matching includes the optional field")
 def _():
     root, sources, saved = setup()
     try:
-        # An incomplete form still reports the first existing blocking reason,
-        # never a material_level one.
-        result = ev(controller.ReadyStateEngine(), collection_id="",
-                    episode="", material_level=None)
-        check("message", result["message"] == "Waiting for collection.")
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved(saved_snapshot(style_id=3))
+        check("same style -> SAVED",
+              ev(engine, style_id=3)["state"] == "SAVED")
+        check("different style breaks match",
+              ev(engine, style_id=4)["state"] != "SAVED")
+        check("missing style breaks match",
+              ev(engine, style_id=None)["state"] != "SAVED")
+    finally:
+        restore(saved)
+
+
+@test("style_id: optional field never blocks")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), style_id=None)
+        check("ready without style", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+    finally:
+        restore(saved)
+
+
+@test("duration_seconds: snapshot matching includes the optional field")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved(saved_snapshot(duration_seconds=90))
+        check("same duration -> SAVED",
+              ev(engine, duration_seconds=90)["state"] == "SAVED")
+        check("different duration breaks match",
+              ev(engine, duration_seconds=120)["state"] != "SAVED")
+        check("missing duration breaks match",
+              ev(engine, duration_seconds=None)["state"] != "SAVED")
+    finally:
+        restore(saved)
+
+
+@test("duration_seconds: optional field never blocks")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), duration_seconds=None)
+        check("ready without duration", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+    finally:
+        restore(saved)
+
+
+@test("style_id and duration_seconds: snapshot without keys still matches")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        # Snapshot records no style/duration; a form that also omits them
+        # still matches (both optional, default None).
+        engine.mark_saved(saved_snapshot())
+        check("saved with optional fields omitted",
+              ev(engine, style_id=None, duration_seconds=None)["state"]
+              == "SAVED")
+        check("save disabled", ev(engine)["save_enabled"] is False)
+        check("next enabled", ev(engine)["next_enabled"] is True)
     finally:
         restore(saved)
 

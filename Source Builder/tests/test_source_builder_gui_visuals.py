@@ -60,6 +60,7 @@ def ev(engine, **overrides):
         "source_type": "podcast_transcript",
         "origin": "con_teppei_podcast",
         "source_text": "これはテストです。\n",
+        "material_level": 2,
     }
     base.update(overrides)
     return engine.evaluate(**base)
@@ -132,6 +133,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         snapshot(ev(engine))  # SAVED
@@ -165,6 +167,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         snapshot(ev(engine))  # SAVED
@@ -194,6 +197,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         states_seen.add(ev(engine)["state"])  # SAVED
@@ -306,6 +310,7 @@ def _():
             "source_type": "podcast_transcript",
             "origin": "con_teppei_podcast",
             "source_text": "これはテストです。\n",
+            "material_level": 2,
             "filename": "teppei_beginner_ep0001.txt",
         })
         saved = ev(engine)

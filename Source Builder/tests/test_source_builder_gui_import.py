@@ -20,7 +20,6 @@ import json
 import pathlib
 import sys
 import tempfile
-from contextlib import contextmanager
 from unittest.mock import patch
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -40,24 +39,6 @@ import import_material
 import quick_presets
 import source_package
 import paths
-
-
-@contextmanager
-def _inject_material_level():
-    """Temporary: the GUI has no material-level field yet (WORKING_LIST
-    follow-up), so GUI saves pass no value. Inject a valid level so the
-    save -> package flow still tests end-to-end until the field lands."""
-    original = controller.create_collection_source
-
-    def patched(*args, **kwargs):
-        kwargs.setdefault("material_level", 1)
-        return original(*args, **kwargs)
-
-    controller.create_collection_source = patched
-    try:
-        yield
-    finally:
-        controller.create_collection_source = original
 
 
 def sandbox():
@@ -83,6 +64,8 @@ def sandbox():
         {"source_types": ["podcast_transcript"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
+                                            encoding="utf-8")
 
     controller.SOURCES_ROOT = tmp / "Sources"
     gui_settings.SETTINGS_PATH = tmp / "gui_settings.json"
@@ -230,9 +213,9 @@ def _():
             app.episode_var.set("70")
             app.source_type_var.set("podcast_transcript")
             app.origin_var.set("con_teppei_podcast")
+            app.material_level_var.set("1")
             app._on_metadata_changed()
-            with _inject_material_level():
-                app.on_save()
+            app.on_save()
             check("saved", app._current_state == "SAVED")
             check("canonical exists", app._saved_path.is_file())
             package_path = source_package.package_path_for(app._saved_path)
@@ -257,6 +240,7 @@ def _():
             app.episode_var.set("71")
             app.source_type_var.set("podcast_transcript")
             app.origin_var.set("con_teppei_podcast")
+            app.material_level_var.set("1")
             app.text_area.insert("1.0", "直接入力の本文。\n")
             app._on_text_changed()
             app.on_save()

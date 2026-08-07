@@ -67,6 +67,8 @@ def sandbox():
     (conf_dir / "origins.json").write_text(json.dumps({
         "origins": ["con_teppei_podcast", "nhk_news"],
     }), encoding="utf-8")
+    (conf_dir / "styles.json").write_text(json.dumps({"styles": []}),
+                                          encoding="utf-8")
 
     controller.SOURCES_ROOT = tmp / "Sources"
     gui_settings.SETTINGS_PATH = tmp / "gui_settings.json"
@@ -860,6 +862,29 @@ def select_tree_row_by_id(tab, collection_id):
     return False
 
 
+def styles_tab_frame(editor):
+    """Return the Styles tab's frame inside the metadata editor."""
+    import tkinter.ttk as ttk
+    notebook = [c for c in editor.winfo_children()
+                if isinstance(c, ttk.Notebook)][0]
+    for tab_id in notebook.tabs():
+        if notebook.tab(tab_id, "text") == "Styles":
+            return notebook.nametowidget(tab_id)
+    return None
+
+
+def treeview_rows(tab):
+    """Collect all Treeview row value tuples inside a tab."""
+    import tkinter.ttk as ttk
+    rows = []
+    for child in tab.winfo_children():
+        if isinstance(child, ttk.Treeview):
+            rows.extend(child.item(iid, "values")
+                        for iid in child.get_children())
+        rows.extend(treeview_rows(child))
+    return rows
+
+
 @test("add dialog: sequencing combo defaults to episodic when left at default")
 def _():
     restore = sandbox()
@@ -1366,6 +1391,270 @@ def _():
                   by_id["nhk_st"]["default_source_type"] == "podcast_transcript")
             check("sequencing default still episodic",
                   by_id["nhk_st"]["sequencing"] == "episodic")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+# ============================================================
+# Styles tab (Add hides the autoincrement id; Edit locks it)
+# ============================================================
+
+@test("metadata editor opens with a Styles tab")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app._open_metadata_editor()
+            editor = [w for w in root.winfo_children()
+                      if isinstance(w, tk.Toplevel)
+                      and w.title() == "Edit Metadata"][0]
+            import tkinter.ttk as ttk
+            notebook = [c for c in editor.winfo_children()
+                        if isinstance(c, ttk.Notebook)][0]
+            tabs = [notebook.tab(tab_id, "text")
+                    for tab_id in notebook.tabs()]
+            check("styles tab", "Styles" in tabs)
+            check("styles tab last",
+                  tabs.index("Styles") == len(tabs) - 1)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("styles Add dialog shows only Display Name, never a style id field")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = styles_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def inspect():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                import tkinter.ttk as ttk
+                entries = []
+                labels = []
+
+                def collect(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Entry):
+                            entries.append(c)
+                        if isinstance(c, ttk.Label):
+                            labels.append(c.cget("text"))
+                        collect(c)
+
+                collect(d)
+                result["entry_count"] = len(entries)
+                result["labels"] = labels
+                result["has_style_id_field"] = any(
+                    text.strip() == "Style ID" for text in labels)
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, inspect)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("one entry (display name only)",
+                  result.get("entry_count") == 1)
+            check("no style id field",
+                  result.get("has_style_id_field") is False)
+            text = " ".join(result.get("labels", []))
+            check("display name label present", "Display Name" in text)
+            check("helper mentions auto ids", "assigned automatically" in text)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("styles Add dialog completes and persists a new style")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = styles_tab_frame(editor)
+            add_button = find_button_in(tab, "Add")
+            result = {}
+
+            def drive_add():
+                add_button.invoke()
+
+            def fill_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Add"]
+                if not tops:
+                    result["error"] = "Add dialog not found"
+                    return
+                d = tops[0]
+                fill_dialog_entries(d, ["Documentary"])
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            root.after(100, drive_add)
+            root.after(250, fill_and_save)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            styles = metadata_editor.load_styles()
+            check("style added", len(styles) == 1)
+            check("autoincrement id", styles[0]["style_id"] == 1)
+            check("display stored", styles[0]["display_name"] == "Documentary")
+            check("tree row appears",
+                  ("1", "Documentary") in treeview_rows(tab))
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("styles Edit dialog shows the style id locked and pre-filled")
+def _():
+    restore = sandbox()
+    try:
+        metadata_editor.add_style("Documentary")
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = styles_tab_frame(editor)
+            edit_button = find_button_in(tab, "Edit")
+            result = {}
+
+            def drive_edit():
+                result["row_selected"] = select_first_tree_row(tab)
+                edit_button.invoke()
+
+            def inspect():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Edit"]
+                if not tops:
+                    result["error"] = "Edit dialog not found"
+                    return
+                d = tops[0]
+                import tkinter.ttk as ttk
+                entries = []
+
+                def collect(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Entry):
+                            entries.append(c)
+                        collect(c)
+
+                collect(d)
+                result["entry_count"] = len(entries)
+                if len(entries) >= 2:
+                    result["id_value"] = entries[0].get()
+                    result["id_state"] = str(entries[0].cget("state"))
+                labels = []
+
+                def collect_labels(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Label):
+                            labels.append(c.cget("text"))
+                        collect_labels(c)
+
+                collect_labels(d)
+                result["labels"] = labels
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            root.after(100, drive_edit)
+            root.after(250, inspect)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("row selected", result.get("row_selected") is True)
+            check("two entries (id + display)", result.get("entry_count") == 2)
+            check("id pre-filled", result.get("id_value") == "1")
+            check("id locked readonly", result.get("id_state") == "readonly")
+            text = " ".join(result.get("labels", []))
+            check("lock indicator on id label", "\U0001F512" in text)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("styles Edit dialog renames the selected style")
+def _():
+    restore = sandbox()
+    try:
+        metadata_editor.add_style("Documentary")
+        root, app = make_visible_app(restore)
+        try:
+            editor = open_editor(app)
+            tab = styles_tab_frame(editor)
+            edit_button = find_button_in(tab, "Edit")
+            result = {}
+
+            def drive_edit():
+                result["row_selected"] = select_first_tree_row(tab)
+                edit_button.invoke()
+
+            def rename_and_save():
+                tops = [w for w in root.winfo_children()
+                        if isinstance(w, tk.Toplevel)
+                        and w.title() == "Edit"]
+                if not tops:
+                    result["error"] = "Edit dialog not found"
+                    return
+                d = tops[0]
+                import tkinter.ttk as ttk
+                entries = []
+
+                def collect(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Entry):
+                            entries.append(c)
+                        collect(c)
+
+                collect(d)
+                # entries[0] is the locked id; entries[1] is Display Name.
+                if len(entries) >= 2:
+                    entries[1].delete(0, "end")
+                    entries[1].insert(0, "Documentary Series")
+                save = find_button_in(d, "Save")
+                if save:
+                    save.invoke()
+
+            root.after(100, drive_edit)
+            root.after(250, rename_and_save)
+            root.after(2500, root.quit)
+            root.mainloop()
+
+            check("no error", "error" not in result)
+            check("row selected", result.get("row_selected") is True)
+            styles = metadata_editor.load_styles()
+            check("still one style", len(styles) == 1)
+            check("id unchanged", styles[0]["style_id"] == 1)
+            check("renamed", styles[0]["display_name"] == "Documentary Series")
         finally:
             root.destroy()
     finally:

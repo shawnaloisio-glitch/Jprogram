@@ -23,7 +23,6 @@ import json
 import pathlib
 import sys
 import tempfile
-from contextlib import contextmanager
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
@@ -42,24 +41,6 @@ import metadata_editor
 import quick_presets
 import source_package
 import paths
-
-
-@contextmanager
-def _inject_material_level():
-    """Temporary: the GUI has no material-level field yet (WORKING_LIST
-    follow-up), so GUI saves pass no value. Inject a valid level so the
-    save -> package flow still tests end-to-end until the field lands."""
-    original = controller.create_collection_source
-
-    def patched(*args, **kwargs):
-        kwargs.setdefault("material_level", 1)
-        return original(*args, **kwargs)
-
-    controller.create_collection_source = patched
-    try:
-        yield
-    finally:
-        controller.create_collection_source = original
 
 
 def sandbox():
@@ -98,6 +79,12 @@ def sandbox():
         "origins": [
             {"origin_id": "cijsub", "display_name": "CiJapanese Subs"},
             {"origin_id": "nhk_news", "display_name": "nhk_news"},
+        ],
+    }), encoding="utf-8")
+    (config_dir / "styles.json").write_text(json.dumps({
+        "styles": [
+            {"style_id": 1, "display_name": "Documentary"},
+            {"style_id": 2, "display_name": "Podcast"},
         ],
     }), encoding="utf-8")
 
@@ -266,12 +253,12 @@ def _():
             app.episode_var.set("70")
             app.source_type_var.set("podcast_transcript")
             app.origin_var.set("cijsub")
+            app.material_level_var.set("1")
             app.text_area.insert("1.0", "こんにちは。\n元気です。\n")
             app._on_text_changed()
             app._refresh_ready_state()
             check("ready", app._current_state == "READY")
-            with _inject_material_level():
-                app.on_save()
+            app.on_save()
             check("saved", app._current_state == "SAVED")
             package_path = source_package.package_path_for(app._saved_path)
             data = json.loads(package_path.read_text(encoding="utf-8"))
@@ -392,6 +379,279 @@ def _():
             app._on_source_type_selected()
             check("selection maps back to the raw id",
                   app.source_type_var.get() == "podcast_transcript")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+# ============================================================
+# Material Level / Style / Duration form fields
+# ============================================================
+
+@test("material level combo offers all configured levels by display name")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            values = app.material_level_combo.cget("values")
+            check("five levels in order", values == (
+                "Ungraded", "Absolute Beginner", "Beginner",
+                "Intermediate", "Advanced"))
+            check("raw level hidden", "1" not in values)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("material level selection maps the label back to the level id")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.material_level_combo.set("Absolute Beginner")
+            app._apply_label_to_id(
+                app.material_level_display_var, app.material_level_id_map,
+                app.material_level_var)
+            check("level id", app.material_level_var.get() == "1")
+            check("display stays the label",
+                  app.material_level_display_var.get() == "Absolute Beginner")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("style combo shows (none) leading entry before style labels")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            values = app.style_combo.cget("values")
+            check("leading none", values[0] == "(none)")
+            check("styles offered",
+                  "Documentary" in values and "Podcast" in values)
+            check("raw ids hidden", "1" not in values)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("style selection maps label to id; (none) maps to blank")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.style_combo.set("Documentary")
+            app._apply_label_to_id(
+                app.style_display_var, app.style_id_map, app.style_id_var)
+            check("style id", app.style_id_var.get() == "1")
+
+            app.style_combo.set("(none)")
+            app._apply_label_to_id(
+                app.style_display_var, app.style_id_map, app.style_id_var)
+            check("none -> blank", app.style_id_var.get() == "")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("save passes material level, style id, and duration to the package")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("80")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("1")
+            app.style_combo.set("Documentary")
+            app._apply_label_to_id(
+                app.style_display_var, app.style_id_map, app.style_id_var)
+            app.duration_var.set("90")
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app._refresh_ready_state()
+            check("ready", app._current_state == "READY")
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            package = json.loads(source_package.package_path_for(
+                app._saved_path).read_text(encoding="utf-8"))
+            check("material level int", package["material_level"] == 1)
+            check("style id int", package["style_id"] == 1)
+            check("duration int", package["duration_seconds"] == 90)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("no style selected saves style_id None (not the blank string)")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("81")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("2")
+            # Style left at the default "(none)" entry.
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            package = json.loads(source_package.package_path_for(
+                app._saved_path).read_text(encoding="utf-8"))
+            check("style none -> null", package["style_id"] is None)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("blank duration saves None")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("82")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("2")
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app.on_save()
+            package = json.loads(source_package.package_path_for(
+                app._saved_path).read_text(encoding="utf-8"))
+            check("duration none", package["duration_seconds"] is None)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("invalid duration blocks the save with a plain message")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("83")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("2")
+            app.text_area.insert("1.0", "本文。\n")
+            app.duration_var.set("abc")
+            app._on_text_changed()
+            app._refresh_ready_state()
+            # Duration is non-blocking in the engine; the save itself rejects it.
+            app.on_save()
+            check("not saved", app._current_state != "SAVED")
+            check("no canonical file", app._saved_path is None)
+            check("plain message",
+                  "Duration must be a non-negative number."
+                  in app.status_var.get())
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("negative duration also blocks the save")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("84")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("2")
+            app.text_area.insert("1.0", "本文。\n")
+            app.duration_var.set("-5")
+            app._on_text_changed()
+            app.on_save()
+            check("not saved", app._current_state != "SAVED")
+            check("plain message",
+                  "Duration must be a non-negative number."
+                  in app.status_var.get())
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("material level restores from persisted settings when valid")
+def _():
+    restore = sandbox()
+    try:
+        gui_settings.save_settings({"material_level": "3"})
+        root, app = make_app(restore)
+        try:
+            check("level restored", app.material_level_var.get() == "3")
+            check("label shown",
+                  app.material_level_combo.get() == "Intermediate")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("material level restore ignores an invalid stored level")
+def _():
+    restore = sandbox()
+    try:
+        gui_settings.save_settings({"material_level": "99"})
+        root, app = make_app(restore)
+        try:
+            check("invalid level not restored",
+                  app.material_level_var.get() == "")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Add Another retains material level and style, resets duration")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("85")
+            app.source_type_var.set("podcast_transcript")
+            app.origin_var.set("cijsub")
+            app.material_level_var.set("1")
+            app.style_combo.set("Documentary")
+            app._apply_label_to_id(
+                app.style_display_var, app.style_id_map, app.style_id_var)
+            app.duration_var.set("60")
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            app.on_next_source()
+            check("material level retained",
+                  app.material_level_var.get() == "1")
+            check("style retained", app.style_id_var.get() == "1")
+            check("duration reset", app.duration_var.get() == "")
+            check("episode incremented", app.episode_var.get() == "86")
         finally:
             root.destroy()
     finally:

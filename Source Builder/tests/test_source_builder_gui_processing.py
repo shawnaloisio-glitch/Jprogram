@@ -68,6 +68,8 @@ def sandbox():
         {"source_types": ["podcast_transcript"]}), encoding="utf-8")
     (config_dir / "origins.json").write_text(json.dumps(
         {"origins": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+    (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
+                                            encoding="utf-8")
 
     controller.SOURCES_ROOT = tmp / "Sources"
     gui_settings.SETTINGS_PATH = tmp / "gui_settings.json"
