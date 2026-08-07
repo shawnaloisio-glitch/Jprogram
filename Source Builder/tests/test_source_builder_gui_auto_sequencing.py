@@ -2,18 +2,24 @@
 """
 test_source_builder_gui_auto_sequencing.py
 
-GUI-level tests for auto-sequencing of non-episodic collections:
+GUI-level tests for the hidden auto-incrementing episode and the optional
+Episode#/Season# form fields:
 
-- an "auto" collection hides the Episode field and the collection combo
-  stays visible,
-- an "episodic" collection (and a collection with no sequencing value)
-  keeps the visible Episode field,
-- switching the selected collection re-applies field visibility,
-- standalone mode hides both the collection combo and the episode field,
-- selecting an auto collection silently fills the hidden episode with the
-  live next sequence (max+1, gaps never filled),
-- saving an auto collection recomputes the sequence fresh so a source
-  added since selection is never overwritten.
+- the Episode field is never shown for any collection (every collection now
+  uses a hidden auto-incrementing system episode; legacy "sequencing" keys
+  in the config are ignored),
+- standalone mode hides the collection combo and the episode field,
+- selecting a collection silently fills the hidden episode with the live
+  next sequence (max+1, gaps never filled),
+- saving recomputes the sequence fresh so a source added since selection is
+  never overwritten,
+- a user-typed episode value is never honored (the controller always
+  computes the identity episode itself),
+- Episode# defaults to "1" on a fresh session, auto-advances to the
+  previous value + 1 after a successful save, and falls back to "1" when the
+  previous value was not a valid integer,
+- Season# defaults to "1" and is retained unchanged across saves,
+- switching the selected collection does not reset Episode#/Season#.
 
 These tests build the actual Tk window (withdrawn) with a sandboxed Config
 and a sandboxed Sources root.
@@ -117,66 +123,47 @@ def is_visible(widget):
     return widget.winfo_manager() == "grid"
 
 
-@test("auto collection hides the Episode field, keeps the collection combo")
+def fill_ready(app, collection_id):
+    """Set a complete, saveable collection form on the app."""
+    app.collection_var.set(collection_id)
+    app.source_type_var.set("clean_text")
+    app.creator_var.set("con_teppei_podcast")
+    app.material_level_var.set("1")
+    app.text_area.insert("1.0", "こんにちは。\n")
+    app._on_text_changed()
+
+
+@test("Episode field is never shown for any collection")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            app.collection_var.set("auto_series")
-            check("collection combo visible", is_visible(app.collection_combo))
+            for collection_id in ("auto_series", "episodic_series",
+                                  "unspecified_series"):
+                app.collection_var.set(collection_id)
+                check(f"collection combo visible for {collection_id}",
+                      is_visible(app.collection_combo))
+                check(f"episode label hidden for {collection_id}",
+                      not is_visible(app.episode_label))
+                check(f"episode entry hidden for {collection_id}",
+                      not is_visible(app.episode_entry))
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("legacy sequencing keys do not re-show the Episode field")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            # "episodic" was the legacy value that used to show the field.
+            app.collection_var.set("episodic_series")
             check("episode label hidden", not is_visible(app.episode_label))
             check("episode entry hidden", not is_visible(app.episode_entry))
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("episodic collection shows the Episode field")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_app(restore)
-        try:
-            app.collection_var.set("episodic_series")
-            check("episode label visible", is_visible(app.episode_label))
-            check("episode entry visible", is_visible(app.episode_entry))
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("collection without a sequencing value behaves episodic")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_app(restore)
-        try:
-            app.collection_var.set("unspecified_series")
-            check("episode shown by default",
-                  is_visible(app.episode_label))
-            check("episode entry shown by default",
-                  is_visible(app.episode_entry))
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("switching the selected collection re-applies field visibility")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_app(restore)
-        try:
-            app.collection_var.set("auto_series")
-            check("episode hidden for auto", not is_visible(app.episode_label))
-            app.collection_var.set("episodic_series")
-            check("episode shown for episodic", is_visible(app.episode_label))
-            app.collection_var.set("auto_series")
-            check("episode hidden again", not is_visible(app.episode_label))
         finally:
             root.destroy()
     finally:
@@ -201,7 +188,7 @@ def _():
         restore()
 
 
-@test("auto collection fills the hidden episode on selection")
+@test("selecting a collection fills the hidden episode with the next sequence")
 def _():
     restore = sandbox()
     try:
@@ -224,19 +211,13 @@ def _():
         restore()
 
 
-@test("saving an auto collection recomputes the sequence fresh")
+@test("saving recomputes the hidden sequence fresh")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
-            app.collection_var.set("auto_series")
-            check("starts at 1", app.episode_var.get() == "1")
-            app.source_type_var.set("clean_text")
-            app.creator_var.set("con_teppei_podcast")
-            app.material_level_var.set("1")
-            app.text_area.insert("1.0", "こんにちは。\n")
-            app._on_text_changed()
+            fill_ready(app, "auto_series")
             check("ready before external add", app._current_state == "READY")
 
             # A source (episode 1) lands in the folder after selection.
@@ -247,8 +228,6 @@ def _():
 
             check("saved", app._current_state == "SAVED")
             check("saved path set", app._saved_path is not None)
-            check("episode advanced past stale value",
-                  app.episode_var.get() == "2")
             saved_name = pathlib.Path(app._saved_path).name
             check("saved episode 2", saved_name == "auto_series_ep0002.txt")
             check("episode 1 file preserved",
@@ -259,14 +238,13 @@ def _():
         restore()
 
 
-@test("episodic collection keeps a manual episode through save")
+@test("a user-typed episode value is never honored")
 def _():
     restore = sandbox()
     try:
         root, app = make_app(restore)
         try:
             app.collection_var.set("episodic_series")
-            check("episode shown", is_visible(app.episode_label))
             app.episode_var.set("7")
             app.source_type_var.set("clean_text")
             app.creator_var.set("con_teppei_podcast")
@@ -276,8 +254,96 @@ def _():
             app.on_save()
             check("saved", app._current_state == "SAVED")
             saved_name = pathlib.Path(app._saved_path).name
-            check("manual episode 7 preserved",
-                  saved_name == "episodic_series_ep0007.txt")
+            check("user-typed 7 ignored, saved as 1",
+                  saved_name == "episodic_series_ep0001.txt")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Episode# and Season# default to 1 on a fresh session")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            check("episode number default 1",
+                  app.episode_number_var.get() == "1")
+            check("season number default 1",
+                  app.season_number_var.get() == "1")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Episode# auto-advances after a successful save")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.episode_number_var.set("1")
+            fill_ready(app, "auto_series")
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            check("suggest next 2", app.episode_number_var.get() == "2")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Episode# with an invalid previous value suggests 1")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.episode_number_var.set("abc")
+            fill_ready(app, "auto_series")
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            check("suggest 1", app.episode_number_var.get() == "1")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("Season# is retained unchanged across saves")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.season_number_var.set("2")
+            fill_ready(app, "auto_series")
+            app.on_save()
+            check("season retained after save",
+                  app.season_number_var.get() == "2")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("switching collections does not reset Episode#/Season#")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.episode_number_var.set("5")
+            app.season_number_var.set("3")
+            app.collection_var.set("auto_series")
+            app.collection_var.set("episodic_series")
+            app.collection_var.set("unspecified_series")
+            check("episode number session-scoped",
+                  app.episode_number_var.get() == "5")
+            check("season number session-scoped",
+                  app.season_number_var.get() == "3")
         finally:
             root.destroy()
     finally:

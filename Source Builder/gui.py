@@ -210,6 +210,8 @@ class SourceBuilderApp:
         self.material_level_display_var = tk.StringVar()
         self.style_display_var = tk.StringVar()
         self.episode_var = tk.StringVar()
+        self.episode_number_var = tk.StringVar(value="1")
+        self.season_number_var = tk.StringVar(value="1")
         self.status_var = tk.StringVar(value="")
         self.filename_var = tk.StringVar(value="")
         self.path_var = tk.StringVar(value="")
@@ -219,6 +221,7 @@ class SourceBuilderApp:
         self._import_material_dir = None
         self._last_loaded_file = None
         self._saved_path = None
+        self._last_saved_episode_number = None
 
         self._restore_persisted_metadata()
 
@@ -432,6 +435,24 @@ class SourceBuilderApp:
         self.duration_entry = ttk.Entry(body, textvariable=self.duration_var,
                                         width=10, font=self.combo_font)
         self.duration_entry.grid(row=row, column=1, sticky="w")
+        row += 1
+
+        # Episode# (optional, cosmetic user metadata; session-scoped counter)
+        self.episode_number_label = ttk.Label(body, text="Episode#:")
+        self.episode_number_label.grid(row=row, column=0, sticky="w")
+        self.episode_number_entry = ttk.Entry(
+            body, textvariable=self.episode_number_var,
+            width=10, font=self.combo_font)
+        self.episode_number_entry.grid(row=row, column=1, sticky="w")
+        row += 1
+
+        # Season# (optional, cosmetic user metadata; never auto-advanced)
+        self.season_number_label = ttk.Label(body, text="Season#:")
+        self.season_number_label.grid(row=row, column=0, sticky="w")
+        self.season_number_entry = ttk.Entry(
+            body, textvariable=self.season_number_var,
+            width=10, font=self.combo_font)
+        self.season_number_entry.grid(row=row, column=1, sticky="w")
         row += 1
 
         ttk.Separator(body, orient="horizontal").grid(
@@ -679,10 +700,12 @@ class SourceBuilderApp:
             (self.material_level_var, self._on_metadata_changed),
             (self.style_id_var, self._on_metadata_changed),
             (self.duration_var, self._on_metadata_changed),
+            (self.episode_number_var, self._on_metadata_changed),
+            (self.season_number_var, self._on_metadata_changed),
         ):
             var.trace_add("write", callback)
-        # The collection selection changes field visibility (its sequencing
-        # mode) as well as metadata, so it gets its own handler.
+        # The collection selection changes the hidden episode value as well
+        # as metadata, so it gets its own handler.
         self.collection_var.trace_add("write", self._on_collection_changed)
         self.text_area.bind("<<Modified>>", self._on_text_changed)
 
@@ -700,11 +723,11 @@ class SourceBuilderApp:
     def _on_collection_changed(self, *args):
         """React to a collection selection change.
 
-        Re-applies field visibility (the selected collection's sequencing
-        mode can hide the Episode field) and keeps metadata effects intact.
+        Re-computes the hidden episode value (every collection now uses a
+        hidden auto-incrementing episode) and keeps metadata effects intact.
         """
         self._apply_mode()
-        self._refresh_auto_episode()
+        self._refresh_hidden_episode()
         self._on_metadata_changed()
 
     def _update_next_button_label(self):
@@ -764,6 +787,41 @@ class SourceBuilderApp:
             return int(value)
         return value
 
+    def _current_episode_number(self):
+        """Return the Episode# as an int, or None when blank/invalid."""
+        raw = self.episode_number_var.get().strip()
+        if raw == "":
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _current_season_number(self):
+        """Return the Season# as an int, or None when blank/invalid."""
+        raw = self.season_number_var.get().strip()
+        if raw == "":
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _next_episode_number_suggestion(self):
+        """Return the suggested next Episode#.
+
+        Previous value + 1 when the previous value is a valid integer,
+        else "1".
+        """
+        raw = self.episode_number_var.get().strip()
+        if raw == "":
+            return "1"
+        try:
+            previous = int(raw)
+        except (TypeError, ValueError):
+            return "1"
+        return str(previous + 1)
+
     def _current_form(self):
         """Collect the current form values for the ready-state engine."""
         return {
@@ -777,6 +835,8 @@ class SourceBuilderApp:
             "material_level": self._current_material_level(),
             "style_id": self._current_style_id(),
             "duration_seconds": self._current_duration_seconds(),
+            "episode_number": self.episode_number_var.get(),
+            "season_number": self.season_number_var.get(),
         }
 
     def _refresh_ready_state(self):
@@ -809,52 +869,35 @@ class SourceBuilderApp:
         button.configure(bg=bg, activebackground=bg,
                          state="normal" if enabled else "disabled")
 
-    def _current_collection_sequencing(self):
-        """Return the selected collection's sequencing value.
-
-        Returns "episodic" when no collection is selected or the collection
-        does not declare a value (the config default).
-        """
-        collection_id = self.collection_var.get()
-        for collection in self.collections:
-            if collection["collection_id"] == collection_id:
-                return collection.get("sequencing", "episodic")
-        return "episodic"
-
-    def _is_auto_collection(self):
-        """True when a collection is selected and uses auto sequencing."""
-        return (self.identity_var.get() == "collection"
-                and self._current_collection_sequencing() == "auto")
-
-    def _refresh_auto_episode(self):
+    def _refresh_hidden_episode(self):
         """Fill the hidden episode field with the live next sequence number.
 
-        Auto collections hide the Episode field but the ReadyStateEngine
-        and controller validation still require a valid episode value, so
-        the next live sequence (max+1) is computed silently whenever the
-        selected collection is auto.
+        Collection sources always use a hidden auto-incrementing episode.
+        The field stays hidden but the ReadyStateEngine and controller
+        validation still require a valid episode value, so the next live
+        sequence (max+1) is computed silently whenever a collection is
+        selected.
         """
-        if self._is_auto_collection():
+        if self.identity_var.get() == "collection":
             self.episode_var.set(str(controller.next_auto_sequence(
                 self.collection_var.get())))
 
     def _apply_mode(self):
         """Show the active identity path's fields and hide the others.
 
-        Three-way visibility:
-        - standalone: hide collection combo + episode field,
-        - collection + "episodic": show the Episode field,
-        - collection + "auto": hide the Episode field (sequence is computed
-          automatically); the collection combo stays visible.
+        Collection mode: the Episode field is never shown (episode is a
+        hidden auto-incrementing system identifier for every collection);
+        the collection combo stays visible.
+        Standalone mode: the collection combo is hidden; the source name
+        field is shown.
         """
         is_collection = self.identity_var.get() == "collection"
-        show_episode = is_collection and not self._is_auto_collection()
 
         # Collection fields
         self.collection_label.grid() if is_collection else self.collection_label.grid_remove()
         self.collection_combo.grid() if is_collection else self.collection_combo.grid_remove()
-        self.episode_label.grid() if show_episode else self.episode_label.grid_remove()
-        self.episode_entry.grid() if show_episode else self.episode_entry.grid_remove()
+        self.episode_label.grid_remove()
+        self.episode_entry.grid_remove()
 
         # Standalone field
         if is_collection:
@@ -1105,14 +1148,16 @@ class SourceBuilderApp:
             self.status_var.set("Duration must be a non-negative number.")
             return
 
+        episode_number = self._current_episode_number()
+        season_number = self._current_season_number()
+
         try:
             if is_collection:
-                if self._is_auto_collection():
-                    # Recompute the sequence live at save time so a source
-                    # added to the collection since the field was last filled
-                    # is never overwritten by a stale cached number.
-                    self.episode_var.set(str(controller.next_auto_sequence(
-                        self.collection_var.get())))
+                # Recompute the hidden sequence live at save time so a source
+                # added to the collection since the field was last filled
+                # is never overwritten by a stale cached number.
+                self.episode_var.set(str(controller.next_auto_sequence(
+                    self.collection_var.get())))
                 result = controller.create_collection_source(
                     collection_id=self.collection_var.get(),
                     episode=self.episode_var.get(),
@@ -1123,6 +1168,8 @@ class SourceBuilderApp:
                     material_level=material_level,
                     style_id=style_id,
                     duration_seconds=duration_seconds,
+                    episode_number=episode_number,
+                    season_number=season_number,
                 )
             else:
                 result = controller.create_standalone_source(
@@ -1134,6 +1181,8 @@ class SourceBuilderApp:
                     material_level=material_level,
                     style_id=style_id,
                     duration_seconds=duration_seconds,
+                    episode_number=episode_number,
+                    season_number=season_number,
                 )
         except Exception as exc:
             self.engine.set_error(f"Unexpected error: {exc}")
@@ -1143,6 +1192,11 @@ class SourceBuilderApp:
 
         if result["success"]:
             self._saved_path = Path(result["path"])
+            # Suggest the next Episode# for the next entry; Season# is
+            # never auto-advanced. The snapshot records the advanced value
+            # so the form still matches it in the SAVED state.
+            self._last_saved_episode_number = self.episode_number_var.get()
+            self.episode_number_var.set(self._next_episode_number_suggestion())
             self.engine.mark_saved({
                 "identity_type": self.identity_var.get(),
                 "collection_id": self.collection_var.get(),
@@ -1155,6 +1209,8 @@ class SourceBuilderApp:
                 "material_level": material_level,
                 "style_id": style_id,
                 "duration_seconds": duration_seconds,
+                "episode_number": self.episode_number_var.get(),
+                "season_number": self.season_number_var.get(),
             })
             self._refresh_ready_state()
             self._refresh_recent_sources()
@@ -1183,6 +1239,8 @@ class SourceBuilderApp:
             creator=self.creator_var.get(),
             material_level=self._current_material_level(),
             style_id=self._current_style_id(),
+            episode_number=self._last_saved_episode_number,
+            season_number=self.season_number_var.get(),
         )
         # Apply the prepared state.
         self.identity_var.set(state["identity_type"])
@@ -1197,6 +1255,10 @@ class SourceBuilderApp:
         self.style_id_var.set(
             "" if state["style_id"] is None else str(state["style_id"]))
         self.duration_var.set(state["duration_seconds"])
+        self.episode_number_var.set(state["episode_number"])
+        season_number = state["season_number"]
+        self.season_number_var.set(
+            "" if season_number is None else str(season_number))
         self.text_area.delete("1.0", "end")
         self.engine.reset()
         self._apply_mode()
@@ -1459,10 +1521,10 @@ class SourceBuilderApp:
             self.style_label_map.get(self.style_id_var.get(),
                                      self.style_id_var.get()))
         self._apply_mode()
-        # A sequencing edit in the metadata editor may have changed the
-        # selected collection's mode; ensure the hidden episode value is
-        # still valid for auto collections.
-        self._refresh_auto_episode()
+        # The metadata editor may have changed the collection list; ensure
+        # the hidden episode value is still valid for the selected
+        # collection.
+        self._refresh_hidden_episode()
 
 
 def main():

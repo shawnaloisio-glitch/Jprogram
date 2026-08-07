@@ -40,12 +40,39 @@ import paths
 COLLECTION_NAME = "Con Teppei for Beginner"
 
 
+def write_collection_source(sources_root, collection_id, episode,
+                            text="こんにちは。\n", material_level=1):
+    """Write a canonical source + package at an explicit episode.
+
+    The controller ignores a caller-supplied episode (it is a hidden
+    auto-incrementing system identifier), so the canonical file + package
+    are written directly here to pin the episode for the test.
+    """
+    canonical = sources_root / controller.generate_filename(collection_id,
+                                                            episode)
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    canonical.write_text(text, encoding="utf-8")
+    profile = source_package.cleaning_profile_for("clean_text")
+    package = source_package.build_package(
+        source_type="clean_text",
+        creator="con_teppei_podcast",
+        language=controller.PROJECT_LANGUAGE,
+        canonical_path=canonical,
+        cleaning_profile=profile,
+        cleaner_version=source_package.cleaner_version_for(profile),
+        material_level=material_level,
+        collection_id=collection_id,
+        episode=episode,
+    )
+    source_package.write_package(package)
+    return {"success": True, "filename": canonical.name,
+            "path": str(canonical), "errors": []}
+
+
 def make_sources(sources_root):
     """Create sandbox sources: one collection package + one standalone."""
     sources_root.mkdir(parents=True, exist_ok=True)
-    result = controller.create_collection_source(
-        "teppei_beginner", 58, "clean_text", "con_teppei_podcast",
-        "こんにちは。\n", material_level=1)
+    result = write_collection_source(sources_root, "teppei_beginner", 58)
     standalone = controller.create_standalone_source(
         "nhk_weather", "clean_text", "nhk_news", "天気です。\n",
         material_level=1)
@@ -133,9 +160,8 @@ def _():
         # Mixed multi-digit episodes: a lexicographic ("Episode N" string)
         # sort would put 10 before 2 and 1000 before 999.
         for ep in (2, 10, 999, 1000):
-            controller.create_collection_source(
-                "teppei_beginner", ep, "clean_text",
-                "con_teppei_podcast", f"episode {ep}\n", material_level=1)
+            write_collection_source(sources_root, "teppei_beginner", ep,
+                                    f"episode {ep}\n")
         packages = processing_tab.discover_packages(sources_root)
         episodes = [p.get("episode") for p in packages]
         check("numeric episode order", episodes == [2, 10, 999, 1000])
@@ -162,9 +188,7 @@ def _():
 
     saved = patch_root(sources_root, config_dir)
     try:
-        controller.create_collection_source(
-            "teppei_beginner", 3, "clean_text",
-            "con_teppei_podcast", "ok\n", material_level=1)
+        write_collection_source(sources_root, "teppei_beginner", 3, "ok\n")
         # A hand-written sidecar with a non-numeric episode must not crash
         # the sort.
         (sources_root / "teppei_beginner_bad.source.json").write_text(json.dumps({

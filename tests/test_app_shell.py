@@ -120,11 +120,19 @@ def _():
         saved = controller.SOURCES_ROOT
         controller.SOURCES_ROOT = tmp / "Sources"
         try:
+            # The user-typed Episode is a hidden auto-incrementing system
+            # identifier and is never honored: the controller always computes
+            # the episode via next_auto_sequence, so the first save lands on
+            # episode 1 no matter what the field holds.
             sb.collection_var.set("teppei_beginner")
             sb.episode_var.set("63")
             sb.source_type_var.set("clean_text")
             sb.creator_var.set("con_teppei_podcast")
             sb.material_level_var.set("1")
+            # Episode# / Season# are optional cosmetic metadata that IS
+            # honored and stored in the package unchanged.
+            sb.episode_number_var.set("63")
+            sb.season_number_var.set("2")
             sb.text_area.insert("1.0", "第六十三回のテストです。\n")
             sb._on_text_changed()
             sb.on_save()
@@ -137,7 +145,9 @@ def _():
             data = json.loads(package_path.read_text(encoding="utf-8"))
             check("package type", data["artifact_type"] == "source_package")
             check("source_id",
-                  data["source_id"] == "clean_text_teppei-beginner_ep063")
+                  data["source_id"] == "clean_text_teppei-beginner_ep001")
+            check("episode_number stored", data["episode_number"] == 63)
+            check("season_number stored", data["season_number"] == 2)
         finally:
             controller.SOURCES_ROOT = saved
     finally:

@@ -368,6 +368,99 @@ def _():
     check("duration always reset", state["duration_seconds"] == "")
 
 
+@test("next_source_state: episode_number suggests next, season_number retained")
+def _():
+    state = controller.next_source_state(
+        "collection", "teppei_beginner", "7", "clean_text",
+        "con_teppei_podcast", episode_number="5", season_number=2)
+    check("episode number suggested", state["episode_number"] == "6")
+    check("season number retained", state["season_number"] == 2)
+    check("identity episode still blank", state["episode"] == "")
+
+
+@test("next_source_state: invalid episode_number suggests 1")
+def _():
+    for value in ("abc", "", "1.5", None):
+        state = controller.next_source_state(
+            "collection", "c", "7", "s", "o", episode_number=value,
+            season_number="2")
+        check(f"episode number 1 for {value!r}",
+              state["episode_number"] == "1")
+        check("season number retained", state["season_number"] == "2")
+
+
+@test("next_source_state: integer episode_number also suggests next")
+def _():
+    state = controller.next_source_state(
+        "collection", "c", "7", "s", "o", episode_number=3,
+        season_number=1)
+    check("episode number suggested", state["episode_number"] == "4")
+    check("season number retained", state["season_number"] == 1)
+
+
+@test("next_source_state: standalone also suggests episode_number and retains season")
+def _():
+    state = controller.next_source_state(
+        "standalone", "", "", "article", "nhk_news",
+        episode_number=3, season_number=1)
+    check("episode number suggested", state["episode_number"] == "4")
+    check("season number retained", state["season_number"] == 1)
+
+
+@test("create_collection_source stores episode_number/season_number in the package")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_collection_source(
+            "teppei_beginner", 51, "clean_text", "con_teppei_podcast",
+            "本文。\n", material_level=1, episode_number=5, season_number=2)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("episode number stored", package["episode_number"] == 5)
+        check("season number stored", package["season_number"] == 2)
+    finally:
+        restore(saved)
+
+
+@test("create_standalone_source stores episode_number/season_number in the package")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_standalone_source(
+            "nhk_weather", "clean_text", "nhk_news", "天気です。\n",
+            material_level=1, episode_number=8, season_number=3)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("episode number stored", package["episode_number"] == 8)
+        check("season number stored", package["season_number"] == 3)
+    finally:
+        restore(saved)
+
+
+@test("create_collection_source omits episode_number/season_number when not given")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_collection_source(
+            "teppei_beginner", 51, "clean_text", "con_teppei_podcast",
+            "本文。\n", material_level=1)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("episode number none", package["episode_number"] is None)
+        check("season number none", package["season_number"] is None)
+    finally:
+        restore(saved)
+
+
 @test("next_auto_sequence: empty collection returns 1")
 def _():
     root, sources, saved = setup()

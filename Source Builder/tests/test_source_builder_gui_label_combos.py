@@ -591,6 +591,8 @@ def _():
             app._apply_label_to_id(
                 app.style_display_var, app.style_id_map, app.style_id_var)
             app.duration_var.set("60")
+            app.episode_number_var.set("85")
+            app.season_number_var.set("3")
             app.text_area.insert("1.0", "本文。\n")
             app._on_text_changed()
             app.on_save()
@@ -600,7 +602,12 @@ def _():
                   app.material_level_var.get() == "1")
             check("style retained", app.style_id_var.get() == "1")
             check("duration reset", app.duration_var.get() == "")
-            check("episode incremented", app.episode_var.get() == "86")
+            # Episode# suggests the next value (previous + 1); Season# is
+            # retained unchanged across saves.
+            check("episode number suggests next",
+                  app.episode_number_var.get() == "86")
+            check("season number retained",
+                  app.season_number_var.get() == "3")
         finally:
             root.destroy()
     finally:

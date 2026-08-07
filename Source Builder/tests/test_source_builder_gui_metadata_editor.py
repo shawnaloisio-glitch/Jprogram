@@ -36,10 +36,6 @@ import metadata_editor_gui
 import quick_presets
 import paths
 
-SEQUENCING_LABELS = metadata_editor_gui.SEQUENCING_LABELS
-SEQUENCING_DISPLAY = tuple(
-    SEQUENCING_LABELS[v] for v in metadata_editor.SEQUENCING_VALUES)
-
 
 def sandbox():
     """Redirect Sources, settings, presets, and Config into temp dirs."""
@@ -742,19 +738,8 @@ def _():
 
 
 # ============================================================
-# Sequencing field: add default / explicit auto / edit round-trip
+# Collections tab has no sequencing concept
 # ============================================================
-
-def collections_tab_frame(editor):
-    """Return the Collections tab's frame inside the metadata editor."""
-    import tkinter.ttk as ttk
-    notebook = [c for c in editor.winfo_children()
-                if isinstance(c, ttk.Notebook)][0]
-    for tab_id in notebook.tabs():
-        if notebook.tab(tab_id, "text") == "Collections":
-            return notebook.nametowidget(tab_id)
-    return None
-
 
 def find_button_in(widget, text):
     """Recursively find a ttk.Button by its text inside a widget."""
@@ -782,18 +767,6 @@ def fill_dialog_entries(dialog, texts):
         entry.insert(0, text)
 
 
-def set_combo_by_values(dialog, values, choice):
-    """Set the readonly Combobox with the given values to choice."""
-    import tkinter.ttk as ttk
-    for child in dialog.winfo_children():
-        if isinstance(child, ttk.Combobox) and tuple(child.cget("values")) == tuple(values):
-            child.set(choice)
-            return True
-        if set_combo_by_values(child, values, choice):
-            return True
-    return False
-
-
 def select_first_tree_row(tab):
     """Select the first row of the tab's Treeview, if any."""
     import tkinter.ttk as ttk
@@ -814,35 +787,6 @@ def open_editor(app):
     return [w for w in app.root.winfo_children()
             if isinstance(w, tk.Toplevel)
             and w.title() == "Edit Metadata"][0]
-
-
-def find_combo_by_values(dialog, values):
-    """Return the first ttk.Combobox whose offered values match exactly."""
-    import tkinter.ttk as ttk
-    for child in dialog.winfo_children():
-        if isinstance(child, ttk.Combobox):
-            if tuple(child.cget("values")) == tuple(values):
-                return child
-        found = find_combo_by_values(child, values)
-        if found is not None:
-            return found
-    return None
-
-
-def select_tree_row_by_id(tab, collection_id):
-    """Select the Treeview row whose first column matches collection_id."""
-    import tkinter.ttk as ttk
-    for child in tab.winfo_children():
-        if isinstance(child, ttk.Treeview):
-            for iid in child.get_children():
-                values = child.item(iid, "values")
-                if values and values[0] == collection_id:
-                    child.selection_set(iid)
-                    return True
-            return False
-        if select_tree_row_by_id(child, collection_id):
-            return True
-    return False
 
 
 def styles_tab_frame(editor):
@@ -868,21 +812,16 @@ def treeview_rows(tab):
     return rows
 
 
-@test("add dialog: sequencing combo defaults to episodic when left at default")
+@test("collection add/edit form has no sequencing field")
 def _():
     restore = sandbox()
     try:
         root, app = make_visible_app(restore)
         try:
             editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
             result = {}
 
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save():
+            def inspect_and_cancel():
                 tops = [w for w in root.winfo_children()
                         if isinstance(w, tk.Toplevel)
                         and w.title() == "Add"]
@@ -890,92 +829,63 @@ def _():
                     result["error"] = "Add dialog not found"
                     return
                 d = tops[0]
-                fill_dialog_entries(d, ["nhk_default", "NHK Default"])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
+                import tkinter.ttk as ttk
+                labels = []
+                combos = []
 
-            root.after(100, drive_add)
-            root.after(250, fill_and_save)
+                def collect(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Label):
+                            labels.append(c.cget("text"))
+                        if isinstance(c, ttk.Combobox):
+                            combos.append(c)
+                        collect(c)
+
+                collect(d)
+                result["labels"] = labels
+                result["combo_count"] = len(combos)
+                cancel = find_button_in(d, "Cancel")
+                if cancel:
+                    cancel.invoke()
+
+            add_button = find_button_in(editor, "Add")
+            root.after(100, add_button.invoke)
+            root.after(250, inspect_and_cancel)
             root.after(2500, root.quit)
             root.mainloop()
 
             check("no error", "error" not in result)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection added", "nhk_default" in by_id)
-            check("default sequencing",
-                  by_id["nhk_default"]["sequencing"] == "episodic")
+            text = " ".join(result.get("labels", []))
+            check("no sequencing label", "equencing" not in text)
+            check("no combo fields offered", result.get("combo_count") == 0)
         finally:
             root.destroy()
     finally:
         restore()
 
 
-@test("add dialog: explicitly choosing auto persists correctly")
+@test("collection edit form has no sequencing combo either")
 def _():
     restore = sandbox()
     try:
         root, app = make_visible_app(restore)
         try:
             editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                fill_dialog_entries(d, ["nhk_auto", "NHK Auto"])
-                result["combo_set"] = set_combo_by_values(
-                    d, SEQUENCING_DISPLAY, SEQUENCING_LABELS["auto"])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            root.after(100, drive_add)
-            root.after(250, fill_and_save)
-            root.after(2500, root.quit)
-            root.mainloop()
-
-            check("no error", "error" not in result)
-            check("sequencing combo present",
-                  result.get("combo_set") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("collection added", "nhk_auto" in by_id)
-            check("auto persisted",
-                  by_id["nhk_auto"]["sequencing"] == "auto")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("edit dialog: sequencing value round-trips to auto and back")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
             result = {}
 
             def drive_edit():
+                tab = None
+                import tkinter.ttk as ttk
+                notebook = [c for c in editor.winfo_children()
+                            if isinstance(c, ttk.Notebook)][0]
+                for tab_id in notebook.tabs():
+                    if notebook.tab(tab_id, "text") == "Collections":
+                        tab = notebook.nametowidget(tab_id)
                 select_first_tree_row(tab)
+                edit_button = find_button_in(tab, "Edit")
                 edit_button.invoke()
 
-            def change_sequencing_and_save(choice):
+            def inspect_and_cancel():
                 tops = [w for w in root.winfo_children()
                         if isinstance(w, tk.Toplevel)
                         and w.title() == "Edit"]
@@ -983,219 +893,34 @@ def _():
                     result["error"] = "Edit dialog not found"
                     return
                 d = tops[0]
-                result["combo_set"] = set_combo_by_values(
-                    d, SEQUENCING_DISPLAY, SEQUENCING_LABELS[choice])
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
+                import tkinter.ttk as ttk
+                labels = []
+                combos = []
 
-            # First edit: teppei_beginner (episodic default) -> auto.
-            root.after(100, drive_edit)
-            root.after(250, lambda: change_sequencing_and_save("auto"))
-            root.after(1000, root.quit)
-            root.mainloop()
+                def collect(w):
+                    for c in w.winfo_children():
+                        if isinstance(c, ttk.Label):
+                            labels.append(c.cget("text"))
+                        if isinstance(c, ttk.Combobox):
+                            combos.append(c)
+                        collect(c)
 
-            check("no error (first edit)", "error" not in result)
-            check("sequencing combo present (first edit)",
-                  result.get("combo_set") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("edited to auto",
-                  by_id["teppei_beginner"]["sequencing"] == "auto")
-
-            # Second edit: auto -> episodic round-trips back.
-            result.clear()
-            root.after(100, drive_edit)
-            root.after(250, lambda: change_sequencing_and_save("episodic"))
-            root.after(1000, root.quit)
-            root.mainloop()
-
-            check("no error (second edit)", "error" not in result)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("edited back to episodic",
-                  by_id["teppei_beginner"]["sequencing"] == "episodic")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-# ============================================================
-# Sequencing display labels
-# ============================================================
-
-@test("sequencing combo shows friendly labels, not raw values")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def inspect_and_cancel():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, SEQUENCING_DISPLAY)
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["values"] = tuple(combo.cget("values"))
+                collect(d)
+                result["labels"] = labels
+                result["combo_count"] = len(combos)
                 cancel = find_button_in(d, "Cancel")
                 if cancel:
                     cancel.invoke()
 
-            root.after(100, drive_add)
+            root.after(100, drive_edit)
             root.after(250, inspect_and_cancel)
             root.after(2500, root.quit)
             root.mainloop()
 
             check("no error", "error" not in result)
-            check("sequencing combo present", result.get("combo_found") is True)
-            values = result.get("values", ())
-            check("Series label shown", SEQUENCING_LABELS["episodic"] in values)
-            check("Auto label shown", SEQUENCING_LABELS["auto"] in values)
-            check("raw episodic hidden", "episodic" not in values)
-            check("raw auto hidden", "auto" not in values)
-            check("two friendly labels offered", values == SEQUENCING_DISPLAY)
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("add dialog: friendly-label selections persist raw sequencing values")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            add_button = find_button_in(tab, "Add")
-            result = {}
-
-            def drive_add():
-                add_button.invoke()
-
-            def fill_and_save(cid, name, label):
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Add"]
-                if not tops:
-                    result["error"] = "Add dialog not found"
-                    return
-                d = tops[0]
-                fill_dialog_entries(d, [cid, name])
-                result["combo_set"] = set_combo_by_values(
-                    d, SEQUENCING_DISPLAY, label)
-                save = find_button_in(d, "Save")
-                if save:
-                    save.invoke()
-
-            # Select the "Series (manual numbering)" label.
-            root.after(100, drive_add)
-            root.after(250, lambda: fill_and_save(
-                "nhk_ep", "NHK Ep", SEQUENCING_LABELS["episodic"]))
-            root.after(1200, root.quit)
-            root.mainloop()
-
-            check("no error (series)", "error" not in result)
-            check("combo set (series)", result.get("combo_set") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("series collection added", "nhk_ep" in by_id)
-            check("raw episodic persisted",
-                  by_id["nhk_ep"]["sequencing"] == "episodic")
-
-            # Select the "Auto (site/source grouping)" label.
-            result.clear()
-            root.after(100, drive_add)
-            root.after(250, lambda: fill_and_save(
-                "nhk_au", "NHK Au", SEQUENCING_LABELS["auto"]))
-            root.after(1200, root.quit)
-            root.mainloop()
-
-            check("no error (auto)", "error" not in result)
-            check("combo set (auto)", result.get("combo_set") is True)
-            collections = metadata_editor.load_collections()
-            by_id = {c["collection_id"]: c for c in collections}
-            check("auto collection added", "nhk_au" in by_id)
-            check("raw auto persisted",
-                  by_id["nhk_au"]["sequencing"] == "auto")
-        finally:
-            root.destroy()
-    finally:
-        restore()
-
-
-@test("edit dialog pre-fills friendly labels for stored raw values")
-def _():
-    restore = sandbox()
-    try:
-        root, app = make_visible_app(restore)
-        try:
-            metadata_editor.add_collection(
-                "nhk_auto_col", "NHK Auto Col", sequencing="auto")
-            editor = open_editor(app)
-            tab = collections_tab_frame(editor)
-            edit_button = find_button_in(tab, "Edit")
-            result = {}
-
-            def drive_edit(cid):
-                result["row_selected"] = select_tree_row_by_id(tab, cid)
-                edit_button.invoke()
-
-            def inspect_and_cancel():
-                tops = [w for w in root.winfo_children()
-                        if isinstance(w, tk.Toplevel)
-                        and w.title() == "Edit"]
-                if not tops:
-                    result["error"] = "Edit dialog not found"
-                    return
-                d = tops[0]
-                combo = find_combo_by_values(d, SEQUENCING_DISPLAY)
-                result["combo_found"] = combo is not None
-                if combo is not None:
-                    result["displayed"] = combo.get()
-                cancel = find_button_in(d, "Cancel")
-                if cancel:
-                    cancel.invoke()
-
-            # teppei_beginner is stored as episodic (the default).
-            root.after(100, lambda: drive_edit("teppei_beginner"))
-            root.after(250, inspect_and_cancel)
-            root.after(1200, root.quit)
-            root.mainloop()
-
-            check("no error (episodic)", "error" not in result)
-            check("row selected (episodic)", result.get("row_selected") is True)
-            check("combo present (episodic)", result.get("combo_found") is True)
-            check("episodic pre-fills Series label",
-                  result.get("displayed") == SEQUENCING_LABELS["episodic"])
-
-            # nhk_auto_col is stored as auto.
-            result.clear()
-            root.after(100, lambda: drive_edit("nhk_auto_col"))
-            root.after(250, inspect_and_cancel)
-            root.after(1200, root.quit)
-            root.mainloop()
-
-            check("no error (auto)", "error" not in result)
-            check("row selected (auto)", result.get("row_selected") is True)
-            check("combo present (auto)", result.get("combo_found") is True)
-            check("auto pre-fills Auto label",
-                  result.get("displayed") == SEQUENCING_LABELS["auto"])
+            text = " ".join(result.get("labels", []))
+            check("no sequencing label", "equencing" not in text)
+            check("no combo fields offered", result.get("combo_count") == 0)
         finally:
             root.destroy()
     finally:

@@ -20,11 +20,6 @@ from tkinter import messagebox, ttk
 
 import metadata_editor
 
-SEQUENCING_LABELS = {
-    "episodic": "Series (manual numbering)",
-    "auto": "Auto (site/source grouping)",
-}
-
 
 def _combo_display_values(field):
     """Display values for a combo field, applying an optional label map."""
@@ -295,19 +290,15 @@ class MetadataEditorWindow:
 
         def add(**kw):
             return metadata_editor.add_collection(
-                kw["collection_id"], kw["display_name"],
-                sequencing=kw.get("sequencing") or None)
+                kw["collection_id"], kw["display_name"])
 
         def edit(original_id, **kw):
             return metadata_editor.edit_collection(
-                original_id, kw["display_name"],
-                sequencing=kw.get("sequencing") or None)
+                original_id, kw["display_name"])
 
         fields = [
             ("collection_id", "Collection ID (folder name)", "entry"),
             ("display_name", "Display Name", "entry"),
-            ("sequencing", "Sequencing", "combo",
-             metadata_editor.SEQUENCING_VALUES, SEQUENCING_LABELS),
         ]
         helper = ("The Collection ID becomes the folder name and filename "
                   "prefix. Choose carefully. It cannot be changed later.")

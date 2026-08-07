@@ -81,13 +81,38 @@ def sandbox():
     return restore
 
 
+def write_collection_source(ep, text="本文。\n", material_level=1):
+    """Write a canonical source + package at an explicit episode.
+
+    The controller ignores a caller-supplied episode (it is a hidden
+    auto-incrementing system identifier), so the canonical file + package
+    are written directly here to pin the episode for the test.
+    """
+    import source_package
+    canonical = controller.SOURCES_ROOT / controller.generate_filename(
+        "teppei_beginner", ep)
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    canonical.write_text(text, encoding="utf-8")
+    profile = source_package.cleaning_profile_for("clean_text")
+    package = source_package.build_package(
+        source_type="clean_text",
+        creator="con_teppei_podcast",
+        language=controller.PROJECT_LANGUAGE,
+        canonical_path=canonical,
+        cleaning_profile=profile,
+        cleaner_version=source_package.cleaner_version_for(profile),
+        material_level=material_level,
+        collection_id="teppei_beginner",
+        episode=ep,
+    )
+    source_package.write_package(package)
+    return controller.source_id_for(
+        "clean_text", collection_id="teppei_beginner", episode=ep)
+
+
 def make_completed_source(ep, jsonl_content="こんにちは。\n"):
     """Create a source package and a fake corpus JSONL for it."""
-    controller.create_collection_source(
-        "teppei_beginner", ep, "clean_text", "con_teppei_podcast",
-        "本文。\n", material_level=1)
-    source_id = controller.source_id_for(
-        "clean_text", collection_id="teppei_beginner", episode=ep)
+    source_id = write_collection_source(ep)
     jsonl = pathlib.Path(tempfile.mkdtemp()) / f"{source_id}.jsonl"
     jsonl.write_text(jsonl_content, encoding="utf-8")
     return source_id, jsonl

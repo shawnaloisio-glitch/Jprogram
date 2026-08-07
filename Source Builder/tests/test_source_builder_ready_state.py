@@ -593,6 +593,59 @@ def _():
         restore(saved)
 
 
+@test("episode_number/season_number: never blocking or required")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), episode_number="",
+                    season_number="")
+        check("ready without values", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+        result = ev(controller.ReadyStateEngine(), episode_number="abc",
+                    season_number="x")
+        check("non-numeric values never block", result["state"] == "READY")
+    finally:
+        restore(saved)
+
+
+@test("episode_number/season_number: snapshot matching includes the fields")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved(saved_snapshot(episode_number="2",
+                                         season_number="3"))
+        check("same values -> SAVED",
+              ev(engine, episode_number="2", season_number="3")["state"]
+              == "SAVED")
+        check("different episode_number breaks match",
+              ev(engine, episode_number="5", season_number="3")["state"]
+              != "SAVED")
+        check("different season_number breaks match",
+              ev(engine, episode_number="2", season_number="1")["state"]
+              != "SAVED")
+        check("missing values break match",
+              ev(engine, episode_number="", season_number="")["state"]
+              != "SAVED")
+    finally:
+        restore(saved)
+
+
+@test("episode_number/season_number: snapshot without the keys still matches")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        # A snapshot that records no episode/season fields still matches a
+        # form that omits them (both optional, default None/blank).
+        engine.mark_saved(saved_snapshot())
+        check("saved with fields omitted",
+              ev(engine, episode_number=None, season_number=None)["state"]
+              == "SAVED")
+    finally:
+        restore(saved)
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

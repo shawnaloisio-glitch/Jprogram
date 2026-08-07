@@ -89,11 +89,38 @@ def sandbox():
     return restore
 
 
+def write_collection_source(collection_id, episode, text="こんにちは。\n"):
+    """Write a canonical source + package at an explicit episode.
+
+    The controller ignores a caller-supplied episode (it is a hidden
+    auto-incrementing system identifier), so the canonical file + package
+    are written directly here to pin the episode for the test.
+    """
+    import source_package
+    canonical = controller.SOURCES_ROOT / controller.generate_filename(
+        collection_id, episode)
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    canonical.write_text(text, encoding="utf-8")
+    profile = source_package.cleaning_profile_for("clean_text")
+    package = source_package.build_package(
+        source_type="clean_text",
+        creator="con_teppei_podcast",
+        language=controller.PROJECT_LANGUAGE,
+        canonical_path=canonical,
+        cleaning_profile=profile,
+        cleaner_version=source_package.cleaner_version_for(profile),
+        material_level=1,
+        collection_id=collection_id,
+        episode=episode,
+    )
+    source_package.write_package(package)
+    return {"success": True, "filename": canonical.name, "path": str(canonical),
+            "errors": []}
+
+
 def make_source(package_spec):
     if package_spec[0] == "collection":
-        return controller.create_collection_source(
-            package_spec[1], package_spec[2], "clean_text",
-            "con_teppei_podcast", "こんにちは。\n", material_level=1)
+        return write_collection_source(package_spec[1], package_spec[2])
     return controller.create_standalone_source(
         package_spec[1], "clean_text", "nhk_news", "天気です。\n",
         material_level=1)

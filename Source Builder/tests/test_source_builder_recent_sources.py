@@ -31,12 +31,31 @@ import paths
 
 
 def make_collection(ep, text, created_at):
-    result = controller.create_collection_source(
-        "teppei_beginner", ep, "clean_text", "con_teppei_podcast",
-        text, material_level=1)
-    package_path = source_package_pkg_path(result)
-    package = json.loads(package_path.read_text(encoding="utf-8"))
+    """Write a collection source package at an explicit episode.
+
+    The controller ignores a caller-supplied episode (it is a hidden
+    auto-incrementing system identifier), so the canonical file + package
+    are written directly here to pin the episode for the test.
+    """
+    import source_package
+    canonical = controller.SOURCES_ROOT / controller.generate_filename(
+        "teppei_beginner", ep)
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    canonical.write_text(text, encoding="utf-8")
+    profile = source_package.cleaning_profile_for("clean_text")
+    package = source_package.build_package(
+        source_type="clean_text",
+        creator="con_teppei_podcast",
+        language=controller.PROJECT_LANGUAGE,
+        canonical_path=canonical,
+        cleaning_profile=profile,
+        cleaner_version=source_package.cleaner_version_for(profile),
+        material_level=1,
+        collection_id="teppei_beginner",
+        episode=ep,
+    )
     package["created_at"] = created_at
+    package_path = source_package.package_path_for(canonical)
     package_path.write_text(json.dumps(package, ensure_ascii=False),
                             encoding="utf-8")
     return package

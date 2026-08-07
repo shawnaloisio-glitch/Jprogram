@@ -172,7 +172,8 @@ def source_id_for(source_type, collection_id=None, episode=None,
 def _try_write_source_package(source_type, creator, canonical_path,
                               collection_id=None, episode=None,
                               source_name=None, material_level=None,
-                              style_id=None, duration_seconds=None):
+                              style_id=None, duration_seconds=None,
+                              episode_number=None, season_number=None):
     """
     Build and atomically write the sidecar Source Package for a saved source.
 
@@ -196,6 +197,8 @@ def _try_write_source_package(source_type, creator, canonical_path,
             material_level=material_level,
             style_id=style_id,
             duration_seconds=duration_seconds,
+            episode_number=episode_number,
+            season_number=season_number,
         )
         source_package.write_package(package)
     except source_package.SourcePackageError as exc:
@@ -205,13 +208,17 @@ def _try_write_source_package(source_type, creator, canonical_path,
 
 def create_collection_source(collection_id, episode, source_type, creator,
                              source_text, overwrite=False, material_level=0,
-                             style_id=None, duration_seconds=None):
+                             style_id=None, duration_seconds=None,
+                             episode_number=None, season_number=None):
     """Validate and create a canonical collection source file.
 
     episode is a hidden auto-incrementing system identifier: the value is
     always sourced by the controller via next_auto_sequence(collection_id),
     never from the caller-supplied parameter (which is retained only for
     backward compatibility and is ignored).
+
+    episode_number / season_number are optional user-entered metadata with no
+    identity or uniqueness role; they are forwarded unchanged to the package.
     """
     errors = validate_collection_fields(collection_id, episode, source_type,
                                         creator, source_text)
@@ -236,6 +243,8 @@ def create_collection_source(collection_id, episode, source_type, creator,
         material_level=material_level,
         style_id=style_id,
         duration_seconds=duration_seconds,
+        episode_number=episode_number,
+        season_number=season_number,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
@@ -246,7 +255,8 @@ def create_collection_source(collection_id, episode, source_type, creator,
 
 def create_standalone_source(source_name, source_type, creator, source_text,
                              overwrite=False, material_level=0,
-                             style_id=None, duration_seconds=None):
+                             style_id=None, duration_seconds=None,
+                             episode_number=None, season_number=None):
     """Validate and create a canonical standalone source file."""
     errors = validate_standalone_fields(source_name, source_type, creator,
                                         source_text)
@@ -269,6 +279,8 @@ def create_standalone_source(source_name, source_type, creator, source_text,
         material_level=material_level,
         style_id=style_id,
         duration_seconds=duration_seconds,
+        episode_number=episode_number,
+        season_number=season_number,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
@@ -279,7 +291,8 @@ def create_standalone_source(source_name, source_type, creator, source_text,
 
 def create_source(collection_id, episode, source_type, creator, source_text,
                   overwrite=False, material_level=None, style_id=None,
-                  duration_seconds=None):
+                  duration_seconds=None, episode_number=None,
+                  season_number=None):
     """
     Validate and create a canonical collection source file.
 
@@ -289,16 +302,33 @@ def create_source(collection_id, episode, source_type, creator, source_text,
                                     creator, source_text, overwrite=overwrite,
                                     material_level=material_level,
                                     style_id=style_id,
-                                    duration_seconds=duration_seconds)
+                                    duration_seconds=duration_seconds,
+                                    episode_number=episode_number,
+                                    season_number=season_number)
 
 
 # ============================================================
 # Create Next Source state
 # ============================================================
 
+def _suggest_episode_number(value):
+    """Suggest the next Episode# value.
+
+    Input: value (int/str/None) - the episode number that was just saved.
+    Output: str - previous value + 1 when the previous value is a valid
+    integer, else "1".
+    """
+    try:
+        previous = int(value)
+    except (TypeError, ValueError):
+        return "1"
+    return str(previous + 1)
+
+
 def next_source_state(identity_type, collection_id, episode,
                       source_type, creator, material_level=None,
-                      style_id=None):
+                      style_id=None, episode_number=None,
+                      season_number=None):
     """
     Prepare the state for the next source after a successful save.
 
@@ -310,13 +340,18 @@ def next_source_state(identity_type, collection_id, episode,
     auto-incrementing system identifier, so the output episode is blank).
     Standalone mode: blank source name.
 
+    episode_number is suggested for the next entry: previous value + 1 when
+    the previous value is a valid integer, else "1". season_number is never
+    auto-advanced; it is retained unchanged across saves.
+
     duration_seconds always resets to blank: each source's duration is
     distinct and never a sensible carryover default.
 
     Input:
         identity_type (str), collection_id (str), episode (int/str),
         source_type (str), creator (str), material_level (int|None),
-        style_id (int|None).
+        style_id (int|None), episode_number (int/str|None),
+        season_number (int/str|None).
 
     Output: dict:
         {
@@ -329,6 +364,8 @@ def next_source_state(identity_type, collection_id, episode,
             "material_level": int | None,   # retained
             "style_id": int | None,         # retained
             "duration_seconds": "",         # always reset
+            "episode_number": str,          # suggested next ("1" default)
+            "season_number": int | str | None,  # retained unchanged
             "source_text": "",       # always reset
         }
     """
@@ -343,6 +380,8 @@ def next_source_state(identity_type, collection_id, episode,
             "material_level": material_level,
             "style_id": style_id,
             "duration_seconds": "",
+            "episode_number": _suggest_episode_number(episode_number),
+            "season_number": season_number,
             "source_text": "",
         }
 
@@ -358,6 +397,8 @@ def next_source_state(identity_type, collection_id, episode,
         "material_level": material_level,
         "style_id": style_id,
         "duration_seconds": "",
+        "episode_number": _suggest_episode_number(episode_number),
+        "season_number": season_number,
         "source_text": "",
     }
 
@@ -444,9 +485,13 @@ class ReadyStateEngine:
                 "material_level": int | None,   # optional
                 "style_id": int | None,         # optional
                 "duration_seconds": int | float | None,  # optional
+                "episode_number": int | str | None,      # optional
+                "season_number": int | str | None,       # optional
             }
         episode is tracked internally so a new save that produces a genuinely
         new file is detected, but it is never a user-facing blocking reason.
+        episode_number / season_number are optional user metadata tracked in
+        the snapshot exactly like duration_seconds; they never block.
         The engine returns SAVED only while the form still matches this
         snapshot (i.e. until the user edits a field).
         """
@@ -459,13 +504,15 @@ class ReadyStateEngine:
 
     def evaluate(self, identity_type, collection_id, source_name, episode,
                  source_type, creator, source_text, material_level=0,
-                 style_id=None, duration_seconds=None):
+                 style_id=None, duration_seconds=None, episode_number=None,
+                 season_number=None):
         """
         Return the current workflow state for the given form fields.
 
         material_level is mandatory: the engine stays INCOMPLETE until a
-        level is supplied. style_id and duration_seconds are optional; they
-        are tracked in the saved snapshot but never block.
+        level is supplied. style_id, duration_seconds, episode_number, and
+        season_number are optional; they are tracked in the saved snapshot
+        but never block.
 
         Output: dict:
             {
@@ -488,7 +535,7 @@ class ReadyStateEngine:
         if self._saved_snapshot is not None and self._matches_saved(
                 identity_type, collection_id, source_name, episode,
                 source_type, creator, source_text, material_level, style_id,
-                duration_seconds):
+                duration_seconds, episode_number, season_number):
             return {
                 "state": "SAVED",
                 "message": "Saved successfully.",
@@ -520,7 +567,8 @@ class ReadyStateEngine:
     def _matches_saved(self, identity_type, collection_id, source_name,
                        episode, source_type, creator, source_text,
                        material_level=None, style_id=None,
-                       duration_seconds=None):
+                       duration_seconds=None, episode_number=None,
+                       season_number=None):
         snap = self._saved_snapshot
         return (
             identity_type == snap["identity_type"]
@@ -536,6 +584,10 @@ class ReadyStateEngine:
                 snap.get("style_id"))
             and _snapshot_or_blank(duration_seconds) == _snapshot_or_blank(
                 snap.get("duration_seconds"))
+            and _snapshot_or_blank(episode_number) == _snapshot_or_blank(
+                snap.get("episode_number"))
+            and _snapshot_or_blank(season_number) == _snapshot_or_blank(
+                snap.get("season_number"))
         )
 
     def _first_blocking_reason(self, identity_type, collection_id,

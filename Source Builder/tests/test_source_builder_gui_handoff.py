@@ -140,7 +140,10 @@ def _():
                   app.next_button.cget("state") == "normal")
             app.on_next_source()
             check("next -> incomplete", app._current_state == "INCOMPLETE")
-            check("episode incremented", app.episode_var.get() == "2")
+            # Episode# (the optional cosmetic counter) suggests the next
+            # value after Add Another; the hidden identity episode stays blank.
+            check("episode number suggests next",
+                  app.episode_number_var.get() == "2")
         finally:
             root.destroy()
     finally:

@@ -155,9 +155,9 @@ def _():
             gap_c_o = (app.creator_label.winfo_y()
                        - app.collection_label.winfo_y())
             check("compact gap collection-creator", gap_c_o < 80)
-            gap_o_e = (app.episode_label.winfo_y()
+            gap_o_e = (app.material_level_label.winfo_y()
                        - app.creator_label.winfo_y())
-            check("compact gap creator-episode", gap_o_e < 80)
+            check("compact gap creator-material-level", gap_o_e < 80)
             check("text area expanded", app.text_area.winfo_height() > 60)
         finally:
             root.destroy()
@@ -230,16 +230,18 @@ def _():
         root.withdraw()
         app = gui.SourceBuilderApp(root)
         try:
+            # The hidden identity episode is auto-computed by the controller,
+            # so a fresh sandbox save lands on episode 1, then 2.
             fill_and_save(app, 63)
             items = list_items(app)
             check("one recent entry", len(items) == 1)
             check("label at top",
-                  items[0] == "Con Teppei for Beginner — Episode 63")
+                  items[0] == "Con Teppei for Beginner — Episode 1")
             # Save another -> newest first.
             fill_and_save(app, 64)
             items = list_items(app)
             check("newest first",
-                  items[0] == "Con Teppei for Beginner — Episode 64")
+                  items[0] == "Con Teppei for Beginner — Episode 2")
             check("two entries", len(items) == 2)
         finally:
             root.destroy()
