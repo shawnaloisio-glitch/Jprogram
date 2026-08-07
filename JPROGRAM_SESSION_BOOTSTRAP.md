@@ -323,39 +323,41 @@ branches exist. Nothing to flag.
 
 ### Next immediate task
 
-**The Cleaner bug (see previous update) is now fully scoped — a Coder
-command is drafted and ready to run, not yet dispatched.** Confirmed
-during scoping that the same bug independently occurs in Subtitle
-Importer's cleaner too (a real SRT import hit it, cue #93), which is why
-the fix extracts the shared splitting rule into a new `Common/
-sentence_split.py` utility rather than patching one Cleaner alone. Run
-the drafted command next session, evaluate the diff + full test suite as
-usual, then a fresh-subagent Auditor pass before considering it landed
-(judgment-call Yes — touches `deterministic_parser.py`, the live parser
-stage, even though it's a pure behavior-preserving extraction).
+**The Cleaner bug is fixed, committed, and pushed (`4d4ff4e`).** Two
+Coder dispatches: the first built the fix (`Common/sentence_split.py`
+extracted from `deterministic_parser.py`'s `_split_line`, reused by both
+Transcript Cleaner and Subtitle Importer); the second was a tight,
+same-session correction after Advisor caught a real regression in the
+first attempt via direct code execution before commit — the initial
+Subtitle Importer implementation pre-split every cue on its internal `\n`
+before checking punctuation, which fragmented a single sentence that
+legitimately wraps across two display lines within one cue. Fixed by
+applying the split rule to each cue's full text as one string instead. A
+fresh-subagent Auditor pass was launched the same session to independently
+verify the landed commit — **check `Audits/Trigger_Log/` at the start of
+next session for that report if it hasn't been reviewed yet**; if it
+surfaced anything, that's the very next thing to handle.
 
-Also shipped this session, small and already committed: `processing_tab.py`'s
+Also shipped and pushed this session, small: `processing_tab.py`'s
 `human_label()` renamed its "Episode <N>" text to "ID#<N>" — Owner caught
 in real usage that the label implied it reflected the new Episode#/Season#
-fields when it's actually the unrelated hidden system counter. Pure
-display-text change, zero behavior change, 6 files (`1665cfc`).
+fields when it's actually the unrelated hidden system counter (`1665cfc`).
 
 Two one-off hand-fixes also landed this session as immediate unblocks
 (data fixes, not code — see `WORKING_LIST.md` for exact files): the
 `teppeibeginner_ep0002` canonical source and the raw `Seika's Day Out.srt`,
 both had the real bug pattern manually split so at least one clean run
-could get through meanwhile.
+could get through meanwhile, ahead of the real fix landing.
+
+**Real-world validation this session:** Language Coach (the downstream
+consumer) reported being happy with the product and getting genuinely good
+data from it — see `project_lc_validated_real_output.md`.
 
 The three small episode/season follow-ups (Index's sequencing column,
 `collision_exists()` cleanup, `diagnostics.py`'s stale reference) remain
-open too, still none urgent.
-
-**Not yet pushed to `origin`:** two local commits (`1665cfc`, `348adf0`)
-ahead of `origin/master` as of this update — push at the start of next
-session if not already done. `Config/styles.json` also has an uncommitted
-real data change (a "Podcast-Monologue" style added through the app during
-testing) — Owner's own data, left uncommitted intentionally, not part of
-any task.
+open too, still none urgent. `Config/styles.json` has an uncommitted real
+data change (a "Podcast-Monologue" style added through the app during
+testing) — Owner's own data, left uncommitted intentionally.
 Processing tab's fate (removed vs. kept as a simpler status panel, now
 that the deterministic parser doesn't need DeepSeek-era rate scheduling)
 is still open and undecided, raised but deliberately not resolved this

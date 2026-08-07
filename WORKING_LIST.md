@@ -57,26 +57,30 @@ in the Cleaner — rather than writing separate splitting logic that could
 drift out of agreement with the parser's actual behavior — closes the gap
 permanently instead of patching this one instance.
 
-- [ ] **Coder command drafted (2026-08-08), not yet run.** Also confirmed
-  a second, independent occurrence of the same bug via a real Subtitle
-  Importer import (`せいか先生のお出かけ Seika's Day Out.srt`, cue #93 —
-  `Subtitle Importer/cleaner.py`'s `clean_text()` has the identical
-  cue-per-sentence assumption as the Transcript Cleaner), which is why the
-  scoped fix extracts `_split_line` into a new shared `Common/
-  sentence_split.py` utility rather than duplicating it once — now two real
-  call sites need to agree, not a hypothetical one. Scope: 5 parts — new
-  shared module, a behavior-preserving refactor of
-  `deterministic_parser.py` to import from it, the actual fix in both
-  Cleaners, and test coverage including the real `通りません。はい。` case.
-  Neither Cleaner nor `deterministic_parser.py` is Frozen, so normal-friction
-  Advisor/OC work — still a judgment-call Yes for a fresh Auditor pass once
-  it lands, given it touches the live parser stage's own module (even by
-  pure extraction) and the evidence-preservation gate's correctness depends
-  on it. Two one-off hand-fixes already landed as immediate unblocks this
-  session (not part of this command, already done): `Sources\
-  teppeibeginner_ep0002.txt` (+ its Source Registry/Source Package sha256,
-  kept in sync) and the raw `Seika's Day Out.srt` (cue #93 split, no
-  registry involved since it wasn't registered yet).
+- [x] **Fixed and committed (2026-08-08), `4d4ff4e`.** Extracted
+  `_split_line` into a new shared `Common/sentence_split.py` after
+  confirming a second, independent occurrence of the same bug via a real
+  Subtitle Importer import (`せいか先生のお出かけ Seika's Day Out.srt`,
+  cue #93 — `Subtitle Importer/cleaner.py`'s `clean_text()` had the
+  identical cue-per-sentence assumption as the Transcript Cleaner), so two
+  real call sites now share one rule instead of risking drift.
+  **Caught before commit, via direct code execution, not just review:**
+  the first Subtitle Importer implementation pre-split each cue on its
+  internal `\n` before checking punctuation, which fragmented a single
+  sentence legitimately wrapped across two display lines within one cue
+  into a punctuation-less piece plus its completion — a real regression,
+  not just the original bug. Fixed in an immediate same-session follow-up
+  (`clean_text` now applies `split_line` to each cue's full text as one
+  string, never pre-splitting on internal newlines) and re-verified both
+  independently and via a fresh-subagent Auditor pass launched the same
+  session (see `Audits/Trigger_Log/` once it reports back — launched
+  2026-08-08, result not yet in hand as of this note). Full suite: 68
+  files, only the pre-existing/deferred `Index/index_builder.py` failure
+  below remains. Two one-off hand-fixes from earlier in the session (data,
+  not code, not part of this commit): `Sources\teppeibeginner_ep0002.txt`
+  (+ Source Registry/Source Package sha256 kept in sync) and the raw
+  `Seika's Day Out.srt` (cue #93 split by hand, no registry involved since
+  it wasn't registered yet).
 - [ ] **Aside, unrelated, not urgent:** `CLAUDE.md`'s Frozen Components
   list only names `Data Processor/deepseek_client.py` under "Transport" —
   `deterministic_parser.py`/`deterministic_parser_client.py` aren't listed,
