@@ -45,9 +45,10 @@ def make_sources(sources_root):
     sources_root.mkdir(parents=True, exist_ok=True)
     result = controller.create_collection_source(
         "teppei_beginner", 58, "podcast_transcript", "con_teppei_podcast",
-        "こんにちは。\n")
+        "こんにちは。\n", material_level=1)
     standalone = controller.create_standalone_source(
-        "nhk_weather", "podcast_transcript", "nhk_news", "天気です。\n")
+        "nhk_weather", "podcast_transcript", "nhk_news", "天気です。\n",
+        material_level=1)
     return result, standalone
 
 
@@ -135,7 +136,7 @@ def _():
         for ep in (2, 10, 999, 1000):
             controller.create_collection_source(
                 "teppei_beginner", ep, "podcast_transcript",
-                "con_teppei_podcast", f"episode {ep}\n")
+                "con_teppei_podcast", f"episode {ep}\n", material_level=1)
         packages = processing_tab.discover_packages(sources_root)
         episodes = [p.get("episode") for p in packages]
         check("numeric episode order", episodes == [2, 10, 999, 1000])
@@ -164,12 +165,10 @@ def _():
     try:
         controller.create_collection_source(
             "teppei_beginner", 3, "podcast_transcript",
-            "con_teppei_podcast", "ok\n")
+            "con_teppei_podcast", "ok\n", material_level=1)
         # A hand-written sidecar with a non-numeric episode must not crash
         # the sort.
-        bad_dir = sources_root / "collections" / "teppei_beginner"
-        bad_dir.mkdir(parents=True, exist_ok=True)
-        (bad_dir / "teppei_beginner_bad.source.json").write_text(json.dumps({
+        (sources_root / "teppei_beginner_bad.source.json").write_text(json.dumps({
             "source_id": "podcast_transcript_teppei-beginner_bad",
             "collection_id": "teppei_beginner",
             "episode": "abc",

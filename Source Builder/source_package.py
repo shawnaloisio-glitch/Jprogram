@@ -8,11 +8,11 @@ The Source Package is the authoritative identity record for a canonical
 source. It is created only after a successful source save and lives as a
 sidecar beside the canonical text:
 
-    Sources\\collections\\<collection_id>\\<collection_id>_epNNNN.txt
-    Sources\\collections\\<collection_id>\\<collection_id>_epNNNN.source.json
+    Sources\\<collection_id>_epNNNN.txt
+    Sources\\<collection_id>_epNNNN.source.json
 
-    Sources\\standalone\\<source_name>.txt
-    Sources\\standalone\\<source_name>.source.json
+    Sources\\<source_name>.txt
+    Sources\\<source_name>.source.json
 
 The package never modifies the canonical text file. It carries every field a
 future handoff module needs to produce a Source Registry entry and a Cleaning
@@ -37,12 +37,13 @@ import source_id as source_id_util
 
 from project_config import (
     CLEANER_VERSIONS,
+    MATERIAL_LEVELS,
     PROCESSING_PROFILES,
     PROJECT_VERSION,
 )
 
 ARTIFACT_TYPE = "source_package"
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 PACKAGE_SUFFIX = ".source.json"
 FORMAT = "txt"
 
@@ -56,9 +57,9 @@ def package_path_for(canonical_path):
     Return the sidecar package path for a canonical source file.
 
     Input: canonical_path (str or Path), e.g.
-        Sources\\collections\\teppei_beginner\\teppei_beginner_ep0058.txt
+        Sources\\teppei_beginner_ep0058.txt
     Output: Path with the ".txt" extension replaced by ".source.json", e.g.
-        Sources\\collections\\teppei_beginner\\teppei_beginner_ep0058.source.json
+        Sources\\teppei_beginner_ep0058.source.json
     """
     path = Path(canonical_path)
     return path.with_suffix(PACKAGE_SUFFIX)
@@ -117,8 +118,9 @@ def sha256_file(file_path):
 
 
 def build_package(source_type, origin, language, canonical_path,
-                  cleaning_profile, cleaner_version, source_id=None,
-                  collection_id=None, episode=None, source_name=None,
+                  cleaning_profile, cleaner_version, material_level,
+                  source_id=None, collection_id=None, episode=None,
+                  source_name=None, style_id=None, duration_seconds=None,
                   created_at=None):
     """
     Build a Source Package dict.
@@ -126,15 +128,22 @@ def build_package(source_type, origin, language, canonical_path,
     Input:
         source_type (str), origin (str), language (str),
         canonical_path (str), cleaning_profile (str|None),
-        cleaner_version (str|None), source_id (str|None, derived if None),
+        cleaner_version (str|None), material_level (int, one of the levels
+        in project_config.MATERIAL_LEVELS),
+        source_id (str|None, derived if None),
         collection_id (str|None, collection mode),
         episode (int|None, collection mode),
         source_name (str|None, standalone mode),
+        style_id (int|None),
+        duration_seconds (int|float|None, non-negative),
         created_at (str|None, auto now).
 
     Output: the source package dict.
 
     The sha256 is computed from the canonical file. format is fixed to "txt".
+    material_level / style_id / duration_seconds are always present in the
+    package (None when not given); collection_id/episode/source_name are
+    only included by identity mode.
     """
     canonical = Path(canonical_path)
     if not canonical.is_file():
@@ -166,6 +175,9 @@ def build_package(source_type, origin, language, canonical_path,
         "sha256": sha256_file(canonical),
         "created_at": created_at,
         "created_by_version": PROJECT_VERSION,
+        "material_level": material_level,
+        "style_id": style_id,
+        "duration_seconds": duration_seconds,
     }
     if collection_id is not None:
         package["collection_id"] = collection_id
@@ -213,6 +225,32 @@ def validate_package(package):
         and bool(package.get("source_name"))
     if not has_collection and not has_source_name:
         errors.append("collection_id or source_name is required")
+
+    # material_level is required and must be one of the configured levels.
+    valid_levels = {level for level, _ in MATERIAL_LEVELS}
+    material_level = package.get("material_level")
+    if material_level is None:
+        errors.append("material_level is required")
+    elif isinstance(material_level, bool) or not isinstance(material_level, int):
+        errors.append("material_level must be an integer")
+    elif material_level not in valid_levels:
+        errors.append(
+            f"material_level must be one of {sorted(valid_levels)}")
+
+    # style_id / duration_seconds are optional; present-and-None is fine.
+    style_id = package.get("style_id")
+    if style_id is not None and (isinstance(style_id, bool)
+                                 or not isinstance(style_id, int)):
+        errors.append("style_id must be an integer")
+
+    duration_seconds = package.get("duration_seconds")
+    if duration_seconds is not None:
+        if (isinstance(duration_seconds, bool)
+                or not isinstance(duration_seconds, (int, float))):
+            errors.append("duration_seconds must be a number")
+        elif duration_seconds < 0:
+            errors.append("duration_seconds must be non-negative")
+
     return errors
 
 

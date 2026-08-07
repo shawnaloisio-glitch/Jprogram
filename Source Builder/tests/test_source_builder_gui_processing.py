@@ -89,9 +89,10 @@ def make_source(package_spec):
     if package_spec[0] == "collection":
         return controller.create_collection_source(
             package_spec[1], package_spec[2], "podcast_transcript",
-            "con_teppei_podcast", "こんにちは。\n")
+            "con_teppei_podcast", "こんにちは。\n", material_level=1)
     return controller.create_standalone_source(
-        package_spec[1], "podcast_transcript", "nhk_news", "天気です。\n")
+        package_spec[1], "podcast_transcript", "nhk_news", "天気です。\n",
+        material_level=1)
 
 
 TESTS = []

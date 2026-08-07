@@ -217,6 +217,18 @@ CLEANED_ARTIFACT_EXTENSION = ".clean.txt"
 
 DEFAULT_LANGUAGE = "ja"
 
+# Material level vocabulary for per-source metadata.
+# (level, display_name) pairs. This is the single source of truth for
+# these rows; no other module keeps its own copy.
+
+MATERIAL_LEVELS = (
+    (0, "Ungraded"),
+    (1, "Absolute Beginner"),
+    (2, "Beginner"),
+    (3, "Intermediate"),
+    (4, "Advanced"),
+)
+
 # ==================================================
 # Cleaning Transformations
 # ==================================================

@@ -63,14 +63,13 @@ def _():
           == "x_ep0000.txt")
 
 
-@test("source path under collections/<collection_id>")
+@test("source path under the flat Sources root")
 def _():
     root, sources, saved = setup()
     try:
         path = controller.source_path("teppei_beginner", 51)
-        check("path under collections",
-              sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0051.txt"
-              == path)
+        check("path under Sources",
+              sources / "teppei_beginner_ep0051.txt" == path)
     finally:
         restore(saved)
 
@@ -118,7 +117,7 @@ def _():
             "con_teppei_podcast", "これはテストです。\n")
         check("success true", result["success"] is True)
         check("filename", result["filename"] == "teppei_beginner_ep0051.txt")
-        path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0051.txt"
+        path = sources / "teppei_beginner_ep0051.txt"
         check("file exists", path.is_file())
         check("text preserved",
               path.read_text(encoding="utf-8") == "これはテストです。\n")
@@ -143,7 +142,7 @@ def _():
         check("second save rejected", result2["success"] is False)
         check("error mentions exists",
               any("already exists" in e for e in result2["errors"]))
-        path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0051.txt"
+        path = sources / "teppei_beginner_ep0051.txt"
         check("original preserved", path.read_text(encoding="utf-8") == "first\n")
     finally:
         restore(saved)
@@ -159,7 +158,7 @@ def _():
             "teppei_beginner", 51, "podcast_transcript",
             "con_teppei_podcast", "second\n", overwrite=True)
         check("overwrite succeeds", result["success"] is True)
-        path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0051.txt"
+        path = sources / "teppei_beginner_ep0051.txt"
         check("overwritten", path.read_text(encoding="utf-8") == "second\n")
     finally:
         restore(saved)
@@ -172,9 +171,7 @@ def _():
         result = controller.create_source("", 51, "", "", "")
         check("success false", result["success"] is False)
         check("errors non-empty", len(result["errors"]) > 0)
-        check("no file created",
-              not (sources / "collections").exists()
-              or not any((sources / "collections").rglob("*.txt")))
+        check("no file created", not any(sources.glob("*.txt")))
     finally:
         restore(saved)
 
@@ -187,7 +184,7 @@ def _():
             "teppei_beginner", 7, "podcast_transcript",
             "con_teppei_podcast", "text\n")
         check("success true", result["success"] is True)
-        path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0007.txt"
+        path = sources / "teppei_beginner_ep0007.txt"
         check("no .tmp", not path.with_name(path.name + ".tmp").exists())
     finally:
         restore(saved)
@@ -205,12 +202,12 @@ def _():
           == "my source.txt")
 
 
-@test("standalone save path under Sources/standalone")
+@test("standalone save path under the flat Sources root")
 def _():
     root, sources, saved = setup()
     try:
         path = controller.standalone_source_path("nhk_weather")
-        check("path", sources / "standalone" / "nhk_weather.txt" == path)
+        check("path", sources / "nhk_weather.txt" == path)
     finally:
         restore(saved)
 
@@ -258,7 +255,7 @@ def _():
         result = controller.create_standalone_source(
             "nhk_weather", "article", "nhk_news", "天気です。\n")
         check("success true", result["success"] is True)
-        path = sources / "standalone" / "nhk_weather.txt"
+        path = sources / "nhk_weather.txt"
         check("file exists", path.is_file())
         check("text preserved", path.read_text(encoding="utf-8") == "天気です。\n")
         check("filename", result["filename"] == "nhk_weather.txt")
@@ -277,7 +274,7 @@ def _():
             "nhk", "article", "nhk_news", "second\n")
         check("rejected", result["success"] is False)
         check("exists error", any("already exists" in e for e in result["errors"]))
-        path = sources / "standalone" / "nhk.txt"
+        path = sources / "nhk.txt"
         check("original preserved", path.read_text(encoding="utf-8") == "first\n")
     finally:
         restore(saved)
@@ -292,7 +289,7 @@ def _():
         result = controller.create_standalone_source(
             "nhk", "article", "nhk_news", "second\n", overwrite=True)
         check("overwrite succeeds", result["success"] is True)
-        path = sources / "standalone" / "nhk.txt"
+        path = sources / "nhk.txt"
         check("overwritten", path.read_text(encoding="utf-8") == "second\n")
     finally:
         restore(saved)
@@ -388,10 +385,9 @@ def _():
         controller.create_collection_source(
             "teppei_beginner", 7, "podcast_transcript",
             "con_teppei_podcast", "text\n")
-        directory = controller.collection_dir("teppei_beginner")
-        (directory / "notes.txt").write_text("not an episode\n",
-                                             encoding="utf-8")
-        (directory / "other_collection_ep9999.txt").write_text(
+        (sources / "notes.txt").write_text("not an episode\n",
+                                           encoding="utf-8")
+        (sources / "other_collection_ep9999.txt").write_text(
             "x\n", encoding="utf-8")
         check("only matching episodes counted",
               controller.next_auto_sequence("teppei_beginner") == 8)

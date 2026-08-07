@@ -34,18 +34,13 @@ IDENTITY_TYPES = ("collection", "standalone")
 PROJECT_LANGUAGE = "ja"
 
 
+def _snapshot_or_blank(value):
+    """Normalize a snapshot field for comparison; None becomes ''."""
+    return "" if value is None else value
+
+
 class SourceBuilderError(Exception):
     """Raised when a source cannot be validated or created."""
-
-
-def collection_dir(collection_id):
-    """Return the collection storage directory for a collection_id."""
-    return SOURCES_ROOT / "collections" / collection_id
-
-
-def standalone_dir():
-    """Return the standalone storage directory."""
-    return SOURCES_ROOT / "standalone"
 
 
 # ============================================================
@@ -74,12 +69,12 @@ def generate_standalone_filename(source_name):
 
 def source_path(collection_id, episode):
     """Return the canonical save path for a collection source."""
-    return collection_dir(collection_id) / generate_filename(collection_id, episode)
+    return SOURCES_ROOT / generate_filename(collection_id, episode)
 
 
 def standalone_source_path(source_name):
     """Return the canonical save path for a standalone source."""
-    return standalone_dir() / generate_standalone_filename(source_name)
+    return SOURCES_ROOT / generate_standalone_filename(source_name)
 
 
 # ============================================================
@@ -182,7 +177,8 @@ def source_id_for(source_type, collection_id=None, episode=None,
 
 def _try_write_source_package(source_type, origin, canonical_path,
                               collection_id=None, episode=None,
-                              source_name=None):
+                              source_name=None, material_level=None,
+                              style_id=None, duration_seconds=None):
     """
     Build and atomically write the sidecar Source Package for a saved source.
 
@@ -203,6 +199,9 @@ def _try_write_source_package(source_type, origin, canonical_path,
             collection_id=collection_id,
             episode=episode,
             source_name=source_name,
+            material_level=material_level,
+            style_id=style_id,
+            duration_seconds=duration_seconds,
         )
         source_package.write_package(package)
     except source_package.SourcePackageError as exc:
@@ -211,7 +210,8 @@ def _try_write_source_package(source_type, origin, canonical_path,
 
 
 def create_collection_source(collection_id, episode, source_type, origin,
-                             source_text, overwrite=False):
+                             source_text, overwrite=False, material_level=None,
+                             style_id=None, duration_seconds=None):
     """Validate and create a canonical collection source file."""
     errors = validate_collection_fields(collection_id, episode, source_type,
                                         origin, source_text)
@@ -233,6 +233,9 @@ def create_collection_source(collection_id, episode, source_type, origin,
         canonical_path=path,
         collection_id=collection_id,
         episode=episode_value,
+        material_level=material_level,
+        style_id=style_id,
+        duration_seconds=duration_seconds,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
@@ -242,7 +245,8 @@ def create_collection_source(collection_id, episode, source_type, origin,
 
 
 def create_standalone_source(source_name, source_type, origin, source_text,
-                             overwrite=False):
+                             overwrite=False, material_level=None,
+                             style_id=None, duration_seconds=None):
     """Validate and create a canonical standalone source file."""
     errors = validate_standalone_fields(source_name, source_type, origin,
                                         source_text)
@@ -262,6 +266,9 @@ def create_standalone_source(source_name, source_type, origin, source_text,
         origin=origin,
         canonical_path=path,
         source_name=source_name,
+        material_level=material_level,
+        style_id=style_id,
+        duration_seconds=duration_seconds,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
@@ -271,14 +278,18 @@ def create_standalone_source(source_name, source_type, origin, source_text,
 
 
 def create_source(collection_id, episode, source_type, origin, source_text,
-                  overwrite=False):
+                  overwrite=False, material_level=None, style_id=None,
+                  duration_seconds=None):
     """
     Validate and create a canonical collection source file.
 
     Retained for backward compatibility (collection mode).
     """
     return create_collection_source(collection_id, episode, source_type,
-                                    origin, source_text, overwrite=overwrite)
+                                    origin, source_text, overwrite=overwrite,
+                                    material_level=material_level,
+                                    style_id=style_id,
+                                    duration_seconds=duration_seconds)
 
 
 # ============================================================
@@ -350,7 +361,7 @@ def next_auto_sequence(collection_id):
     """
     Return the next automatic sequence number for an "auto" collection.
 
-    Scans the collection's folder on every call and returns the maximum
+    Scans the flat Sources root on every call and returns the maximum
     episode number already present (files matching the generate_filename
     pattern "<collection_id>_ep<digits>.txt") plus one. Returns 1 when the
     collection has no matching source files yet. Gaps are never filled;
@@ -361,7 +372,7 @@ def next_auto_sequence(collection_id):
     Input: collection_id (str).
     Output: int (the next sequence number, always >= 1).
     """
-    directory = collection_dir(collection_id)
+    directory = SOURCES_ROOT
     prefix = f"{collection_id}_ep"
     highest = 0
     if directory.is_dir():
@@ -419,7 +430,9 @@ class ReadyStateEngine:
                 "episode": str,
                 "source_type": str,
                 "origin": str,
+                "source_text": str,
                 "filename": str,
+                "material_level": int | None,   # optional
             }
         The engine returns SAVED only while the form still matches this
         snapshot (i.e. until the user edits a field).
@@ -432,9 +445,12 @@ class ReadyStateEngine:
         self._error_message = str(message)
 
     def evaluate(self, identity_type, collection_id, source_name, episode,
-                 source_type, origin, source_text):
+                 source_type, origin, source_text, material_level=None):
         """
         Return the current workflow state for the given form fields.
+
+        material_level is tracked but never blocks: it is optional plumbing
+        until the GUI provides a field to fill in.
 
         Output: dict:
             {
@@ -456,7 +472,7 @@ class ReadyStateEngine:
 
         if self._saved_snapshot is not None and self._matches_saved(
                 identity_type, collection_id, source_name, episode,
-                source_type, origin, source_text):
+                source_type, origin, source_text, material_level):
             return {
                 "state": "SAVED",
                 "message": "Saved successfully.",
@@ -486,7 +502,8 @@ class ReadyStateEngine:
         }
 
     def _matches_saved(self, identity_type, collection_id, source_name,
-                       episode, source_type, origin, source_text):
+                       episode, source_type, origin, source_text,
+                       material_level=None):
         snap = self._saved_snapshot
         return (
             identity_type == snap["identity_type"]
@@ -496,6 +513,8 @@ class ReadyStateEngine:
             and (source_type or "") == (snap.get("source_type") or "")
             and (origin or "") == (snap.get("origin") or "")
             and (source_text or "") == (snap.get("source_text") or "")
+            and _snapshot_or_blank(material_level) == _snapshot_or_blank(
+                snap.get("material_level"))
         )
 
     def _first_blocking_reason(self, identity_type, collection_id,
@@ -546,8 +565,6 @@ __all__ = [
     "PROJECT_LANGUAGE",
     "READY_STATES",
     "SourceBuilderError",
-    "collection_dir",
-    "standalone_dir",
     "generate_filename",
     "generate_standalone_filename",
     "source_path",

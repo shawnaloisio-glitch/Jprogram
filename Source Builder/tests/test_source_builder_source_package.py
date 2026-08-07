@@ -80,11 +80,11 @@ def _():
     try:
         result = controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
-            "con_teppei_podcast", "こんにちは。\n")
+            "con_teppei_podcast", "こんにちは。\n", material_level=1)
         check("save success", result["success"] is True)
         check("no package error", "package_error" not in result)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.txt"
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+        canonical = sources / "teppei_beginner_ep0058.txt"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         check("canonical exists", canonical.is_file())
         check("package exists", package_path.is_file())
         data = json.loads(package_path.read_text(encoding="utf-8"))
@@ -99,14 +99,14 @@ def _():
     try:
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
-            "con_teppei_podcast", "こんにちは。\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+            "con_teppei_podcast", "こんにちは。\n", material_level=1)
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         for field in REQUIRED_FIELDS:
             check(f"field {field} present",
                   field in data and data[field] not in (None, ""))
         check("artifact_type", data["artifact_type"] == "source_package")
-        check("schema_version", data["schema_version"] == "1")
+        check("schema_version", data["schema_version"] == "2")
         check("source_type", data["source_type"] == "podcast_transcript")
         check("origin", data["origin"] == "con_teppei_podcast")
         check("language", data["language"] == "ja")
@@ -127,8 +127,8 @@ def _():
     try:
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
-            "con_teppei_podcast", "text\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+            "con_teppei_podcast", "text\n", material_level=1)
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("source_id",
               data["source_id"] == "podcast_transcript_teppei-beginner_ep058")
@@ -147,9 +147,9 @@ def _():
         text = "これはテストです。\n"
         controller.create_collection_source(
             "teppei_beginner", 58, "podcast_transcript",
-            "con_teppei_podcast", text)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.txt"
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0058.source.json"
+            "con_teppei_podcast", text, material_level=1)
+        canonical = sources / "teppei_beginner_ep0058.txt"
+        package_path = sources / "teppei_beginner_ep0058.source.json"
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("sha256", data["sha256"] == sha256_of(text))
         check("canonical_path", data["canonical_path"] == str(canonical))
@@ -163,10 +163,11 @@ def _():
     root, sources, saved = setup()
     try:
         result = controller.create_standalone_source(
-            "nhk_weather", "article", "nhk_news", "天気です。\n")
+            "nhk_weather", "article", "nhk_news", "天気です。\n",
+            material_level=1)
         check("save success", result["success"] is True)
         check("no package error", "package_error" not in result)
-        package_path = sources / "standalone" / "nhk_weather.source.json"
+        package_path = sources / "nhk_weather.source.json"
         check("package exists", package_path.is_file())
         data = json.loads(package_path.read_text(encoding="utf-8"))
         check("source_name", data["source_name"] == "nhk_weather")
@@ -174,7 +175,7 @@ def _():
         check("no collection_id", "collection_id" not in data)
         check("no episode", "episode" not in data)
         check("canonical_path",
-              data["canonical_path"] == str(sources / "standalone" / "nhk_weather.txt"))
+              data["canonical_path"] == str(sources / "nhk_weather.txt"))
     finally:
         restore(saved)
 
@@ -185,8 +186,8 @@ def _():
     try:
         controller.create_collection_source(
             "teppei_beginner", 1, "podcast_transcript",
-            "con_teppei_podcast", "a\n")
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0001.txt"
+            "con_teppei_podcast", "a\n", material_level=1)
+        canonical = sources / "teppei_beginner_ep0001.txt"
         package_path = source_package.package_path_for(canonical)
         check("package beside source",
               package_path.parent == canonical.parent)
@@ -203,8 +204,8 @@ def _():
     try:
         controller.create_collection_source(
             "teppei_beginner", 2, "podcast_transcript",
-            "con_teppei_podcast", "b\n")
-        package_path = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0002.source.json"
+            "con_teppei_podcast", "b\n", material_level=1)
+        package_path = sources / "teppei_beginner_ep0002.source.json"
         check("no .tmp", not package_path.with_name(
             package_path.name + ".tmp").exists())
     finally:
@@ -226,16 +227,17 @@ def _():
                 source_type="podcast_transcript", origin="o",
                 language="ja", canonical_path="C:/definitely/missing.txt",
                 cleaning_profile="transcript_standard_v1",
-                cleaner_version="1.0", collection_id="c", episode=1)
+                cleaner_version="1.0", material_level=0,
+                collection_id="c", episode=1)
             check("build raises", False)
         except source_package.SourcePackageError:
             pass
         # The canonical file from a real save remains intact.
         result = controller.create_collection_source(
             "teppei_beginner", 3, "podcast_transcript",
-            "con_teppei_podcast", "keepme\n")
+            "con_teppei_podcast", "keepme\n", material_level=1)
         check("save success", result["success"] is True)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0003.txt"
+        canonical = sources / "teppei_beginner_ep0003.txt"
         check("canonical intact",
               canonical.read_text(encoding="utf-8") == "keepme\n")
     finally:
@@ -249,8 +251,8 @@ def _():
         text = "元のテキスト。\n"
         controller.create_collection_source(
             "teppei_beginner", 4, "podcast_transcript",
-            "con_teppei_podcast", text)
-        canonical = sources / "collections" / "teppei_beginner" / "teppei_beginner_ep0004.txt"
+            "con_teppei_podcast", text, material_level=1)
+        canonical = sources / "teppei_beginner_ep0004.txt"
         check("text unchanged", canonical.read_text(encoding="utf-8") == text)
     finally:
         restore(saved)
@@ -262,6 +264,7 @@ def _():
     check("missing artifact type", any("artifact_type" in e for e in errors))
     check("missing source_id", any("source_id is required" in e for e in errors))
     check("missing identity", any("collection_id or source_name" in e for e in errors))
+    check("missing material_level", any("material_level" in e for e in errors))
 
 
 @test("derive_source_id uses frozen rules")
@@ -273,6 +276,119 @@ def _():
           == "article_nhk-weather")
     check("slugify", source_package.derive_source_id("pod", "My Title", 1)
           == "pod_my-title_ep001")
+
+
+def valid_package(**overrides):
+    """Return a full schema-v2 package dict that passes validation."""
+    package = {
+        "artifact_type": "source_package",
+        "schema_version": "2",
+        "source_id": "podcast_transcript_teppei-beginner_ep058",
+        "source_type": "podcast_transcript",
+        "origin": "con_teppei_podcast",
+        "language": "ja",
+        "canonical_path": "C:/sources/teppei_beginner_ep0058.txt",
+        "original_filename": "teppei_beginner_ep0058.txt",
+        "format": "txt",
+        "cleaning_profile": "transcript_standard_v1",
+        "cleaner_version": "1.0",
+        "sha256": "0" * 64,
+        "created_at": "2026-08-01T10:00:00",
+        "created_by_version": "1.0",
+        "collection_id": "teppei_beginner",
+        "episode": 58,
+        "material_level": 1,
+        "style_id": None,
+        "duration_seconds": None,
+    }
+    package.update(overrides)
+    return package
+
+
+@test("package always includes material_level/style_id/duration_seconds")
+def _():
+    root, sources, saved = setup()
+    try:
+        controller.create_collection_source(
+            "teppei_beginner", 58, "podcast_transcript",
+            "con_teppei_podcast", "こんにちは。\n", material_level=0)
+        package_path = sources / "teppei_beginner_ep0058.source.json"
+        data = json.loads(package_path.read_text(encoding="utf-8"))
+        check("material_level key", "material_level" in data)
+        check("material_level value", data["material_level"] == 0)
+        check("style_id key", "style_id" in data)
+        check("style_id None", data["style_id"] is None)
+        check("duration_seconds key", "duration_seconds" in data)
+        check("duration_seconds None", data["duration_seconds"] is None)
+    finally:
+        restore(saved)
+
+
+@test("validate_package: material_level required")
+def _():
+    missing = valid_package()
+    del missing["material_level"]
+    errors = source_package.validate_package(missing)
+    check("missing key rejected",
+          any("material_level is required" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(material_level=None))
+    check("None rejected",
+          any("material_level is required" in e for e in errors))
+
+
+@test("validate_package: material_level must be a valid level int")
+def _():
+    check("zero valid", source_package.validate_package(
+        valid_package(material_level=0)) == [])
+    check("four valid", source_package.validate_package(
+        valid_package(material_level=4)) == [])
+    errors = source_package.validate_package(
+        valid_package(material_level=5))
+    check("out of range", any("material_level" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(material_level="1"))
+    check("non-int rejected", any("integer" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(material_level=True))
+    check("bool rejected", any("integer" in e for e in errors))
+
+
+@test("validate_package: style_id optional int")
+def _():
+    check("absent ok", source_package.validate_package(
+        valid_package()) == [])
+    check("null ok", source_package.validate_package(
+        valid_package(style_id=None)) == [])
+    check("int ok", source_package.validate_package(
+        valid_package(style_id=3)) == [])
+    errors = source_package.validate_package(
+        valid_package(style_id="x"))
+    check("non-int rejected", any("style_id" in e for e in errors))
+
+
+@test("validate_package: duration_seconds non-negative number")
+def _():
+    check("absent ok", source_package.validate_package(
+        valid_package()) == [])
+    check("null ok", source_package.validate_package(
+        valid_package(duration_seconds=None)) == [])
+    check("int ok", source_package.validate_package(
+        valid_package(duration_seconds=90)) == [])
+    check("float ok", source_package.validate_package(
+        valid_package(duration_seconds=90.5)) == [])
+    check("zero ok", source_package.validate_package(
+        valid_package(duration_seconds=0)) == [])
+    errors = source_package.validate_package(
+        valid_package(duration_seconds=-1))
+    check("negative rejected", any("non-negative" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(duration_seconds="90"))
+    check("non-number rejected",
+          any("duration_seconds" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(duration_seconds=True))
+    check("bool rejected", any("duration_seconds" in e for e in errors))
 
 
 def main():

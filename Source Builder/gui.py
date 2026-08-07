@@ -1297,7 +1297,7 @@ class SourceBuilderApp:
         editor.destroy()
 
     def _open_folder(self):
-        """Open the save folder for the current metadata in Explorer."""
+        """Open the Sources folder for the current metadata in Explorer."""
         if self.config_error is not None:
             return
         is_collection = self.identity_var.get() == "collection"
@@ -1306,9 +1306,7 @@ class SourceBuilderApp:
             if not collection_id:
                 self._refresh_ready_state()
                 return
-            folder = controller.collection_dir(collection_id)
-        else:
-            folder = controller.standalone_dir()
+        folder = controller.SOURCES_ROOT
         folder.mkdir(parents=True, exist_ok=True)
         os.startfile(str(folder))
 

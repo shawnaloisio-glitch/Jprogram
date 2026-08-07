@@ -68,9 +68,8 @@ def stage_setup():
     import handoff
     import paths
 
-    standalone_dir = paths.SOURCES / "standalone"
-    standalone_dir.mkdir(parents=True, exist_ok=True)
-    canonical_path = standalone_dir / f"{SOURCE_NAME}.txt"
+    paths.SOURCES.mkdir(parents=True, exist_ok=True)
+    canonical_path = paths.SOURCES / f"{SOURCE_NAME}.txt"
 
     src_text = (HARNESS_DIR / "qc_test_001_source.txt").read_text(encoding="utf-8")
     canonical_path.write_text(src_text, encoding="utf-8", newline="\n")
@@ -86,6 +85,7 @@ def stage_setup():
         canonical_path=canonical_path,
         cleaning_profile=cleaning_profile,
         cleaner_version=cleaner_version,
+        material_level=0,
         source_name=SOURCE_NAME,
     )
     source_package.write_package(package)
