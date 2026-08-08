@@ -19,6 +19,29 @@ to dig through conversation history.
 
 ## Open
 
+### New small tool needed: JSONL exporter for the reader (2026-08-09)
+
+Owner request, not yet scoped or built. The canonical corpus JSONL files
+live under `Jprogram Workspace\jsonl\` named by internal `source_id`
+(e.g. `clean_text_nij-id00001.jsonl`) — opaque, not something a human
+wants to see in Reasonix/MiniLingQ's import picker. Need a small
+exporter: take a corpus JSONL file (or a source_id/creator batch),
+look up the source's real name (`source_name`/`original_filename` is
+already on the Source Package — no need to touch the personal rename
+tool's `rename_log.csv`), copy/rename it to `<that name>.jsonl`, and
+write it wherever the reader is meant to pick files up from (a designated
+export folder — Reasonix imports via its own file picker/drag-drop, so
+this tool doesn't need to talk to Reasonix directly, just produce a
+correctly-named file for the user to hand it).
+
+Same governance question as the Batch Importer applies: this reads
+Jprogram's real corpus + Source Package data and would live in the repo
+as a reusable tool, not a one-off script, so it should go through the
+Coder process rather than being an Advisor-direct build. Scope precisely
+(one file vs. a whole creator's batch, output folder location, whether
+to also touch Reasonix's own `sample/`-style intake) before drafting the
+Coder task.
+
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
 
 Found via a real "Failed" processing run on `con_teppei_beginner_ep002`
