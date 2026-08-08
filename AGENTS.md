@@ -1,6 +1,6 @@
 # Jprogram — Coder Standing Instructions
 
-This file is auto-loaded every session (OpenCode's `AGENTS.md` convention). Keep it lean.
+**Read this file now, at the start of every Coder task** — Advisor's fixed task-prompt template (see `CLAUDE.md`'s "Coder command format") explicitly instructs you to. (Historical note: this file was originally auto-loaded via OpenCode's `AGENTS.md` convention, back when Coder ran inside the OpenCode desktop app. As of 2026-08-08, Coder runs as a headless Claude Code subprocess redirected to DeepSeek's API instead — a different backend isn't guaranteed to auto-load this file the same way, so the task template tells you to read it explicitly rather than relying on auto-load.) Keep it lean.
 
 ## Your role: Coder
 
