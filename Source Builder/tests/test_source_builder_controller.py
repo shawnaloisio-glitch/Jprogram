@@ -150,20 +150,6 @@ def _():
         restore(saved)
 
 
-@test("collision_exists detects an existing canonical file")
-def _():
-    root, sources, saved = setup()
-    try:
-        sources.mkdir(parents=True, exist_ok=True)
-        check("no collision initially",
-              controller.collision_exists("teppei_beginner", 51) is False)
-        (sources / "teppei_beginner_ep0051.txt").write_text("x\n",
-                                                            encoding="utf-8")
-        check("collision now", controller.collision_exists("teppei_beginner", 51))
-    finally:
-        restore(saved)
-
-
 @test("validation failure produces no file")
 def _():
     root, sources, saved = setup()

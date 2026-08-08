@@ -64,8 +64,7 @@ SCHEMA_STATEMENTS = (
     """
     CREATE TABLE collections (
         collection_id TEXT PRIMARY KEY,
-        display_name TEXT NOT NULL,
-        sequencing TEXT
+        display_name TEXT NOT NULL
     )
     """,
     """
@@ -181,12 +180,11 @@ def _populate_collections(conn, path):
     """Populate collections from the tested metadata_editor loader."""
     for collection in metadata_editor.load_collections(path):
         conn.execute(
-            "INSERT INTO collections (collection_id, display_name, sequencing) "
-            "VALUES (?, ?, ?)",
+            "INSERT INTO collections (collection_id, display_name) "
+            "VALUES (?, ?)",
             (
                 collection.get("collection_id"),
                 collection.get("display_name"),
-                collection.get("sequencing"),
             ),
         )
 

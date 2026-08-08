@@ -131,11 +131,6 @@ def validate_fields(collection_id, episode, source_type, creator, source_text):
 # Collision detection
 # ============================================================
 
-def collision_exists(collection_id, episode):
-    """Return True if the canonical collection source file already exists."""
-    return source_path(collection_id, episode).is_file()
-
-
 def standalone_collision_exists(source_name):
     """Return True if the canonical standalone source file already exists."""
     return standalone_source_path(source_name).is_file()
@@ -641,7 +636,6 @@ __all__ = [
     "validate_fields",
     "validate_collection_fields",
     "validate_standalone_fields",
-    "collision_exists",
     "standalone_collision_exists",
     "create_source",
     "create_collection_source",

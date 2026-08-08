@@ -181,10 +181,9 @@ def _():
         check("standalone source_name", standalone_row[3] == "nhk_weather")
 
         collections = conn.execute(
-            "SELECT collection_id, display_name, sequencing "
-            "FROM collections").fetchall()
+            "SELECT collection_id, display_name FROM collections").fetchall()
         check("collection row", collections == [
-            ("teppei_beginner", "Con Teppei for Beginner", "episodic")])
+            ("teppei_beginner", "Con Teppei for Beginner")])
         creators = conn.execute(
             "SELECT creator_id, display_name FROM creators "
             "ORDER BY creator_id").fetchall()
