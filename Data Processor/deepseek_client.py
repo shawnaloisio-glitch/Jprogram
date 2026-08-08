@@ -46,7 +46,6 @@ from paths import (
     PROCESSING_RESULTS,
     REQUESTS,
     RESPONSES,
-    verify_paths,
 )
 
 from project_config import (

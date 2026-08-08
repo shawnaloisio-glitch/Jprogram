@@ -92,7 +92,7 @@ def _():
 def _():
     records = [make_record(0, "src1", "sec1", "あいうえお", 4, chunk_count=2,
                            expression_count=1)]
-    m = result = sm.analyze(records)["sentences"][0]["metrics"]
+    m = sm.analyze(records)["sentences"][0]["metrics"]
     check("word_count", m["word_count"] == 4)
     check("chunk_count", m["chunk_count"] == 2)
     check("expression_count", m["expression_count"] == 1)

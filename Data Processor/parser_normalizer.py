@@ -27,9 +27,6 @@ validates canonical records (sentence text already restored from the clean
 source) rather than the raw parser text.
 """
 
-import json
-from pathlib import Path
-
 CANONICAL_LINE_SEPARATOR = "\n\n"
 
 

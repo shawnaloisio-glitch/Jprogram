@@ -65,21 +65,16 @@ from project_config import (
 
 import corpus_builder_result
 import response_validator
-import parser_normalizer
 
 # Re-export canonicalization functions from the parser normalizer for
 # backward compatibility (previously owned by this module).
 from parser_normalizer import (
-    CANONICAL_LINE_SEPARATOR,
     CorpusBuilderError,
     canonicalize,
     canonical_sentence_texts,
     restore_sentence_text,
-    recompute_character_spans,
-    recompute_chunk_text,
     verify_source_reconstruction,
     _expected_content,
-    _is_section_marker_line,
 )
 
 
