@@ -340,13 +340,15 @@ web UI) appears to read its model path from somewhere other than
 `OLLAMA_MODELS` and kept defaulting to C: — use plain `ollama.exe serve`
 directly instead, which picked up the new path correctly.
 
-**A held audit was launched at end of this session, result not yet in
-hand:** the `36dc8be` ruff-cleanup commit's automatic-Yes Auditor trigger
-was deliberately deferred (Owner's request) specifically to compare
-against `qwen2.5-coder:7b`'s trial-1 result on that same commit (which
-was wrong — see `2026-08-09_qwen-calibration_ruff-cleanup.md`). **Check
-for that Auditor's report at the start of next session if not already
-seen**, and complete the comparison.
+**The held audit landed (2026-08-09), comparison complete.** The
+`36dc8be` ruff-cleanup commit's automatic-Yes Auditor pass came back
+**CLEAN, no concerns** — every claim independently verified against raw
+evidence (repo-wide grep, `ruff check`, full 67/67 test re-run), scope
+and Frozen boundary clean. This confirms `qwen2.5-coder:7b`'s trial-1
+"CONCERNS FOUND" verdict on this same commit was genuinely wrong, not
+just a stylistic disagreement — the ground-truth comparison the
+calibration exercise was built to produce. See
+`Audits/Trigger_Log/2026-08-09_ruff-cleanup_auditor_pass.md`.
 
 ### Next immediate task
 
