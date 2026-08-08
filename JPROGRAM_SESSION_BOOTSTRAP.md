@@ -340,16 +340,18 @@ below, not a queue of product changes.
   beyond these two sources plus Con-Teppei, so the mapping was kept as a
   small direct dict, not a generic/extensible framework.
   Built in an isolated git worktree/branch, independently re-verified by
-  Advisor (diff review, full suite re-run twice — once in the worktree,
-  once again in the real repo after merge: 67/67 non-`ginza` test files
-  pass both times — plus a direct run against 3 real Nihongo Jikan files,
+  Advisor (diff review, full suite re-run in the real repo: 69/69 test
+  files pass — plus a direct run against 3 real Nihongo Jikan files,
   including one with an actual Copyright widget, confirming clean
   extraction with zero HTML/copyright leakage). Audit trigger: No
   (Moderate confidence) — see
   `Audits/Trigger_Log/2026-08-08_nihongo-jikan-importer.md` for full
-  detail, including a minor Coder self-report inaccuracy caught (claimed
-  69 test files ran when only 67 could in its environment — not a defect,
-  logged for the record).
+  detail, including an error Advisor caught and corrected in itself:
+  an initial re-verification pass wrongly reported 2 test files
+  "couldn't run, missing ginza" — that was Advisor invoking the wrong
+  Python interpreter (plain `python` instead of the project's own
+  `.venv`), not a real gap. Re-run with the correct interpreter: 69/69,
+  matching Coder's original self-report exactly.
 
 ### Open items / not yet done
 

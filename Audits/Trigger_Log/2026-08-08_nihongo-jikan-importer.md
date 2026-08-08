@@ -35,17 +35,21 @@ silently corrupt the corpus.
 self-report):**
 - `git diff --stat` scope matches Coder's claimed file list exactly, both
   in the worktree and after merge to `master`.
-- Full suite independently re-run twice (once in the worktree, once again
-  in the real repo after merge): **67/67 non-`ginza`-dependent test files
-  pass, 0 failures**, both times. `ginza` is genuinely absent from this
-  environment too (confirmed via a direct `import ginza` against
-  `master`, not just Coder's claim) — the 2 excluded
-  `deterministic_parser`/`deterministic_parser_client` test files are a
-  real, pre-existing environment gap, not caused by this task.
-- **Minor self-report inaccuracy, not a defect:** Coder's own report
-  claimed "69 files, 942 tests" while also noting 2 files couldn't run in
-  its environment — the real count of files it could run is 67. Recorded
-  for the record; does not change the verdict.
+- Full suite independently re-run: **69/69 test files pass, 0 failures**,
+  in the real repo, using the project's actual `.venv/Scripts/python.exe`
+  (which has `ginza`/`spacy` installed). **Correction (2026-08-08, same
+  day):** an earlier pass of this verification wrongly reported 67/69 with
+  `deterministic_parser`/`deterministic_parser_client` excluded for a
+  "missing `ginza`" environment gap — that was Advisor's own error
+  (invoked plain `python` from PATH instead of the project's `.venv`),
+  not a real gap. Re-run with the correct interpreter: both files pass
+  (25/25 and 15/15). Coder's original self-report of "69 files, 942
+  tests, 942 passed" was therefore accurate; Advisor's initial
+  independent count was the one that was wrong.
+- The worktree itself genuinely could not run those 2 files (no `.venv`
+  present in a fresh worktree checkout, since it's gitignored) — that
+  part of Coder's caveat was correct and specific to the isolated
+  worktree, not the real repo.
 - **Beyond unit tests:** ran the new importer directly against 3 real
   files from `D:\Nihongo Jikan media\Transcripts\` (read-only, nothing
   copied into the repo), including one confirmed to carry a real trailing
