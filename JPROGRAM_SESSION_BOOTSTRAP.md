@@ -261,7 +261,107 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-07) — Updated after Session 10
+## 14. Session Wrap-Up (2026-08-09) — Updated after Session 11
+
+**Read this section first, always.** Supersedes the Session 10 version
+below (kept for reference, no longer current). Last refreshed
+2026-08-09, end of session 11.
+
+### Shipped this session
+- **Topic field** (`c6c1825`) — new user-managed, open-ended, single-select
+  metadata field, built by mirroring Style's implementation exactly at
+  every layer (CRUD, GUI tab, form combo, controller/schema threading).
+  Real `Config/topics.json` created (required — `config_loader.load_json`
+  raises on a missing config file). OC correctly caught and asked about a
+  boundary gap (8 pre-existing GUI test sandboxes needed a one-line
+  `topics.json` fixture addition) rather than guessing.
+- **Three small cleanups** (`1e28453`) — dead `sequencing` column in
+  `Index/index_builder.py` (also the last known test failure — suite was
+  67/67 green for the first time after this), dead `collision_exists()`,
+  `diagnostics.py` now surfaces `episode_number`/`season_number`.
+- **`ruff` cleanup** (`36dc8be`) — 9 confirmed-dead findings removed from
+  3 Frozen files, each individually grep-verified before touching; 3
+  confirmed false positives (`ruff` can't see cross-file module-alias
+  usage) deliberately left alone. Repo-wide `ruff`: 15 → 3.
+- **API-key backlog closed as moot** (`db029ad`) — Owner decision: the
+  deterministic parser replaced DeepSeek for good, so the 4 items about
+  API-key infrastructure had nothing left to apply to.
+- **Frozen Components list updated** (`881c79d`, direct Advisor doc edit,
+  no OC) — added `deterministic_parser.py`/`deterministic_parser_client.py`,
+  which replaced the LLM prompt/`deepseek_client.py` back in Session 9
+  but were never added.
+
+### Open thread: local-LLM auditor calibration (not a decision yet)
+
+Owner is exploring whether a locally-run model (via Ollama, RX 6700 XT,
+GPU-confirmed via Vulkan) can safely absorb the "judgment-call-No" audit
+tier — work that currently gets zero independent check beyond Advisor's
+own inline evaluation — to reduce Claude token spend (Owner is on pace
+to hit weekly caps). **Proposed policy refinement, not yet adopted into
+`CLAUDE.md`:** route to a local model only when a change is a *provable,
+zero-behavior-change* removal/addition (exhaustively verified, same
+diligence as the `ruff` cleanup) — anything touching actual logic, even a
+"pure refactor" claim, still needs the real Auditor regardless of Frozen
+status. Full detail and all individual results in
+`Audits/Trigger_Log/2026-08-09_qwen-calibration_*.md` (6 entries).
+
+**Same 3 trials run against 5 local models** (real project bugs/facts
+used as ground truth, not fabricated): diff-parsing correctness, a real
+regression from earlier this session (execution-tracing required), and
+`ruff`'s actual known blind spot (cross-file reasoning with evidence
+handed directly).
+
+| Model | Score | Note |
+|---|---|---|
+| qwen2.5-coder:7b | 1/3 | misread diff +/- lines (false positive on a clean commit) |
+| qwen2.5-coder:14b | 2/3 | traced the real bug's mechanics correctly, then called the (visibly fragmented) output "correct" anyway — arguably worse than 7b's failure, since the reasoning looks sound throughout |
+| **deepseek-r1:14b** | **3/3** | **only clean sweep** — reasoning-tuning, not size, appears to be what actually matters |
+| deepseek-coder:6.7b | ~0.5/3 | weakest yet — worse than plain instruct-tuned Qwen-Coder; self-contradicting on trial 3 |
+
+**Still pending, not yet run:** `deepseek-coder-v2:16b` (downloaded,
+untested), `alibayram/mimo-7b-rl` (a second RL-reasoning-tuned model,
+worth checking if R1's result replicates). **Not pursued further:**
+Xiaomi's own cloud MiMo API — real, currently very cheap subscription
+pricing found ($5.28-14.08/mo claims 4-11B tokens/mo), but the headline
+numbers weren't taken at face value (no confirmation yet of real
+rate-limit terms behind the "Unlimited Usage" claim) and Owner chose
+local-first. OpenClaw (encountered via MiMo's signup flow) is a dead
+end for this purpose — it's a free self-hosted gateway/plumbing layer,
+not an LLM provider; still needs a paid or local backend either way.
+
+**Infrastructure note:** Ollama's model storage relocated
+`C:\Users\Shawn\.ollama\models` → `D:\Ollama\Models` (C: was tight on
+space; recovered ~38GB). Two real gotchas hit and fixed, logged in
+`2026-08-09_qwen-calibration_14b.md`: (1) `OLLAMA_MODELS` set via the
+persistent User env var doesn't propagate to a process already running
+in the same shell session — must also set `$env:` directly before
+spawning a child process; (2) the newer bundled "Ollama app.exe" (own
+web UI) appears to read its model path from somewhere other than
+`OLLAMA_MODELS` and kept defaulting to C: — use plain `ollama.exe serve`
+directly instead, which picked up the new path correctly.
+
+**A held audit was launched at end of this session, result not yet in
+hand:** the `36dc8be` ruff-cleanup commit's automatic-Yes Auditor trigger
+was deliberately deferred (Owner's request) specifically to compare
+against `qwen2.5-coder:7b`'s trial-1 result on that same commit (which
+was wrong — see `2026-08-09_qwen-calibration_ruff-cleanup.md`). **Check
+for that Auditor's report at the start of next session if not already
+seen**, and complete the comparison.
+
+### Next immediate task
+
+Continue the local-model calibration if desired (`deepseek-coder-v2:16b`,
+`mimo-7b-rl` are the natural next two, plus the still-pending Auditor
+comparison above). No other task is more pressing — the small-cleanup
+backlog is now genuinely thin (just the register/formality tag idea,
+undecided; the inert Frozen `sentence_index` gap; Material Level's
+admin surface, expected to change never).
+
+---
+
+## 14a. Prior wrap-up (Session 10) — kept for reference only, superseded above
+
+## 14b. Session Wrap-Up (2026-08-07) — Updated after Session 10
 
 **Read this section first, always — it's kept current at every wrap-up,
 not appended to indefinitely.** This update supersedes the "Session 9"
