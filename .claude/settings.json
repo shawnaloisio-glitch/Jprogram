@@ -12,7 +12,13 @@
       "Bash(python \"Data Processor/tests/test_*)",
       "Bash(python \"Integration/tests/test_*)",
       "Bash(python \"Source Intake/tests/test_*)",
-      "Bash(python \"Production Manager/tests/test_*)"
+      "Bash(python \"Production Manager/tests/test_*)",
+      "mcp__claude-in-chrome__read_network_requests",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__claude-in-chrome__get_page_text",
+      "mcp__claude-in-chrome__find",
+      "mcp__visualize__read_me",
+      "Bash(where *)"
     ]
   }
 }
