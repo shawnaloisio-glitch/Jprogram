@@ -204,11 +204,13 @@ class SourceBuilderApp:
         self.creator_display_var = tk.StringVar()
         self.material_level_var = tk.StringVar()
         self.style_id_var = tk.StringVar()
+        self.topic_id_var = tk.StringVar()
         self.duration_var = tk.StringVar()
         # Display-only vars bound to the new combos; they hold the friendly
         # display names while material_level_var/style_id_var keep the raw ids.
         self.material_level_display_var = tk.StringVar()
         self.style_display_var = tk.StringVar()
+        self.topic_display_var = tk.StringVar()
         self.episode_var = tk.StringVar()
         self.episode_number_var = tk.StringVar(value="1")
         self.season_number_var = tk.StringVar(value="1")
@@ -248,18 +250,22 @@ class SourceBuilderApp:
         self.source_types = []
         self.creators = []
         self.styles = []
+        self.topics = []
         self.creator_label_map = {}
         self.creator_id_map = {}
         self.material_level_label_map = {}
         self.material_level_id_map = {}
         self.style_label_map = {}
         self.style_id_map = {}
+        self.topic_label_map = {}
+        self.topic_id_map = {}
         try:
             self.collections = config_loader.load_collections()
             self.source_types = _processable_source_types(
                 config_loader.load_source_types())
             self.creators = config_loader.load_creators()
             self.styles = config_loader.load_styles()
+            self.topics = config_loader.load_topics()
             self._build_vocab_maps()
             self.config_error = None
             # The source type is a fixed, single value from the Config
@@ -307,6 +313,17 @@ class SourceBuilderApp:
             label = entry["display_name"]
             self.style_label_map[style_id] = label
             self.style_id_map[label] = style_id
+        self.topic_label_map = {}
+        self.topic_id_map = {}
+        # Topic is optional: the leading "(none)" entry represents
+        # no-topic-selected (id "" maps back to None at save time).
+        self.topic_label_map[""] = "(none)"
+        self.topic_id_map["(none)"] = ""
+        for entry in config_loader.load_topics_full():
+            topic_id = str(entry["topic_id"])
+            label = entry["display_name"]
+            self.topic_label_map[topic_id] = label
+            self.topic_id_map[label] = topic_id
 
     def _build_widgets(self):
         main = ttk.Frame(self.root, padding=12)
@@ -427,6 +444,18 @@ class SourceBuilderApp:
         self._wire_label_combo(
             self.style_combo, self.style_id_var, self.style_display_var,
             "style_label_map", "style_id_map")
+        row += 1
+
+        # Topic (optional; leading "(none)" entry)
+        self.topic_label = ttk.Label(body, text="Topic:")
+        self.topic_label.grid(row=row, column=0, sticky="w")
+        self.topic_combo = ttk.Combobox(
+            body, textvariable=self.topic_display_var,
+            state="readonly", style="SB.TCombobox", width=COMBOBOX_WIDTH)
+        self.topic_combo.grid(row=row, column=1, sticky="w")
+        self._wire_label_combo(
+            self.topic_combo, self.topic_id_var, self.topic_display_var,
+            "topic_label_map", "topic_id_map")
         row += 1
 
         # Duration (optional, seconds; validated at save time)
@@ -699,6 +728,7 @@ class SourceBuilderApp:
             (self.creator_var, self._on_metadata_changed),
             (self.material_level_var, self._on_metadata_changed),
             (self.style_id_var, self._on_metadata_changed),
+            (self.topic_id_var, self._on_metadata_changed),
             (self.duration_var, self._on_metadata_changed),
             (self.episode_number_var, self._on_metadata_changed),
             (self.season_number_var, self._on_metadata_changed),
@@ -771,6 +801,16 @@ class SourceBuilderApp:
         except (TypeError, ValueError):
             return None
 
+    def _current_topic_id(self):
+        """Return the selected topic id as int, or None when no topic."""
+        raw = self.topic_id_var.get()
+        if raw == "":
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
     def _current_duration_seconds(self):
         """Return the duration as a non-negative number, or None when blank
         or not a non-negative number."""
@@ -834,6 +874,7 @@ class SourceBuilderApp:
             "source_text": self.text_area.get("1.0", "end"),
             "material_level": self._current_material_level(),
             "style_id": self._current_style_id(),
+            "topic_id": self._current_topic_id(),
             "duration_seconds": self._current_duration_seconds(),
             "episode_number": self.episode_number_var.get(),
             "season_number": self.season_number_var.get(),
@@ -1143,6 +1184,7 @@ class SourceBuilderApp:
 
         material_level = self._current_material_level()
         style_id = self._current_style_id()
+        topic_id = self._current_topic_id()
         duration_seconds = self._current_duration_seconds()
         if self.duration_var.get().strip() != "" and duration_seconds is None:
             self.status_var.set("Duration must be a non-negative number.")
@@ -1167,6 +1209,7 @@ class SourceBuilderApp:
                     overwrite=False,
                     material_level=material_level,
                     style_id=style_id,
+                    topic_id=topic_id,
                     duration_seconds=duration_seconds,
                     episode_number=episode_number,
                     season_number=season_number,
@@ -1180,6 +1223,7 @@ class SourceBuilderApp:
                     overwrite=False,
                     material_level=material_level,
                     style_id=style_id,
+                    topic_id=topic_id,
                     duration_seconds=duration_seconds,
                     episode_number=episode_number,
                     season_number=season_number,
@@ -1208,6 +1252,7 @@ class SourceBuilderApp:
                 "filename": result["filename"],
                 "material_level": material_level,
                 "style_id": style_id,
+                "topic_id": topic_id,
                 "duration_seconds": duration_seconds,
                 "episode_number": self.episode_number_var.get(),
                 "season_number": self.season_number_var.get(),
@@ -1239,6 +1284,7 @@ class SourceBuilderApp:
             creator=self.creator_var.get(),
             material_level=self._current_material_level(),
             style_id=self._current_style_id(),
+            topic_id=self._current_topic_id(),
             episode_number=self._last_saved_episode_number,
             season_number=self.season_number_var.get(),
         )
@@ -1254,6 +1300,8 @@ class SourceBuilderApp:
             else str(state["material_level"]))
         self.style_id_var.set(
             "" if state["style_id"] is None else str(state["style_id"]))
+        self.topic_id_var.set(
+            "" if state["topic_id"] is None else str(state["topic_id"]))
         self.duration_var.set(state["duration_seconds"])
         self.episode_number_var.set(state["episode_number"])
         season_number = state["season_number"]
@@ -1512,6 +1560,8 @@ class SourceBuilderApp:
             values=list(self.material_level_label_map.values()))
         self.style_combo.configure(
             values=list(self.style_label_map.values()))
+        self.topic_combo.configure(
+            values=list(self.topic_label_map.values()))
         # The vocabulary may have changed; re-show the current ids' labels.
         self._sync_creator_display()
         self.material_level_display_var.set(
@@ -1520,6 +1570,9 @@ class SourceBuilderApp:
         self.style_display_var.set(
             self.style_label_map.get(self.style_id_var.get(),
                                      self.style_id_var.get()))
+        self.topic_display_var.set(
+            self.topic_label_map.get(self.topic_id_var.get(),
+                                     self.topic_id_var.get()))
         self._apply_mode()
         # The metadata editor may have changed the collection list; ensure
         # the hidden episode value is still valid for the selected

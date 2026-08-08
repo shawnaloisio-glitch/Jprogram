@@ -43,7 +43,7 @@ from project_config import (
 )
 
 ARTIFACT_TYPE = "source_package"
-SCHEMA_VERSION = "4"
+SCHEMA_VERSION = "5"
 PACKAGE_SUFFIX = ".source.json"
 FORMAT = "txt"
 
@@ -120,8 +120,9 @@ def sha256_file(file_path):
 def build_package(source_type, creator, language, canonical_path,
                   cleaning_profile, cleaner_version, material_level,
                   source_id=None, collection_id=None, episode=None,
-                  source_name=None, style_id=None, duration_seconds=None,
-                  episode_number=None, season_number=None, created_at=None):
+                  source_name=None, style_id=None, topic_id=None,
+                  duration_seconds=None, episode_number=None,
+                  season_number=None, created_at=None):
     """
     Build a Source Package dict.
 
@@ -135,6 +136,7 @@ def build_package(source_type, creator, language, canonical_path,
         episode (int|None, collection mode),
         source_name (str|None, standalone mode),
         style_id (int|None),
+        topic_id (int|None),
         duration_seconds (int|float|None, non-negative),
         episode_number (int|None, optional user-entered metadata),
         season_number (int|None, optional user-entered metadata),
@@ -143,7 +145,7 @@ def build_package(source_type, creator, language, canonical_path,
     Output: the source package dict.
 
     The sha256 is computed from the canonical file. format is fixed to "txt".
-    material_level / style_id / duration_seconds / episode_number /
+    material_level / style_id / topic_id / duration_seconds / episode_number /
     season_number are always present in the package (None when not given);
     collection_id/episode/source_name are only included by identity mode.
     """
@@ -179,6 +181,7 @@ def build_package(source_type, creator, language, canonical_path,
         "created_by_version": PROJECT_VERSION,
         "material_level": material_level,
         "style_id": style_id,
+        "topic_id": topic_id,
         "duration_seconds": duration_seconds,
         "episode_number": episode_number,
         "season_number": season_number,
@@ -241,11 +244,17 @@ def validate_package(package):
         errors.append(
             f"material_level must be one of {sorted(valid_levels)}")
 
-    # style_id / duration_seconds are optional; present-and-None is fine.
+    # style_id / topic_id / duration_seconds are optional; present-and-None
+    # is fine.
     style_id = package.get("style_id")
     if style_id is not None and (isinstance(style_id, bool)
                                  or not isinstance(style_id, int)):
         errors.append("style_id must be an integer")
+
+    topic_id = package.get("topic_id")
+    if topic_id is not None and (isinstance(topic_id, bool)
+                                 or not isinstance(topic_id, int)):
+        errors.append("topic_id must be an integer")
 
     duration_seconds = package.get("duration_seconds")
     if duration_seconds is not None:

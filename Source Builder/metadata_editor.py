@@ -29,6 +29,10 @@ Canonical on-disk forms (preserving the existing top-level structure):
     {"styles": [{"style_id": int, "display_name": str}]}
   (style ids are autoincrement; computed as max(existing ids, default=0) + 1
   on each add, never a persisted counter)
+- Config\\topics.json:
+    {"topics": [{"topic_id": int, "display_name": str}]}
+  (topic ids are autoincrement; computed as max(existing ids, default=0) + 1
+  on each add, never a persisted counter)
 """
 
 import json
@@ -52,6 +56,7 @@ FILES = {
     "source_types": "source_types.json",
     "creators": "creators.json",
     "styles": "styles.json",
+    "topics": "topics.json",
 }
 
 MACHINE_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -225,6 +230,35 @@ def load_styles(path=None):
     return result
 
 
+def load_topics(path=None):
+    """
+    Load topics as a list of dicts:
+        [{"topic_id": int, "display_name": str}, ...]
+    """
+    data = _read_json(_config_path("topics", path))
+    if data is None:
+        return []
+    if not isinstance(data, dict):
+        raise MetadataError("topics.json must be a JSON object")
+    items = data.get("topics")
+    if not isinstance(items, list):
+        raise MetadataError("topics.json must contain a 'topics' list")
+    result = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        topic_id = item.get("topic_id")
+        if not isinstance(topic_id, int) or isinstance(topic_id, bool):
+            continue
+        display_name = item.get("display_name")
+        result.append({
+            "topic_id": topic_id,
+            "display_name": display_name if isinstance(display_name, str)
+            else str(topic_id),
+        })
+    return result
+
+
 def _item_to_named(item, key):
     """Normalize a string or dict entry into {key: str, display_name: str}."""
     if isinstance(item, str):
@@ -340,6 +374,16 @@ def validate_style(display_name, existing_display_names):
     return errors
 
 
+def validate_topic(display_name, existing_display_names):
+    """Validate a topic entry; return list of errors."""
+    errors = validate_display_name(display_name, "display_name")
+    normalized = display_name.strip() if isinstance(display_name, str) \
+        else display_name
+    errors += _check_unique(normalized, existing_display_names,
+                            label="display name")
+    return errors
+
+
 # ============================================================
 # Raw item helpers
 # ============================================================
@@ -363,6 +407,10 @@ def _raw_creator(item):
 
 def _raw_style(item):
     return {"style_id": item["style_id"], "display_name": item["display_name"]}
+
+
+def _raw_topic(item):
+    return {"topic_id": item["topic_id"], "display_name": item["display_name"]}
 
 
 # ============================================================
@@ -393,6 +441,11 @@ def save_creators(items, path=None):
 def save_styles(items, path=None):
     """Persist styles (normalized dicts). Returns the raw count."""
     _save("styles", items, _raw_style, path)
+
+
+def save_topics(items, path=None):
+    """Persist topics (normalized dicts). Returns the raw count."""
+    _save("topics", items, _raw_topic, path)
 
 
 # ============================================================
@@ -612,6 +665,46 @@ def edit_style(style_id, display_name, path=None):
     return items
 
 
+def add_topic(display_name, path=None):
+    """
+    Add a topic; raises MetadataError on invalid input.
+
+    The next topic_id is computed as max(existing ids, default=0) + 1 on
+    each add (a live scan, never a persisted counter).
+    """
+    items = load_topics(path)
+    existing = [t["display_name"] for t in items]
+    errors = validate_topic(display_name, existing)
+    if errors:
+        raise MetadataError("; ".join(errors))
+    next_id = max((t["topic_id"] for t in items), default=0) + 1
+    items.append({"topic_id": next_id, "display_name": display_name.strip()})
+    save_topics(items, path)
+    return items
+
+
+def edit_topic(topic_id, display_name, path=None):
+    """
+    Edit a topic's display name by topic_id.
+
+    The topic_id is autoincrement and immutable after creation.
+    """
+    items = load_topics(path)
+    for item in items:
+        if item["topic_id"] == topic_id:
+            existing = [t["display_name"] for t in items
+                        if t["topic_id"] != topic_id]
+            errors = validate_topic(display_name, existing)
+            if errors:
+                raise MetadataError("; ".join(errors))
+            item["display_name"] = display_name.strip()
+            break
+    else:
+        raise MetadataError(f"topic not found: {topic_id}")
+    save_topics(items, path)
+    return items
+
+
 def delete_creator(creator_id, path=None, presets=None):
     """Delete a creator; blocked with a warning when referenced by presets."""
     items = load_creators(path)
@@ -664,10 +757,12 @@ __all__ = [
     "load_source_types",
     "load_creators",
     "load_styles",
+    "load_topics",
     "save_collections",
     "save_source_types",
     "save_creators",
     "save_styles",
+    "save_topics",
     "add_collection",
     "edit_collection",
     "delete_collection",
@@ -680,5 +775,7 @@ __all__ = [
     "delete_creator",
     "add_style",
     "edit_style",
+    "add_topic",
+    "edit_topic",
     "preset_references",
 ]

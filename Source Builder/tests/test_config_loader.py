@@ -47,7 +47,7 @@ def patch_collections_config(collections):
     return restore
 
 
-def patch_vocab_config(source_types, creators, styles=None):
+def patch_vocab_config(source_types, creators, styles=None, topics=None):
     """Point config_loader.CONFIG_DIR and paths.CREATORS_CONFIG at a sandbox."""
     saved = (config_loader.CONFIG_DIR, paths.CREATORS_CONFIG)
     tmp = pathlib.Path(tempfile.mkdtemp())
@@ -61,6 +61,9 @@ def patch_vocab_config(source_types, creators, styles=None):
     if styles is not None:
         (config_dir / "styles.json").write_text(
             json.dumps({"styles": styles}), encoding="utf-8")
+    if topics is not None:
+        (config_dir / "topics.json").write_text(
+            json.dumps({"topics": topics}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
     paths.CREATORS_CONFIG = creators_file
 
@@ -342,6 +345,93 @@ def _():
             check("missing styles file raises", False)
         except config_loader.ConfigError:
             check("missing styles file raises", True)
+    finally:
+        restore()
+
+
+@test("topics: config file entry present in CONFIG_FILES")
+def _():
+    check("topics file name",
+          config_loader.CONFIG_FILES["topics"] == "topics.json")
+
+
+@test("topics: load returns ordered integer topic ids")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        topics=[{"topic_id": 3, "display_name": "A"},
+                {"topic_id": 1, "display_name": "B"},
+                {"topic_id": 2, "display_name": "C"}])
+    try:
+        ids = config_loader.load_topics()
+        check("order", ids == [3, 1, 2])
+        check("int ids", all(isinstance(i, int) for i in ids))
+    finally:
+        restore()
+
+
+@test("topics: load skips non-integer and non-dict entries")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        topics=[{"topic_id": 1, "display_name": "A"},
+                {"topic_id": "x", "display_name": "Bad"},
+                {"topic_id": True, "display_name": "Bool"},
+                "plain",
+                {"display_name": "No id"}])
+    try:
+        check("only valid int ids",
+              config_loader.load_topics() == [1])
+    finally:
+        restore()
+
+
+@test("topics: load_topics_full returns id + display_name pairs in order")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        topics=[{"topic_id": 1, "display_name": "Grammar"},
+                {"topic_id": 2, "display_name": "Vocabulary"}])
+    try:
+        entries = config_loader.load_topics_full()
+        check("order", [e["topic_id"] for e in entries] == [1, 2])
+        check("display name 1", entries[0]["display_name"] == "Grammar")
+        check("display name 2", entries[1]["display_name"] == "Vocabulary")
+        check("ids are ints",
+              all(isinstance(e["topic_id"], int) for e in entries))
+    finally:
+        restore()
+
+
+@test("topics: load_topics_full falls back to the stringified id")
+def _():
+    restore = patch_vocab_config(
+        [],
+        [],
+        topics=[{"topic_id": 4},
+                {"topic_id": 5, "display_name": ""}])
+    try:
+        entries = config_loader.load_topics_full()
+        check("missing display fallback",
+              entries[0]["display_name"] == "4")
+        check("empty display fallback",
+              entries[1]["display_name"] == "5")
+    finally:
+        restore()
+
+
+@test("topics: missing topics.json raises ConfigError")
+def _():
+    restore = patch_vocab_config([], [])
+    try:
+        try:
+            config_loader.load_topics()
+            check("missing topics file raises", False)
+        except config_loader.ConfigError:
+            check("missing topics file raises", True)
     finally:
         restore()
 

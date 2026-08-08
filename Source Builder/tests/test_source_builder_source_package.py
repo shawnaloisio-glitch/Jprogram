@@ -108,7 +108,7 @@ def _():
             check(f"field {field} present",
                   field in data and data[field] not in (None, ""))
         check("artifact_type", data["artifact_type"] == "source_package")
-        check("schema_version", data["schema_version"] == "4")
+        check("schema_version", data["schema_version"] == "5")
         check("source_type", data["source_type"] == "clean_text")
         check("creator", data["creator"] == "con_teppei_podcast")
         check("language", data["language"] == "ja")
@@ -281,10 +281,10 @@ def _():
 
 
 def valid_package(**overrides):
-    """Return a full schema-v4 package dict that passes validation."""
+    """Return a full schema-v5 package dict that passes validation."""
     package = {
         "artifact_type": "source_package",
-        "schema_version": "4",
+        "schema_version": "5",
         "source_id": "podcast_transcript_teppei-beginner_ep058",
         "source_type": "podcast_transcript",
         "creator": "con_teppei_podcast",
@@ -301,6 +301,7 @@ def valid_package(**overrides):
         "episode": 58,
         "material_level": 1,
         "style_id": None,
+        "topic_id": None,
         "duration_seconds": None,
         "episode_number": None,
         "season_number": None,
@@ -322,6 +323,8 @@ def _():
         check("material_level value", data["material_level"] == 0)
         check("style_id key", "style_id" in data)
         check("style_id None", data["style_id"] is None)
+        check("topic_id key", "topic_id" in data)
+        check("topic_id None", data["topic_id"] is None)
         check("duration_seconds key", "duration_seconds" in data)
         check("duration_seconds None", data["duration_seconds"] is None)
         check("episode_number key", "episode_number" in data)
@@ -421,6 +424,46 @@ def _():
     errors = source_package.validate_package(
         valid_package(style_id="x"))
     check("non-int rejected", any("style_id" in e for e in errors))
+
+
+@test("build_package: topic_id is stored when given")
+def _():
+    root, sources, saved = setup()
+    try:
+        sources.mkdir(parents=True, exist_ok=True)
+        (sources / "teppei_beginner_ep0001.txt").write_text("x\n",
+                                                            encoding="utf-8")
+        package = source_package.build_package(
+            source_type="clean_text", creator="con_teppei_podcast",
+            language="ja", canonical_path=sources / "teppei_beginner_ep0001.txt",
+            cleaning_profile="transcript_standard_v1",
+            cleaner_version="1.0", material_level=0,
+            collection_id="teppei_beginner", episode=1,
+            topic_id=5)
+        check("topic_id stored", package["topic_id"] == 5)
+        check("valid", source_package.validate_package(package) == [])
+    finally:
+        restore(saved)
+
+
+@test("validate_package: topic_id optional int (no non-negative check)")
+def _():
+    check("absent ok", source_package.validate_package(
+        valid_package()) == [])
+    check("null ok", source_package.validate_package(
+        valid_package(topic_id=None)) == [])
+    check("int ok", source_package.validate_package(
+        valid_package(topic_id=3)) == [])
+    check("zero ok", source_package.validate_package(
+        valid_package(topic_id=0)) == [])
+    check("negative int ok (no non-negative rule)",
+          source_package.validate_package(valid_package(topic_id=-1)) == [])
+    errors = source_package.validate_package(
+        valid_package(topic_id="x"))
+    check("non-int rejected", any("topic_id" in e for e in errors))
+    errors = source_package.validate_package(
+        valid_package(topic_id=True))
+    check("bool rejected", any("topic_id" in e for e in errors))
 
 
 @test("validate_package: duration_seconds non-negative number")

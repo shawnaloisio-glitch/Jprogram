@@ -28,6 +28,7 @@ CONFIG_FILES = {
     "source_types": "source_types.json",
     "creators": "creators.json",
     "styles": "styles.json",
+    "topics": "topics.json",
 }
 
 
@@ -216,6 +217,26 @@ def load_styles():
             if _style_id(item) is not None]
 
 
+def load_topics():
+    """
+    Return the ordered list of topic_id values.
+
+    Topic ids are autoincrement integers, so unlike the string-id
+    vocabularies the entries are always object form
+    {"topic_id": int, "display_name": str}. Entries without a valid
+    integer id are skipped.
+    """
+    data = load_json("topics")
+    if isinstance(data, dict):
+        values = data.get("topics")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("topics.json must contain a list")
+    return [item["topic_id"] for item in values
+            if _topic_id(item) is not None]
+
+
 def load_styles_full():
     """
     Return the ordered list of style entries WITH display names.
@@ -247,6 +268,37 @@ def load_styles_full():
     return result
 
 
+def load_topics_full():
+    """
+    Return the ordered list of topic entries WITH display names.
+
+    Topic ids are autoincrement integers. display_name falls back to the
+    stringified id when an entry omits/empties display_name.
+
+    Returns:
+        [{"topic_id": int, "display_name": str}, ...]
+    """
+    data = load_json("topics")
+    if isinstance(data, dict):
+        values = data.get("topics")
+    else:
+        values = data
+    if not isinstance(values, list):
+        raise ConfigError("topics.json must contain a list")
+    result = []
+    for item in values:
+        topic_id = _topic_id(item)
+        if topic_id is None:
+            continue
+        display_name = str(topic_id)
+        if isinstance(item, dict):
+            candidate = item.get("display_name")
+            if isinstance(candidate, str) and candidate:
+                display_name = candidate
+        result.append({"topic_id": topic_id, "display_name": display_name})
+    return result
+
+
 def load_material_levels_full():
     """
     Return the material level vocabulary WITH display names.
@@ -266,6 +318,16 @@ def _style_id(item):
     if not isinstance(item, dict):
         return None
     value = item.get("style_id")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
+def _topic_id(item):
+    """Extract a valid integer topic id from an entry, or None."""
+    if not isinstance(item, dict):
+        return None
+    value = item.get("topic_id")
     if isinstance(value, bool) or not isinstance(value, int):
         return None
     return value
@@ -329,5 +391,7 @@ __all__ = [
     "load_creators_full",
     "load_styles",
     "load_styles_full",
+    "load_topics",
+    "load_topics_full",
     "load_material_levels_full",
 ]

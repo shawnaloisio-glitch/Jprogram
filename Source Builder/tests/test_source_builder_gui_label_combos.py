@@ -89,6 +89,12 @@ def sandbox():
             {"style_id": 2, "display_name": "Podcast"},
         ],
     }), encoding="utf-8")
+    (config_dir / "topics.json").write_text(json.dumps({
+        "topics": [
+            {"topic_id": 1, "display_name": "Grammar"},
+            {"topic_id": 2, "display_name": "Vocabulary"},
+        ],
+    }), encoding="utf-8")
 
     controller.SOURCES_ROOT = tmp / "Sources"
     gui_settings.SETTINGS_PATH = tmp / "gui_settings.json"
@@ -412,6 +418,44 @@ def _():
         restore()
 
 
+@test("topic combo shows (none) leading entry before topic labels")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            values = app.topic_combo.cget("values")
+            check("leading none", values[0] == "(none)")
+            check("topics offered",
+                  "Grammar" in values and "Vocabulary" in values)
+            check("raw ids hidden", "1" not in values)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("topic selection maps label to id; (none) maps to blank")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.topic_combo.set("Grammar")
+            app._apply_label_to_id(
+                app.topic_display_var, app.topic_id_map, app.topic_id_var)
+            check("topic id", app.topic_id_var.get() == "1")
+
+            app.topic_combo.set("(none)")
+            app._apply_label_to_id(
+                app.topic_display_var, app.topic_id_map, app.topic_id_var)
+            check("none -> blank", app.topic_id_var.get() == "")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
 @test("save passes material level, style id, and duration to the package")
 def _():
     restore = sandbox()
@@ -438,6 +482,60 @@ def _():
             check("material level int", package["material_level"] == 1)
             check("style id int", package["style_id"] == 1)
             check("duration int", package["duration_seconds"] == 90)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("save passes topic id to the package")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("80")
+            app.source_type_var.set("clean_text")
+            app.creator_var.set("cijsub")
+            app.material_level_var.set("1")
+            app.topic_combo.set("Grammar")
+            app._apply_label_to_id(
+                app.topic_display_var, app.topic_id_map, app.topic_id_var)
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app._refresh_ready_state()
+            check("ready", app._current_state == "READY")
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            package = json.loads(source_package.package_path_for(
+                app._saved_path).read_text(encoding="utf-8"))
+            check("topic id int", package["topic_id"] == 1)
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("no topic selected saves topic_id None (not the blank string)")
+def _():
+    restore = sandbox()
+    try:
+        root, app = make_app(restore)
+        try:
+            app.collection_var.set("teppei_beginner")
+            app.episode_var.set("81")
+            app.source_type_var.set("clean_text")
+            app.creator_var.set("cijsub")
+            app.material_level_var.set("2")
+            # Topic left at the default "(none)" entry.
+            app.text_area.insert("1.0", "本文。\n")
+            app._on_text_changed()
+            app.on_save()
+            check("saved", app._current_state == "SAVED")
+            package = json.loads(source_package.package_path_for(
+                app._saved_path).read_text(encoding="utf-8"))
+            check("topic none -> null", package["topic_id"] is None)
         finally:
             root.destroy()
     finally:
@@ -590,6 +688,9 @@ def _():
             app.style_combo.set("Documentary")
             app._apply_label_to_id(
                 app.style_display_var, app.style_id_map, app.style_id_var)
+            app.topic_combo.set("Grammar")
+            app._apply_label_to_id(
+                app.topic_display_var, app.topic_id_map, app.topic_id_var)
             app.duration_var.set("60")
             app.episode_number_var.set("85")
             app.season_number_var.set("3")
@@ -601,6 +702,7 @@ def _():
             check("material level retained",
                   app.material_level_var.get() == "1")
             check("style retained", app.style_id_var.get() == "1")
+            check("topic retained", app.topic_id_var.get() == "1")
             check("duration reset", app.duration_var.get() == "")
             # Episode# suggests the next value (previous + 1); Season# is
             # retained unchanged across saves.

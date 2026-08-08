@@ -549,6 +549,47 @@ def _():
         restore(saved)
 
 
+@test("topic_id: snapshot matching includes the optional field")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved(saved_snapshot(topic_id=3))
+        check("same topic -> SAVED",
+              ev(engine, topic_id=3)["state"] == "SAVED")
+        check("different topic breaks match",
+              ev(engine, topic_id=4)["state"] != "SAVED")
+        check("missing topic breaks match",
+              ev(engine, topic_id=None)["state"] != "SAVED")
+    finally:
+        restore(saved)
+
+
+@test("topic_id: optional field never blocks")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = ev(controller.ReadyStateEngine(), topic_id=None)
+        check("ready without topic", result["state"] == "READY")
+        check("save enabled", result["save_enabled"] is True)
+    finally:
+        restore(saved)
+
+
+@test("topic_id: snapshot without the key still matches")
+def _():
+    root, sources, saved = setup()
+    try:
+        engine = controller.ReadyStateEngine()
+        engine.mark_saved(saved_snapshot())
+        check("saved with topic omitted",
+              ev(engine, topic_id=None)["state"] == "SAVED")
+        check("save disabled", ev(engine)["save_enabled"] is False)
+        check("next enabled", ev(engine)["next_enabled"] is True)
+    finally:
+        restore(saved)
+
+
 @test("duration_seconds: snapshot matching includes the optional field")
 def _():
     root, sources, saved = setup()

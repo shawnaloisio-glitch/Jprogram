@@ -66,6 +66,7 @@ class MetadataEditorWindow:
         self._build_collections_tab()
         self._build_creators_tab()
         self._build_styles_tab()
+        self._build_topics_tab()
 
         ttk.Button(self.window, text="Close",
                    command=self.window.destroy).pack(pady=(8, 8))
@@ -351,3 +352,24 @@ class MetadataEditorWindow:
             [("col_id", "Style ID"), ("display_name", "Display Name")],
             display, metadata_editor.load_styles, add, edit, fields,
             helper_text=helper, add_hidden_keys=("style_id",))
+
+    def _build_topics_tab(self):
+        def display(item):
+            return (item["topic_id"], item["display_name"])
+
+        def add(**kw):
+            return metadata_editor.add_topic(kw["display_name"])
+
+        def edit(original_id, **kw):
+            return metadata_editor.edit_topic(original_id, kw["display_name"])
+
+        fields = [
+            ("topic_id", "Topic ID", "entry"),
+            ("display_name", "Display Name", "entry"),
+        ]
+        helper = "Topic IDs are assigned automatically."
+        self._build_tree_tab(
+            "Topics",
+            [("col_id", "Topic ID"), ("display_name", "Display Name")],
+            display, metadata_editor.load_topics, add, edit, fields,
+            helper_text=helper, add_hidden_keys=("topic_id",))

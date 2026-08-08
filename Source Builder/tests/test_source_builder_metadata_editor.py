@@ -757,6 +757,160 @@ def _():
 
 
 # ============================================================
+# Topics: load / add / edit / uniqueness (mirrors Styles)
+# ============================================================
+
+@test("topics: config file entry present in FILES")
+def _():
+    check("topics file name", metadata_editor.FILES["topics"] == "topics.json")
+
+
+@test("topics: missing file loads empty")
+def _():
+    conf_dir = temp_config_dir()
+    items = metadata_editor.load_topics(conf_path(conf_dir, "topics"))
+    check("empty", items == [])
+
+
+@test("topics: load returns ordered integer topic ids")
+def _():
+    conf_dir = temp_config_dir()
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    (conf_dir / "topics.json").write_text(json.dumps({
+        "topics": [
+            {"topic_id": 3, "display_name": "A"},
+            {"topic_id": 1, "display_name": "B"},
+            {"topic_id": 2, "display_name": "C"},
+        ]
+    }), encoding="utf-8")
+    items = metadata_editor.load_topics(conf_path(conf_dir, "topics"))
+    check("order", [t["topic_id"] for t in items] == [3, 1, 2])
+    check("int ids", all(isinstance(t["topic_id"], int) for t in items))
+    check("display names",
+          [t["display_name"] for t in items] == ["A", "B", "C"])
+
+
+@test("topics: load skips non-integer and non-dict entries")
+def _():
+    conf_dir = temp_config_dir()
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    (conf_dir / "topics.json").write_text(json.dumps({
+        "topics": [
+            {"topic_id": 1, "display_name": "A"},
+            {"topic_id": "x", "display_name": "Bad"},
+            {"topic_id": True, "display_name": "Bool"},
+            "plain",
+            {"display_name": "No id"},
+        ]
+    }), encoding="utf-8")
+    items = metadata_editor.load_topics(conf_path(conf_dir, "topics"))
+    check("only valid int ids", [t["topic_id"] for t in items] == [1])
+
+
+@test("topics: add assigns autoincrement ids from max+1")
+def _():
+    conf_dir = temp_config_dir()
+    items = metadata_editor.add_topic(
+        "Grammar", path=conf_path(conf_dir, "topics"))
+    check("first id", items[0]["topic_id"] == 1)
+    items = metadata_editor.add_topic(
+        "Vocabulary", path=conf_path(conf_dir, "topics"))
+    check("second id", items[1]["topic_id"] == 2)
+    reloaded = metadata_editor.load_topics(conf_path(conf_dir, "topics"))
+    check("persisted two", len(reloaded) == 2)
+    check("persisted ids", [t["topic_id"] for t in reloaded] == [1, 2])
+    check("persisted names", [t["display_name"] for t in reloaded]
+          == ["Grammar", "Vocabulary"])
+
+
+@test("topics: add skips gaps (max+1, no persisted counter)")
+def _():
+    conf_dir = temp_config_dir()
+    conf_dir.mkdir(parents=True, exist_ok=True)
+    (conf_dir / "topics.json").write_text(json.dumps({
+        "topics": [
+            {"topic_id": 5, "display_name": "A"},
+            {"topic_id": 2, "display_name": "B"},
+        ]
+    }), encoding="utf-8")
+    items = metadata_editor.add_topic(
+        "C", path=conf_path(conf_dir, "topics"))
+    check("max plus one", items[-1]["topic_id"] == 6)
+
+
+@test("topics: add duplicate display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_topic("Grammar", path=conf_path(conf_dir, "topics"))
+    try:
+        metadata_editor.add_topic(
+            "Grammar", path=conf_path(conf_dir, "topics"))
+        check("duplicate rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("duplicate message", "already exists" in str(exc))
+
+
+@test("topics: add missing display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    try:
+        metadata_editor.add_topic("   ", path=conf_path(conf_dir, "topics"))
+        check("empty display rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("display message", "display_name is required" in str(exc))
+
+
+@test("topics: edit display name keeps id")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_topic("Grammar", path=conf_path(conf_dir, "topics"))
+    items = metadata_editor.edit_topic(
+        1, "Grammar & Style", path=conf_path(conf_dir, "topics"))
+    check("id unchanged", items[0]["topic_id"] == 1)
+    check("display changed", items[0]["display_name"] == "Grammar & Style")
+    reloaded = metadata_editor.load_topics(conf_path(conf_dir, "topics"))
+    check("persisted", reloaded[0]["display_name"] == "Grammar & Style")
+
+
+@test("topics: edit to another topic's display name rejected")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_topic("Grammar", path=conf_path(conf_dir, "topics"))
+    metadata_editor.add_topic("Vocabulary", path=conf_path(conf_dir, "topics"))
+    try:
+        metadata_editor.edit_topic(
+            1, "Vocabulary", path=conf_path(conf_dir, "topics"))
+        check("edit duplicate rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("duplicate message", "already exists" in str(exc))
+
+
+@test("topics: edit keeping own display name allowed")
+def _():
+    conf_dir = temp_config_dir()
+    metadata_editor.add_topic("Grammar", path=conf_path(conf_dir, "topics"))
+    items = metadata_editor.edit_topic(
+        1, "Grammar", path=conf_path(conf_dir, "topics"))
+    check("allowed", items[0]["display_name"] == "Grammar")
+
+
+@test("topics: edit missing topic rejected")
+def _():
+    conf_dir = temp_config_dir()
+    try:
+        metadata_editor.edit_topic(
+            99, "X", path=conf_path(conf_dir, "topics"))
+        check("missing original rejected", False)
+    except metadata_editor.MetadataError as exc:
+        check("not found message", "not found" in str(exc))
+
+
+@test("topics: no delete_topic function (dead-code avoidance)")
+def _():
+    check("no delete_topic", not hasattr(metadata_editor, "delete_topic"))
+
+
+# ============================================================
 # Display-name uniqueness (Part 6 fix, all four vocabularies)
 # ============================================================
 

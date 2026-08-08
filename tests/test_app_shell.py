@@ -29,7 +29,6 @@ import tkinter.ttk as ttk
 from unittest import mock
 
 import app
-import controller
 
 
 TESTS = []

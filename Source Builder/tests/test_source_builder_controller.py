@@ -447,6 +447,76 @@ def _():
         restore(saved)
 
 
+@test("create_collection_source stores topic_id in the package")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_collection_source(
+            "teppei_beginner", 51, "clean_text", "con_teppei_podcast",
+            "本文。\n", material_level=1, topic_id=5)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("topic id stored", package["topic_id"] == 5)
+    finally:
+        restore(saved)
+
+
+@test("create_standalone_source stores topic_id in the package")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_standalone_source(
+            "nhk_weather", "clean_text", "nhk_news", "天気です。\n",
+            material_level=1, topic_id=8)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("topic id stored", package["topic_id"] == 8)
+    finally:
+        restore(saved)
+
+
+@test("create_collection_source omits topic_id (None) when not given")
+def _():
+    root, sources, saved = setup()
+    try:
+        result = controller.create_collection_source(
+            "teppei_beginner", 51, "clean_text", "con_teppei_podcast",
+            "本文。\n", material_level=1)
+        check("success true", result["success"] is True)
+        import json
+        import source_package
+        package = json.loads(source_package.package_path_for(
+            result["path"]).read_text(encoding="utf-8"))
+        check("topic id none", package["topic_id"] is None)
+    finally:
+        restore(saved)
+
+
+@test("next_source_state: topic_id retained across Add Another")
+def _():
+    state = controller.next_source_state(
+        "collection", "teppei_beginner", "7", "clean_text",
+        "con_teppei_podcast", style_id=2, topic_id=5)
+    check("style retained", state["style_id"] == 2)
+    check("topic retained", state["topic_id"] == 5)
+    check("duration reset", state["duration_seconds"] == "")
+
+
+@test("next_source_state: topic_id None when not given")
+def _():
+    state = controller.next_source_state("collection", "c", "7", "s", "o")
+    check("topic none", state["topic_id"] is None)
+    state = controller.next_source_state(
+        "standalone", "", "", "article", "nhk_news")
+    check("standalone topic none", state["topic_id"] is None)
+
+
 @test("next_auto_sequence: empty collection returns 1")
 def _():
     root, sources, saved = setup()
