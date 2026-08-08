@@ -126,7 +126,7 @@ def _():
         restore()
 
 
-@test("import dialog opens with two formats")
+@test("import dialog opens with three formats")
 def _():
     restore = sandbox()
     try:
@@ -166,9 +166,11 @@ def _():
 
             check("dialog opened", result.get("opened") is True)
             check("dialog closed", result.get("closed") is True)
-            check("exactly two format radios", result.get("radio_count") == 2)
+            check("exactly three format radios", result.get("radio_count") == 3)
             check("subtitle radio shown",
                   "Subtitle File" in result.get("radio_texts", ()))
+            check("nihongo jikan radio shown",
+                  "Nihongo Jikan Transcript" in result.get("radio_texts", ()))
             check("clean text radio shown",
                   "Clean Text" in result.get("radio_texts", ()))
         finally:
@@ -200,6 +202,135 @@ def _():
 
 def _var(value=""):
     return type("V", (), {"get": lambda self: value})()
+
+
+def _level_file(folder_name, name="ep.html", content="<p>こんにちは。</p>"):
+    """Create a file inside a temp folder with the given name."""
+    folder = pathlib.Path(tempfile.mkdtemp()) / folder_name
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / name
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+@test("import suggests material level from a matching parent folder")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            html = _level_file("Beginner")
+            app._do_import(None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                           _var(f"{html}"), _var())
+            check("level suggested",
+                  app.material_level_var.get() == "2")
+            check("label shown",
+                  app.material_level_combo.get() == "Beginner")
+            check("import succeeded", "こんにちは。" in
+                  app.text_area.get("1.0", "end"))
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("import leaves material level as-is when folder does not match")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            app.material_level_var.set("3")
+            html = _level_file("Misc")
+            app._do_import(None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                           _var(f"{html}"), _var())
+            check("level unchanged", app.material_level_var.get() == "3")
+            check("label unchanged",
+                  app.material_level_combo.get() == "Intermediate")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("import suggestion covers lowercase and hyphenated folder variants")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            low = _level_file("beginner")
+            app._do_import(None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                           _var(f"{low}"), _var())
+            check("lowercase beginner", app.material_level_var.get() == "2")
+
+            app.material_level_var.set("")
+            hyphen = _level_file("complete-beginner")
+            app._do_import(None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                           _var(f"{hyphen}"), _var())
+            check("hyphen complete-beginner",
+                  app.material_level_var.get() == "1")
+
+            app.material_level_var.set("")
+            spaced = _level_file("Complete Beginner")
+            app._do_import(None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                           _var(f"{spaced}"), _var())
+            check("spaced Complete Beginner",
+                  app.material_level_var.get() == "1")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("import suggests material level through the subtitle importer path too")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            srt = _level_file(
+                "Intermediate", name="ep.srt",
+                content="1\n00:00:01,000 --> 00:00:02,000\nこんにちは。\n")
+            app._do_import(None, _var(import_material.FORMAT_SUBTITLE),
+                           _var(f"{srt}"), _var())
+            check("level suggested",
+                  app.material_level_var.get() == "3")
+            check("label shown",
+                  app.material_level_combo.get() == "Intermediate")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("import with multiple files uses the first selected file's folder")
+def _():
+    restore = sandbox()
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        app = gui.SourceBuilderApp(root)
+        try:
+            first = _level_file("Advanced")
+            second = _level_file("beginner")
+            app._do_import(
+                None, _var(import_material.FORMAT_NIHONGO_JIKAN),
+                _var(f"{first}; {second}"), _var())
+            check("first file folder used",
+                  app.material_level_var.get() == "4")
+        finally:
+            root.destroy()
+    finally:
+        restore()
 
 
 @test("saving imported material creates canonical text and package")

@@ -74,6 +74,19 @@ def _():
     check("no webvtt", "WEBVTT" not in text)
 
 
+@test("nihongo jikan html transcript is converted via the new cleaner")
+def _():
+    html = tmp_file("ep01.html",
+                    "<p>こんにちは。<ruby>世界<rt>せかい</rt></ruby>。</p>")
+    text = import_material.convert_file(html,
+                                        import_material.FORMAT_NIHONGO_JIKAN)
+    check("base kept", "世界" in text)
+    check("reading discarded", "せかい" not in text)
+    check("tags gone", "<ruby>" not in text and "<p>" not in text)
+    check("trailing newline", text.endswith("\n"))
+    check("not empty", bool(text.strip()))
+
+
 @test("multiple files are combined with a blank line separator")
 def _():
     a = tmp_file("a.txt", "一つ目。\n")
@@ -126,10 +139,34 @@ def _():
     _ = before_registry  # silence unused
 
 
-@test("SOURCE_FORMATS contains the two supported formats")
+@test("SOURCE_FORMATS contains the three supported formats")
 def _():
-    check("two formats", set(import_material.SOURCE_FORMATS) == {
-        "subtitle", "clean_text"})
+    check("three formats", set(import_material.SOURCE_FORMATS) == {
+        "subtitle", "nihongo_jikan", "clean_text"})
+
+
+@test("material level suggestion matches known level folders")
+def _():
+    check("Beginner", import_material.suggested_material_level(
+        "C:/media/Beginner/ep.html") == 2)
+    check("beginner lowercase", import_material.suggested_material_level(
+        "C:/media/beginner/ep.html") == 2)
+    check("Complete Beginner", import_material.suggested_material_level(
+        "C:/media/Complete Beginner/ep.html") == 1)
+    check("complete-beginner hyphen", import_material.suggested_material_level(
+        "C:/media/complete-beginner/ep.html") == 1)
+    check("Intermediate", import_material.suggested_material_level(
+        "C:/media/Intermediate/ep.html") == 3)
+    check("Advanced", import_material.suggested_material_level(
+        "C:/media/Advanced/ep.html") == 4)
+
+
+@test("material level suggestion returns None for unmatched folders")
+def _():
+    check("unmatched name", import_material.suggested_material_level(
+        "C:/media/Other/ep.html") is None)
+    check("no parent folder", import_material.suggested_material_level(
+        "ep.html") is None)
 
 
 def main():

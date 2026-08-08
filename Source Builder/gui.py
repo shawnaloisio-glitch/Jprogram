@@ -1160,6 +1160,13 @@ class SourceBuilderApp:
         self.text_area.delete("1.0", "end")
         self.text_area.insert("1.0", combined)
         self._on_text_changed()
+        # Material Level suggestion from the first selected file's parent
+        # folder (a known level-named folder). Suggestion only — the
+        # dropdown stays editable, exactly like the Episode# suggestion.
+        if paths:
+            suggested = import_material.suggested_material_level(paths[0])
+            if suggested is not None:
+                self.material_level_var.set(str(suggested))
         self.status_var.set(
             f"Imported {len(paths)} file(s) as "
             f"{import_material.FORMAT_LABELS.get(source_format, source_format)}."
