@@ -19,6 +19,19 @@ to dig through conversation history.
 
 ## Open
 
+### New small tool needed: metadata entry UI for batch-imported sources (2026-08-09)
+
+Owner plan, next session: a simple UI to hand-assign Style/Topic/Duration/
+Episode#/Season# (and override Material Level where needed) for sources
+created by the Batch Importer, which currently leaves all five of those
+fields unset. Owner's explicit call: test the Batch Importer as-is for
+now (test-data phase, per `project_dev_data_is_disposable`), build this
+separately rather than trying to make the importer auto-infer metadata
+it can't reliably guess. Also the natural place to revisit the Batch
+Importer's current hard-fail-on-unmatched-folder behavior for Material
+Level (see Batch Importer's own note below) if that turns out to matter
+once real batches start.
+
 ### New small tool needed: JSONL exporter for the reader (2026-08-09)
 
 Owner request, not yet scoped or built. The canonical corpus JSONL files
