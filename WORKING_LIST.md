@@ -92,30 +92,19 @@ permanently instead of patching this one instance.
 
 Main redesign landed and audited clean on `master` (`f482aaa`, `f53990f`):
 episode is now a hidden, always-auto-incrementing system identifier;
-Episode#/Season# are new optional, purely cosmetic metadata fields. Three
-small items remain from that work, all low priority:
+Episode#/Season# are new optional, purely cosmetic metadata fields.
 
-- [ ] **`Index/index_builder.py`'s `collections` table still reads a
-  `sequencing` column** that `config_loader.load_collections()` no longer
-  returns (removed in `f482aaa`), so every row now gets `NULL` instead of
-  `"episodic"`/`"auto"`. This is the one known, deliberately deferred test
-  failure (`Index/tests/test_index_builder.py`, confirmed by a fresh-subagent
-  Auditor pass 2026-08-07). The Index is CLI-only and not wired into any
-  pipeline stage, so not urgent — but the column itself should probably just
-  be dropped from the schema, not patched to read something else, since
-  sequencing no longer exists as a concept anywhere.
-- [ ] **`Source Builder/controller.py`'s `collision_exists()` is now dead
-  code** — its only caller (the collection-mode "Filename already exists"
-  check in `ReadyStateEngine._first_blocking_reason`) was correctly removed
-  in `f482aaa`, since the hidden auto-increment structurally can't collide.
-  Still correct and tested, just orphaned (flagged by the same Auditor pass).
-  Safe to delete along with its `__all__` export and test coverage whenever
-  `controller.py` is touched next.
-- [ ] **`Source Builder/diagnostics.py`** still has a one-line
-  `identity["episode"] = package.get("episode")` reference in its identity
-  dump — harmless (episode still exists as a hidden field on every package),
-  just worth a look for whether the dump should also surface the new
-  `episode_number`/`season_number` fields now that they exist.
+- [x] **All three follow-ups fixed and committed (2026-08-09), `1e28453`
+  — no audit triggered (deliberately: none of the three touch a Frozen
+  file, and the goal this session was avoiding audit token overhead for
+  genuinely low-risk work).** `Index/index_builder.py`'s `collections`
+  table no longer reads a `sequencing` column that no longer exists on
+  the config side — this was also the last known failing test, so the
+  full suite is now 67/67 fully green with zero known failures for the
+  first time. `controller.py`'s dead `collision_exists()` deleted along
+  with its test. `diagnostics.py`'s identity dump now also surfaces
+  `episode_number`/`season_number` alongside the existing hidden
+  `episode` field.
 
 ### Piece B GUI wiring deferred — structure built first, UI later (2026-08-07)
 
