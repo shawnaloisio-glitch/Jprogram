@@ -319,13 +319,40 @@ below, not a queue of product changes.
   (mostly browser-automation reads) to `.claude/settings.json`; left
   everything mutating or arbitrary-code-execution-shaped (git add/
   commit/push, raw python/powershell, mkdir/rm) prompting on purpose.
+- **Nihongo Jikan HTML transcript importer + Material Level folder
+  suggestion** (`af92527`) — the first real product task run through the
+  new confirmation-gate workflow in practice, not just a mechanism trial.
+  New raw source found at `D:\Nihongo Jikan media\Transcripts\`: HTML
+  with ruby furigana markup, a genuinely new format the pipeline couldn't
+  parse before. New `Nihongo Jikan Importer/html_transcript_cleaner.py`
+  extracts bare `<p>` tags as sentences (verified exhaustively against
+  the real 874-file corpus before implementation — every bare `<p>`
+  contains only plain text + ruby/rt markup, every attributed
+  `<p class="...">` is scraped-page "Copyright Info" widget noise, never
+  real transcript text), discards furigana readings (Owner decision) and
+  the widget entirely. Also added `import_material.suggested_material_level`
+  — a small direct folder-name → Material Level lookup (Beginner/Complete
+  Beginner/Intermediate/Advanced, both casing/hyphenation variants used
+  by Nihongo Jikan and the unrelated `D:\Natural Japanese media\` source),
+  wired as a suggestion (editable, not forced) into the import flow for
+  both the new importer and the existing Subtitle Importer path. Owner
+  confirmed there isn't expected to be much more content graded-by-folder
+  beyond these two sources plus Con-Teppei, so the mapping was kept as a
+  small direct dict, not a generic/extensible framework.
+  Built in an isolated git worktree/branch, independently re-verified by
+  Advisor (diff review, full suite re-run twice — once in the worktree,
+  once again in the real repo after merge: 67/67 non-`ginza` test files
+  pass both times — plus a direct run against 3 real Nihongo Jikan files,
+  including one with an actual Copyright widget, confirming clean
+  extraction with zero HTML/copyright leakage). Audit trigger: No
+  (Moderate confidence) — see
+  `Audits/Trigger_Log/2026-08-08_nihongo-jikan-importer.md` for full
+  detail, including a minor Coder self-report inaccuracy caught (claimed
+  69 test files ran when only 67 could in its environment — not a defect,
+  logged for the record).
 
 ### Open items / not yet done
 
-- The new Coder mechanism has exactly one real product task behind it
-  so far (the diagnostics test file). Next real Coder-drafted task will
-  be the first genuine trial of the new confirmation-gate workflow in
-  practice, not just the mechanism validation trials.
 - `CLAUDE.md`'s Auditor section still says "no cross-vendor auditor
   available" — Owner separately mentioned exploring MiMo (Xiaomi) as a
   possible third-party Auditor via its own Anthropic-compatible
@@ -336,14 +363,21 @@ below, not a queue of product changes.
 - The small-cleanup backlog is unchanged from session 11 (register/
   formality tag idea, undecided; inert Frozen `sentence_index` gap;
   Material Level's admin surface) — nothing touched it this session.
+- The Nihongo Jikan importer is built and merged but not yet exercised
+  through the real Source Builder GUI end-to-end (Advisor's evaluation
+  was diff review + independent test re-runs + a direct module-level
+  check against real files, not a live GUI click-through) — worth a real
+  import of an actual Nihongo Jikan episode next time the app is open,
+  as a final real-world confirmation before treating this as fully
+  proven.
 
 ### Next immediate task
 
 No single item is more pressing than another right now. Natural next
-steps, in no particular order: (1) exercise the new Coder mechanism on
-a real scoped product task with the new confirmation-gate workflow in
-practice, (2) follow up on Owner's MiMo Auditor trial if/when it
-happens, (3) resume the small-cleanup backlog if nothing else is live.
+steps, in no particular order: (1) do a real end-to-end GUI import of a
+Nihongo Jikan episode to close the loop on the open item above, (2)
+follow up on Owner's MiMo Auditor trial if/when it happens, (3) resume
+the small-cleanup backlog if nothing else is live.
 
 ---
 
