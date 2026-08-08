@@ -105,11 +105,11 @@ This field is required every time, even when the answer is No. You do not decide
 ## Frozen Components
 
 Do not treat changes to these as routine — any touch to these files is an automatic audit trigger:
-- Parser: `Prompts/parser_prompt.md`, `PARSER_OUTPUT_SPEC.md`
+- Parser: `Prompts/parser_prompt.md`, `PARSER_OUTPUT_SPEC.md`, `Data Processor/deterministic_parser.py` (the live GiNZA/spaCy engine — sentence splitting, word segmentation, chunk mapping — that replaced the LLM prompt as the actual parsing logic; the prompt/spec still define the output contract both must satisfy)
 - Validator: `Data Processor/response_validator.py`
 - Builder: `Data Processor/corpus_builder.py` and `Data Processor/parser_normalizer.py` (the actual canonicalization / exact-reconstruction integrity-gate logic — `canonicalize`, `verify_source_reconstruction`, `restore_sentence_text`, span/chunk recomputation — now lives in `parser_normalizer.py`; `corpus_builder.py` re-exports it, so both must be frozen), the canonical JSONL format
 - Analysis: all `Analysis/` modules, `ANALYZER_ARCHITECTURE.md`
-- Transport: `Data Processor/deepseek_client.py`
+- Transport: `Data Processor/deepseek_client.py` (retired API path, kept frozen in case it's ever revived) and `Data Processor/deterministic_parser_client.py` (the live "api" stage wiring that replaced it, per `Production Manager/production_manager.py`'s `_api_script()`)
 
 ## Core principles
 

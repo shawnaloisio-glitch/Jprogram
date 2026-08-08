@@ -81,12 +81,12 @@ permanently instead of patching this one instance.
   (+ Source Registry/Source Package sha256 kept in sync) and the raw
   `Seika's Day Out.srt` (cue #93 split by hand, no registry involved since
   it wasn't registered yet).
-- [ ] **Aside, unrelated, not urgent:** `CLAUDE.md`'s Frozen Components
-  list only names `Data Processor/deepseek_client.py` under "Transport" —
-  `deterministic_parser.py`/`deterministic_parser_client.py` aren't listed,
-  even though Session 9 confirmed the deterministic parser is now the live
-  "api" stage. Possible staleness in the Frozen list itself; separate
-  decision from the Cleaner fix above.
+- [x] **Fixed directly by Advisor (2026-08-09), doc-only edit, no OC
+  needed.** `CLAUDE.md`'s Frozen Components list now includes
+  `Data Processor/deterministic_parser.py` under "Parser" and
+  `Data Processor/deterministic_parser_client.py` under "Transport"
+  alongside the retired `deepseek_client.py` (kept frozen rather than
+  removed, in case it's ever revived).
 
 ### Episode/season identity redesign — small follow-ups (2026-08-07)
 
