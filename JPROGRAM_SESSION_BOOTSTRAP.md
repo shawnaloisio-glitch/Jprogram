@@ -261,7 +261,93 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-09) — Updated after Session 11
+## 14. Session Wrap-Up (2026-08-08) — Updated after Session 12
+
+**Read this section first, always.** Supersedes the Session 11 version
+below (kept for reference as §14a, no longer current). Last refreshed
+2026-08-08, end of session 12. A lot of this session was exploratory
+(local-model calibration, cost-saving research) rather than direct
+Jprogram feature work — the durable outcome is the new Coder mechanism
+below, not a queue of product changes.
+
+### Shipped this session
+
+- **Local-LLM audit/compression path tested and closed.** Six Ollama
+  models run through a 3-trial calibration harness (diff-parsing,
+  execution-tracing, cross-file reasoning) plus a real compression
+  trial against 953 test-suite results. Verdict: not viable for either
+  use case — even the two "clean sweep" models
+  (`deepseek-r1:14b`, `alibayram/mimo-7b-rl`) didn't replicate cleanly
+  on reworded trials, and the compression trial hallucinated a precise
+  count while being slower than reading the raw output directly. Full
+  detail across `Audits/Trigger_Log/2026-08-08_*` and
+  `2026-08-09_qwen-calibration_*` — see
+  `project_deepseek_coder_headless_standard` memory and
+  `2026-08-08_local-llm-path-closed.md` for the closing verdict.
+- **New standard Coder mechanism: headless DeepSeek-redirected Claude
+  Code, replacing OpenCode (`d2b1b4f`).** Real, working, independently
+  verified — not theoretical. A `claude -p` subprocess, backend
+  redirected to DeepSeek's documented Anthropic-compatible endpoint,
+  launched directly by Advisor via Bash, output captured as clean
+  structured JSON. Three trials, the last a genuine 15-turn task
+  (writing test coverage for `Source Builder/diagnostics.py`, which had
+  zero prior coverage) — independently re-verified by Advisor (re-ran
+  the tests, read the full 336-line file, confirmed no scope creep) on
+  an isolated git worktree before merging. Real DeepSeek balance trail:
+  $7.12 → $7.11 → $7.09, about 3 cents total. **Key gotcha: Claude
+  Code's own `total_cost_usd` field is not reliable for this backend**
+  — it applies Anthropic pricing to DeepSeek token counts and was ~55x
+  too high on the real trial ($1.11 reported vs. ~$0.02 actual per
+  DeepSeek's own dashboard). Always check platform.deepseek.com/usage
+  directly. DeepSeek also has time-based pricing, so no single figure
+  is fully representative.
+- **New confirmation-gate rule, Owner's explicit request:** present a
+  clear, visible notification with task/why/scope explanation and get
+  an explicit go-ahead before every real Coder task launches, even
+  though the new mechanism no longer technically requires the old
+  copy-paste step that used to force that moment of visibility.
+- **Same standard extended to Language Coach and LANGZ**, reversing
+  their prior 2026-08-06 "no separate Coder" decisions (confirmed
+  explicitly when asked, not assumed) — each got its own updated
+  `CLAUDE.md` "Coder command format" section and a new `AGENTS.md`.
+  Both are file-only changes (neither project has a git repo yet).
+- **Added test coverage for `Source Builder/diagnostics.py`** (`0b696e1`)
+  — the first real product change produced by the new Coder mechanism,
+  11/11 passing, independently re-verified.
+- **Small permission-allowlist addition** (`5cc5f8b`) — scanned recent
+  session transcripts, added 6 genuinely read-only, low-risk patterns
+  (mostly browser-automation reads) to `.claude/settings.json`; left
+  everything mutating or arbitrary-code-execution-shaped (git add/
+  commit/push, raw python/powershell, mkdir/rm) prompting on purpose.
+
+### Open items / not yet done
+
+- The new Coder mechanism has exactly one real product task behind it
+  so far (the diagnostics test file). Next real Coder-drafted task will
+  be the first genuine trial of the new confirmation-gate workflow in
+  practice, not just the mechanism validation trials.
+- `CLAUDE.md`'s Auditor section still says "no cross-vendor auditor
+  available" — Owner separately mentioned exploring MiMo (Xiaomi) as a
+  possible third-party Auditor via its own Anthropic-compatible
+  endpoint, pending a one-month trial subscription (cancel-immediately-
+  after-subscribing plan, to test real "Unlimited Usage" terms rather
+  than trust the marketing page). Not yet started as of this wrap-up —
+  revisit if Owner reports back on that trial.
+- The small-cleanup backlog is unchanged from session 11 (register/
+  formality tag idea, undecided; inert Frozen `sentence_index` gap;
+  Material Level's admin surface) — nothing touched it this session.
+
+### Next immediate task
+
+No single item is more pressing than another right now. Natural next
+steps, in no particular order: (1) exercise the new Coder mechanism on
+a real scoped product task with the new confirmation-gate workflow in
+practice, (2) follow up on Owner's MiMo Auditor trial if/when it
+happens, (3) resume the small-cleanup backlog if nothing else is live.
+
+---
+
+## 14a. Prior wrap-up (Session 11) — kept for reference only, superseded above
 
 **Read this section first, always.** Supersedes the Session 10 version
 below (kept for reference, no longer current). Last refreshed
