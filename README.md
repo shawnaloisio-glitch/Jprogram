@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Japanese Corpus Pipeline converts Japanese source material into a structured corpus for linguistic analysis.
+The Japanese Corpus Pipeline converts Japanese source material into a structured, canonical JSONL corpus. That corpus is the finished product of this project — Jprogram's scope ends there; it does not itself perform linguistic analysis (see the Pipeline section below for where analysis now lives).
 
 Supported sources include:
 
@@ -14,7 +14,7 @@ Supported sources include:
 
 Regardless of the source, every document is converted into the same canonical representation before processing.
 
-The goal is to build a reusable corpus that can answer questions such as:
+The corpus is designed to support downstream questions such as:
 
 - Vocabulary overlap
 - Grammar overlap
@@ -68,11 +68,14 @@ Corpus Builder
 Canonical Sentence-per-line JSONL Corpus
       │
       ▼
-Analysis / Reports
-      │
-      ▼
-Application Shell (Sources / Processing / Analysis)
+Application Shell (Sources / Processing)
 ```
+
+Jprogram's own scope ends at the finished canonical JSONL corpus
+(2026-08-09 architecture decision). Analysis reads that corpus but is no
+longer built or run inside Jprogram — it moved to Language Coach, which
+has independently rebuilt it. See `Archive/Analysis/` and
+`Archive/ANALYZER_ARCHITECTURE.md` for the retired implementation.
 
 ### Source Intake Implementation Status
 
@@ -86,12 +89,12 @@ Implemented:
 
 Cleaner execution and pipeline orchestration are implemented (Production
 Manager runs the stage programs). The Application Shell (`app.py`) provides the
-Sources / Processing / Analysis UI. The Source Package workflow and Handoff
+Sources / Processing UI. The Source Package workflow and Handoff
 (`Source Builder\source_package.py`, `Source Builder\handoff.py`) create the
 intake artifacts from saved sources. See `ARCHITECTURE_CURRENT.md` and
 `SOURCE_PACKAGE_HANDOFF.md`.
 
-Architecture: Source creation → Source Package → Handoff → Cleaner → Data Processor → Canonical Corpus → Analysis → Application Shell.
+Architecture: Source creation → Source Package → Handoff → Cleaner → Data Processor → Canonical Corpus. (Downstream analysis is a separate project, Language Coach — see `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md`.)
 
 ---
 
@@ -216,8 +219,6 @@ Raw folders contain untouched source material.
 Cleaned Archive contains mechanically cleaned text.
 
 Data Processor contains temporary processing artifacts and final JSONL datasets.
-
-Analysis contains scripts and reports.
 
 Logs contain execution history.
 

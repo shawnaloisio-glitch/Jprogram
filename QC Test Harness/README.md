@@ -2,8 +2,11 @@
 
 A reusable, known-ground-truth test source for exercising the real
 pipeline end-to-end (Source Builder birth-certificate creation through
-Corpus Builder and the Analysis layer), using the actual production
-functions and scripts -- not a reimplementation or a mock.
+Corpus Builder and the canonical JSONL corpus), using the actual
+production functions and scripts -- not a reimplementation or a mock.
+The `check` stage scans the canonical corpus records directly (no
+Analysis/ module dependency, since 2026-08-09 -- see
+`CLAUDE.md`'s Frozen Components note).
 
 Because the test source is hand-authored with deliberately controlled
 word placement, the expected analyzer output is known in advance
@@ -58,9 +61,11 @@ Three lexical items are deliberately placed at known sentence positions
   like *>=5 occurrences with >=3 sentences between instances*.
 - **猫 ("cat")** -- also 5 occurrences (same frequency as 犬), but
   clustered (min gap = 1). Negative-control case: proves frequency alone
-  doesn't satisfy a spacing-based threshold, matching
-  `ANALYZER_ARCHITECTURE.md`'s own principle that distribution is
-  measured separately from frequency.
+  doesn't satisfy a spacing-based threshold -- distribution must be
+  measured separately from frequency (formerly documented in
+  `ANALYZER_ARCHITECTURE.md`, now archived at
+  `Archive/ANALYZER_ARCHITECTURE.md`; the principle itself lives on in
+  Language Coach's analyzer).
 - **食べる ("to eat")** -- 4 occurrences across 4 different inflected
   surfaces (食べました / 食べません / 食べて / 食べる). Tests that the
   real DeepSeek parser correctly groups inflected forms under one

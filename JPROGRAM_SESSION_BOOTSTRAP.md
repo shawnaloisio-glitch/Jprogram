@@ -14,9 +14,9 @@ Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standin
 - **Goal:** create reliable corpus data from Japanese media sources (podcasts, anime subtitles; future manga, novels, web articles).
 - **Pipeline purpose:**
   ```
-  Raw source → cleaned data → parsed structured data → validated corpus → analysis
+  Raw source → cleaned data → parsed structured data → validated corpus → canonical JSONL corpus
   ```
-- The project builds an immersion-oriented corpus that preserves raw linguistic evidence so later analyzers can compute frequency, distribution, exposure, and other measurements deterministically.
+- The project builds an immersion-oriented corpus that preserves raw linguistic evidence so later analyzers can compute frequency, distribution, exposure, and other measurements deterministically. **Jprogram's own scope ends at the finished canonical JSONL corpus (2026-08-09)** — the analyzers themselves now live in Language Coach, not here (see §14, "Major architecture decision").
 
 ---
 
@@ -41,9 +41,12 @@ Data Processor
     Corpus Builder  (deterministic → canonical corpus)
    ↓
 Canonical JSONL Corpus   (sentence-per-line, the single source of truth)
-   ↓
-Analysis            (deterministic analyzer utilities → evidence datasets → future interpretation)
 ```
+
+Jprogram's pipeline ends here. Analysis (deterministic analyzer utilities
+→ evidence datasets → interpretation) is now a separate project's
+responsibility — Language Coach, which reads this corpus but is not part
+of this repo. See §14's "Major architecture decision" entry.
 
 Entry points today:
 
