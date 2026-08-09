@@ -57,6 +57,72 @@ discipline as any Frozen touch. Motivated by Language Coach's real need
 for grammar-pattern extraction, which the current empty `expressions`
 field can't support.
 
+**Blast-radius + planning prework, done (2026-08-09), no code changed yet.**
+
+- **Scope is smaller than it looked.** `response_validator.py` and
+  `corpus_builder.py`/`parser_normalizer.py` (both Frozen) already have
+  *complete* `expressions` validation and ID-assignment logic — built
+  for the old LLM parser, never removed, fully dormant. The entire task
+  is confined to `Data Processor/deterministic_parser.py` (plus the
+  spec doc), not multiple Frozen files with independent design work
+  each.
+- **One real gap found in the dormant machinery, resolved as a
+  non-issue:** chunks get a `recompute_chunk_text` safety net in
+  `parser_normalizer.py` that independently rebuilds chunk text from
+  word spans, ignoring whatever the parser reported — expressions have
+  no equivalent. Owner confirmed `recompute_chunk_text` existed
+  specifically to guard against **LLM corruption**; since the parser is
+  now deterministic code, not an LLM, that risk class doesn't apply the
+  same way. Decided: no `recompute_expression_text` needed.
+- **Real value confirmed, not hypothetical:** checked common expression
+  patterns against the real corpus (384 sentence files) before assuming
+  this mattered — と思います 355 occurrences, かもしれ 157, ことにし 74,
+  ということ 46, なぜかというと 6. Hundreds of real expressions are
+  sitting unflagged right now.
+- **Pattern source settled: JMdict, not hand-curation.** Owner pointed at
+  the dictionary already built in the Reasonix/MiniLingQ project
+  (`Reasonix/tools/make_dictionary_pack.py` → `Reasonix/packs/ja-pack.jsonl`,
+  built from the real JMdict/EDICT XML dump). JMdict's own `exp`
+  ("expressions (phrases, clauses, etc.)") tag directly covers this —
+  confirmed real entries for `ことにする`, `なぜかというと`, etc. A
+  filtered copy (35,547 of 35,765 total `exp` entries, dropping trivial
+  1-2 character noise) is now saved in this repo at
+  `Data Processor/Expression Dictionary/jmdict_expressions.jsonl`, with
+  a `README.md` covering the CC BY-SA 3.0 source/license/attribution —
+  reference data only, not wired into any pipeline code yet.
+- **Key architecture insight: match on lemma, not surface text.** JMdict
+  entries are dictionary/base form (`と思われる` is an entry;
+  `と思います`, the real conjugated form that actually appears in
+  sentences, is not). Matching must compare each candidate word-span's
+  already-computed `lexical` (lemma) field against the dictionary's
+  `surface` field — not raw sentence text — which the parser's existing
+  word layer already provides for free.
+- **The one piece with no existing library support: longest-match
+  overlap resolution.** The Validator's own comment says the
+  longest-complete-expression rule "is primarily enforced by the frozen
+  parser prompt" — true for the old LLM parser, meaningless now (no
+  prompt exists). A deterministic detector must guarantee this itself:
+  match all candidates, then discard any candidate whose span is fully
+  contained inside a longer accepted match. Real algorithm work, not a
+  lookup.
+- **Phased build plan (Owner's explicit "easiest first, test with a
+  smaller set" guidance):** `make_dictionary_pack.py` already ranks
+  JMdict entries by real corpus frequency (`entry_score()` — `nf01`-`nf48`
+  bands + "common word" flags). Phase 1: implement lemma-matching +
+  overlap resolution against only the highest-frequency expression
+  entries (a few hundred, not 35K), test against real corpus sentences
+  (already have frequency ground truth from the check above). Phase 2:
+  scale to the full dictionary once Phase 1 is proven correct.
+- **Dependency risk, not a blocker:** expression spans sit on top of the
+  word/chunk layer, which has known, not-yet-fixed edge cases
+  (`Audits/Parser_Edge_Cases/`, the word-span-absorbs-next-word bug,
+  ~5 real cases). Any sentence hitting that bug would also get
+  unreliable expression spans.
+
+**Not yet started:** the actual detection algorithm (real Coder task,
+Frozen Component, automatic audit trigger) — this prework only staged
+the pattern-source data and settled the open design questions.
+
 ### Metadata entry for batch-imported sources (2026-08-09) — done as a scripted fill, not a UI tool
 
 - [x] **Closed (2026-08-09), `a961aaf`.** Originally scoped as a small
