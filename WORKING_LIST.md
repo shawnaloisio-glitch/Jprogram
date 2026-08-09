@@ -57,15 +57,25 @@ final exported filename, the second hop matters too — meaning this tool
 (or Language Coach itself, for the display half) needs read access to
 `rename_log.csv`, not just the Source Package.
 
-**Open question, not yet decided:** which project this actually lives
-in. It touches Jprogram's corpus/naming data, Language Coach's
-selection+report, and Reasonix's import format — genuinely cross-project,
-not obviously a Jprogram-repo tool the way the Batch Importer is. Settle
-this, and the rest of the scope (one file vs. a whole reading-list batch,
-package format, output location, whether Language Coach needs its own
-naming-lookup capability for the display half separately from the export
-half) before drafting any Coder task. Same governance point still
-applies regardless of which repo it ends up in: this is real,
+**Data ownership settled (Owner decision, 2026-08-09):** the corpus
+JSONL and the naming cross-reference (`rename_log.csv`) are Jprogram
+data, full stop — they live here, and this repo is authoritative for
+them. Language Coach gets **read-only** access, never write. It reads
+these to resolve human-friendly titles for display while helping Owner
+pick a reading list; it must never modify the JSONL, the Source
+Package/Registry data, or `rename_log.csv`. This also settles that the
+naming-resolution logic itself belongs in Jprogram (the data's owner),
+not duplicated or forked into Language Coach.
+
+**Still open:** whether the actual export/rename/package tool (the
+thing that produces the Reasonix-ready bundle after the reading list is
+finalized) lives in Jprogram and hands a finished package to Language
+Coach, or lives in Language Coach and calls into a Jprogram-provided
+read-only interface for the naming/content data — the ownership
+decision above doesn't by itself pick between those two shapes. Settle
+that, plus the rest of the scope (one file vs. a whole reading-list
+batch, package format, output location), before drafting any Coder
+task. Same governance point still applies regardless: this is real,
 reusable-tool logic, not an Advisor-direct build.
 
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
