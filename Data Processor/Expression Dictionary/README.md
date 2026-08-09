@@ -9,10 +9,10 @@ the pattern-source data before real detection logic is built.
 
 ## Source and license
 
-`jmdict_expressions.jsonl` is extracted from **JMdict** (the Electronic
-Dictionary Research and Development Group, Monash University), via the copy
-already built in the Reasonix/MiniLingQ project
-(`Reasonix/tools/make_dictionary_pack.py`, `Reasonix/packs/ja-pack.jsonl`).
+`jmdict_expressions.jsonl` is extracted directly from the **JMdict** XML
+dump (the Electronic Dictionary Research and Development Group, Monash
+University), already downloaded in the Reasonix/MiniLingQ project
+(`Reasonix\packs\_JMdict_e.gz`, per `Reasonix/tools/make_dictionary_pack.py`).
 
 - Original source: JMdict/EDICT — <http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz>
 - License: **CC BY-SA 3.0** (Creative Commons Attribution-ShareAlike 3.0) —
@@ -22,12 +22,18 @@ already built in the Reasonix/MiniLingQ project
   in JMdict tagged `exp` ("expressions (phrases, clauses, etc.)") whose
   surface form is 3+ characters (JMdict's own 1-2 character `exp` entries
   are mostly noise for this purpose — particles/fragments, not genuine
-  multi-word expressions). **35,547 of 35,765** total `exp`-tagged entries
-  survive that filter.
-- Extracted 2026-08-09, directly from the already-built
-  `Reasonix\packs\ja-pack.jsonl` (itself built from a JMdict download dated
-  2026-08-08 per that file's own timestamp) — not re-downloaded from
-  EDRDG directly.
+  multi-word expressions). **35,633 distinct expression surfaces** survive
+  that filter, parsed directly from the raw XML (not via the pre-built
+  `Reasonix\packs\ja-pack.jsonl`, since that pack drops the priority/
+  frequency tags this file needs — see `score` below).
+- Extracted 2026-08-09 from the JMdict XML dump already present in
+  `Reasonix\packs\_JMdict_e.gz` — not re-downloaded from EDRDG directly.
+- **Known coverage gap, confirmed not a bug:** not every commonly-taught
+  Japanese expression has its own `exp`-tagged JMdict entry. Example:
+  `ということ` (extremely common in real usage) has no standalone `exp`
+  entry — JMdict appears to treat it as a productive combination rather
+  than a fixed idiom worth indexing. This is an honest limitation of
+  JMdict-as-source, not something this extraction got wrong.
 
 Per CC BY-SA 3.0's share-alike/attribution terms, any further redistribution
 of this file (or a derivative built from it) must carry this same
@@ -35,10 +41,10 @@ attribution and license.
 
 ## Format
 
-One JSON object per line, sorted by `surface`:
+One JSON object per line, sorted by `(score, surface)`:
 
 ```json
-{"surface": "ということ", "reading": "ということ", "gloss": "the fact that"}
+{"surface": "ことにする", "reading": "ことにする", "gloss": "to decide to", "score": 0}
 ```
 
 - `surface` — the dictionary/base-form expression as JMdict records it
@@ -47,6 +53,13 @@ One JSON object per line, sorted by `surface`:
 - `reading` — the JMdict reading.
 - `gloss` — a single English gloss, kept only for human review while
   building/reviewing the pattern library; not used by any matching logic.
+- `score` — JMdict's own frequency/commonness signal, lower = more common:
+  a number from its `nf01`-`nf48` corpus-frequency bands when present,
+  `0` for an entry flagged `ichi`/`news`/`spec`/`gai` ("common word") with
+  no numeric band, or `999` when JMdict records no frequency signal at all
+  for that entry. **1,338 of the 35,633 entries have a real signal**
+  (score < 999) — this is the natural "smallest set first" slice for a
+  phased build (see `WORKING_LIST.md`'s phased plan).
 
 ## Why base-form matching matters
 
