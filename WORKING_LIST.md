@@ -19,6 +19,44 @@ to dig through conversation history.
 
 ## Open
 
+### Rebuild grammar-pattern (`expressions`) detection, deterministically (2026-08-09)
+
+Real gap, not a hypothetical — confirmed directly against the actual
+code and spec, not from memory. `PARSER_OUTPUT_SPEC.md` still fully
+describes `expressions` as a required output: "**MOST IMPORTANT
+RULE:** preserve the LONGEST COMPLETE MEANINGFUL EXPRESSION" (grammar
+patterns/idioms, longest-form, e.g. `なぜかというと` recorded whole,
+not also recording the nested `という`). But
+`Data Processor/deterministic_parser.py` line 354's own comment says
+"expressions is always [] by design," and line 365 hardcodes it —
+confirmed empty in every real corpus record produced this session.
+
+**Real history, per Owner (2026-08-09):** this isn't a regression from
+switching off the old API/LLM-based parser — the old parser used to
+populate `expressions` this way, but the capability was deliberately
+curbed at some point because it "was not viable," and that curbing is
+what's baked into the current deterministic parser as the hardcoded
+`[]`. Separately confirmed: POS labels (`token.tag_`, GiNZA's UniDic
+tags) were **never** part of any parser's output for either the old or
+new parser — `PARSER_OUTPUT_SPEC.md` explicitly forbids them, and that
+rule predates the deterministic parser. Not the same gap as
+`expressions`, don't conflate them, though POS tags are a likely
+useful ingredient for rebuilding expression detection.
+
+**Forward path (Owner, explicit): rebuild this deterministically —
+never going back to an API-based parser.** GiNZA already computes
+fine-grained POS (`token.tag_`) for every token as a normal part of
+parsing (already used internally for word-boundary/chunk logic, e.g.
+the `動詞-非自立可能` tag in the aux-verb-merge bugs logged in
+`Audits/Parser_Edge_Cases/`) — that data existing in memory but not
+being exposed is what makes this "rebuild," not "invent new NLP
+capability." Real, Frozen-Component-touching change
+(`deterministic_parser.py` + `PARSER_OUTPUT_SPEC.md`, both Frozen) —
+needs proper investigation and scoping before any Coder task, same
+discipline as any Frozen touch. Motivated by Language Coach's real need
+for grammar-pattern extraction, which the current empty `expressions`
+field can't support.
+
 ### New small tool needed: metadata entry UI for batch-imported sources (2026-08-09)
 
 Owner plan, next session: a simple UI to hand-assign Style/Topic/Duration/
