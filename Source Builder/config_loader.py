@@ -201,12 +201,16 @@ def load_styles():
     """
     Return the ordered list of style_id values.
 
-    Style ids are autoincrement integers, so unlike the string-id
-    vocabularies the entries are always object form
+    Styles are customer data in the workspace; a fresh install has no
+    styles.json yet, which is an empty list, not an error (exactly like
+    collections/creators). Style ids are autoincrement integers, so unlike
+    the string-id vocabularies the entries are always object form
     {"style_id": int, "display_name": str}. Entries without a valid
     integer id are skipped.
     """
-    data = load_json("styles")
+    data = _load_styles_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("styles")
     else:
@@ -221,12 +225,16 @@ def load_topics():
     """
     Return the ordered list of topic_id values.
 
-    Topic ids are autoincrement integers, so unlike the string-id
-    vocabularies the entries are always object form
+    Topics are customer data in the workspace; a fresh install has no
+    topics.json yet, which is an empty list, not an error (exactly like
+    collections/creators). Topic ids are autoincrement integers, so unlike
+    the string-id vocabularies the entries are always object form
     {"topic_id": int, "display_name": str}. Entries without a valid
     integer id are skipped.
     """
-    data = load_json("topics")
+    data = _load_topics_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("topics")
     else:
@@ -241,13 +249,18 @@ def load_styles_full():
     """
     Return the ordered list of style entries WITH display names.
 
-    Style ids are autoincrement integers. display_name falls back to the
-    stringified id when an entry omits/empties display_name.
+    Styles are customer data in the workspace; a fresh install has no
+    styles.json yet, which is an empty list, not an error (exactly like
+    collections/creators). Style ids are autoincrement integers.
+    display_name falls back to the stringified id when an entry
+    omits/empties display_name.
 
     Returns:
         [{"style_id": int, "display_name": str}, ...]
     """
-    data = load_json("styles")
+    data = _load_styles_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("styles")
     else:
@@ -272,13 +285,18 @@ def load_topics_full():
     """
     Return the ordered list of topic entries WITH display names.
 
-    Topic ids are autoincrement integers. display_name falls back to the
-    stringified id when an entry omits/empties display_name.
+    Topics are customer data in the workspace; a fresh install has no
+    topics.json yet, which is an empty list, not an error (exactly like
+    collections/creators). Topic ids are autoincrement integers.
+    display_name falls back to the stringified id when an entry
+    omits/empties display_name.
 
     Returns:
         [{"topic_id": int, "display_name": str}, ...]
     """
-    data = load_json("topics")
+    data = _load_topics_raw()
+    if data is None:
+        return []
     if isinstance(data, dict):
         values = data.get("topics")
     else:
@@ -340,6 +358,38 @@ def _load_creators_raw():
     empty list rather than an error. A corrupt file still raises.
     """
     path = config_path("creators")
+    if not path.is_file():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ConfigError(f"config file unreadable: {path}: {exc}") from exc
+
+
+def _load_styles_raw():
+    """Read the styles payload, or None when no styles file exists yet.
+
+    Styles are customer data; a fresh install has none, which reads as an
+    empty list rather than an error. A corrupt file still raises.
+    """
+    path = paths.STYLES_CONFIG
+    if not path.is_file():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, OSError) as exc:
+        raise ConfigError(f"config file unreadable: {path}: {exc}") from exc
+
+
+def _load_topics_raw():
+    """Read the topics payload, or None when no topics file exists yet.
+
+    Topics are customer data; a fresh install has none, which reads as an
+    empty list rather than an error. A corrupt file still raises.
+    """
+    path = paths.TOPICS_CONFIG
     if not path.is_file():
         return None
     try:

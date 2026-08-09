@@ -45,6 +45,8 @@ def sandbox():
     saved_loader_config_dir = config_loader.CONFIG_DIR
     saved_collections_config = paths.COLLECTIONS_CONFIG
     saved_creators_config = paths.CREATORS_CONFIG
+    saved_styles_config = paths.STYLES_CONFIG
+    saved_topics_config = paths.TOPICS_CONFIG
 
     tmp = pathlib.Path(tempfile.mkdtemp())
     conf_dir = tmp / "Config"
@@ -75,6 +77,8 @@ def sandbox():
     config_loader.CONFIG_DIR = conf_dir
     paths.COLLECTIONS_CONFIG = conf_dir / "collections.json"
     paths.CREATORS_CONFIG = conf_dir / "creators.json"
+    paths.STYLES_CONFIG = conf_dir / "styles.json"
+    paths.TOPICS_CONFIG = conf_dir / "topics.json"
 
     def restore():
         controller.SOURCES_ROOT = saved_sources
@@ -84,6 +88,8 @@ def sandbox():
         config_loader.CONFIG_DIR = saved_loader_config_dir
         paths.COLLECTIONS_CONFIG = saved_collections_config
         paths.CREATORS_CONFIG = saved_creators_config
+        paths.STYLES_CONFIG = saved_styles_config
+        paths.TOPICS_CONFIG = saved_topics_config
 
     return restore
 

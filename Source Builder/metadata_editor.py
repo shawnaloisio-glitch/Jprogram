@@ -25,11 +25,11 @@ Canonical on-disk forms (preserving the existing top-level structure):
 - Workspace Config\\creators.json (customer data, like collections):
     {"creators": [{"creator_id": str, "display_name": str}]}
   (plain-string entries are accepted on read for backward compatibility)
-- Config\\styles.json:
+- Workspace Config\\styles.json (customer data, like creators):
     {"styles": [{"style_id": int, "display_name": str}]}
   (style ids are autoincrement; computed as max(existing ids, default=0) + 1
   on each add, never a persisted counter)
-- Config\\topics.json:
+- Workspace Config\\topics.json (customer data, like creators):
     {"topics": [{"topic_id": int, "display_name": str}]}
   (topic ids are autoincrement; computed as max(existing ids, default=0) + 1
   on each add, never a persisted counter)
@@ -69,8 +69,9 @@ class MetadataError(Exception):
 def _config_path(name, path=None):
     """Return the config path for a named vocabulary.
 
-    Collections and creators are customer/runtime configuration and resolve
-    to the workspace (paths.COLLECTIONS_CONFIG / paths.CREATORS_CONFIG) when
+    Collections, creators, styles, and topics are customer/runtime
+    configuration and resolve to the workspace (paths.COLLECTIONS_CONFIG /
+    paths.CREATORS_CONFIG / paths.STYLES_CONFIG / paths.TOPICS_CONFIG) when
     no explicit path is given. source_types remains repository product
     configuration.
     """
@@ -80,6 +81,10 @@ def _config_path(name, path=None):
         return paths.COLLECTIONS_CONFIG
     if name == "creators":
         return paths.CREATORS_CONFIG
+    if name == "styles":
+        return paths.STYLES_CONFIG
+    if name == "topics":
+        return paths.TOPICS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 
@@ -91,6 +96,10 @@ def _sibling_path(path, name):
         return paths.COLLECTIONS_CONFIG
     if name == "creators":
         return paths.CREATORS_CONFIG
+    if name == "styles":
+        return paths.STYLES_CONFIG
+    if name == "topics":
+        return paths.TOPICS_CONFIG
     return CONFIG_DIR / FILES[name]
 
 

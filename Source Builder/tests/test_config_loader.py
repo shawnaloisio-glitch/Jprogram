@@ -48,8 +48,10 @@ def patch_collections_config(collections):
 
 
 def patch_vocab_config(source_types, creators, styles=None, topics=None):
-    """Point config_loader.CONFIG_DIR and paths.CREATORS_CONFIG at a sandbox."""
-    saved = (config_loader.CONFIG_DIR, paths.CREATORS_CONFIG)
+    """Point config_loader.CONFIG_DIR and the workspace config paths at a
+    sandbox (creators, styles, and topics are all customer/runtime config)."""
+    saved = (config_loader.CONFIG_DIR, paths.CREATORS_CONFIG,
+             paths.STYLES_CONFIG, paths.TOPICS_CONFIG)
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -58,17 +60,22 @@ def patch_vocab_config(source_types, creators, styles=None, topics=None):
     creators_file = config_dir / "creators.json"
     creators_file.write_text(
         json.dumps({"creators": creators}), encoding="utf-8")
+    styles_file = config_dir / "styles.json"
+    topics_file = config_dir / "topics.json"
     if styles is not None:
-        (config_dir / "styles.json").write_text(
+        styles_file.write_text(
             json.dumps({"styles": styles}), encoding="utf-8")
     if topics is not None:
-        (config_dir / "topics.json").write_text(
+        topics_file.write_text(
             json.dumps({"topics": topics}), encoding="utf-8")
     config_loader.CONFIG_DIR = config_dir
     paths.CREATORS_CONFIG = creators_file
+    paths.STYLES_CONFIG = styles_file
+    paths.TOPICS_CONFIG = topics_file
 
     def restore():
-        config_loader.CONFIG_DIR, paths.CREATORS_CONFIG = saved
+        (config_loader.CONFIG_DIR, paths.CREATORS_CONFIG,
+         paths.STYLES_CONFIG, paths.TOPICS_CONFIG) = saved
 
     return restore
 
@@ -336,17 +343,17 @@ def _():
         restore()
 
 
-@test("styles: missing styles.json raises ConfigError")
+@test("styles: missing styles file loads empty")
 def _():
-    restore = patch_vocab_config([], [])
+    saved = paths.STYLES_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "styles.json"
+    paths.STYLES_CONFIG = missing
     try:
-        try:
-            config_loader.load_styles()
-            check("missing styles file raises", False)
-        except config_loader.ConfigError:
-            check("missing styles file raises", True)
+        check("load_styles empty", config_loader.load_styles() == [])
+        check("load_styles_full empty",
+              config_loader.load_styles_full() == [])
     finally:
-        restore()
+        paths.STYLES_CONFIG = saved
 
 
 @test("topics: config file entry present in CONFIG_FILES")
@@ -423,17 +430,17 @@ def _():
         restore()
 
 
-@test("topics: missing topics.json raises ConfigError")
+@test("topics: missing topics file loads empty")
 def _():
-    restore = patch_vocab_config([], [])
+    saved = paths.TOPICS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "topics.json"
+    paths.TOPICS_CONFIG = missing
     try:
-        try:
-            config_loader.load_topics()
-            check("missing topics file raises", False)
-        except config_loader.ConfigError:
-            check("missing topics file raises", True)
+        check("load_topics empty", config_loader.load_topics() == [])
+        check("load_topics_full empty",
+              config_loader.load_topics_full() == [])
     finally:
-        restore()
+        paths.TOPICS_CONFIG = saved
 
 
 @test("load_material_levels_full mirrors project_config.MATERIAL_LEVELS")

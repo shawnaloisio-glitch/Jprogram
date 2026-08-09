@@ -54,6 +54,8 @@ def sandbox():
         diagnostics.DIAGNOSTICS_DIR,
         paths.COLLECTIONS_CONFIG,
         paths.CREATORS_CONFIG,
+        paths.STYLES_CONFIG,
+        paths.TOPICS_CONFIG,
     )
     tmp = pathlib.Path(tempfile.mkdtemp())
     config_dir = tmp / "Config"
@@ -78,13 +80,16 @@ def sandbox():
     config_loader.CONFIG_DIR = config_dir
     paths.COLLECTIONS_CONFIG = config_dir / "collections.json"
     paths.CREATORS_CONFIG = config_dir / "creators.json"
+    paths.STYLES_CONFIG = config_dir / "styles.json"
+    paths.TOPICS_CONFIG = config_dir / "topics.json"
     diagnostics.DIAGNOSTICS_DIR = tmp / "Diagnostics"
 
     def restore():
         (controller.SOURCES_ROOT, gui_settings.SETTINGS_PATH,
          quick_presets.PRESETS_PATH, config_loader.CONFIG_DIR,
          diagnostics.DIAGNOSTICS_DIR,
-         paths.COLLECTIONS_CONFIG, paths.CREATORS_CONFIG) = saved
+         paths.COLLECTIONS_CONFIG, paths.CREATORS_CONFIG,
+         paths.STYLES_CONFIG, paths.TOPICS_CONFIG) = saved
 
     return restore
 

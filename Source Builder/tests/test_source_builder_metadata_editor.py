@@ -473,6 +473,28 @@ def _():
         paths.CREATORS_CONFIG = saved
 
 
+@test("styles: missing workspace file loads empty list")
+def _():
+    saved = paths.STYLES_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "styles.json"
+    paths.STYLES_CONFIG = missing
+    try:
+        check("loads empty", metadata_editor.load_styles() == [])
+    finally:
+        paths.STYLES_CONFIG = saved
+
+
+@test("topics: missing workspace file loads empty list")
+def _():
+    saved = paths.TOPICS_CONFIG
+    missing = pathlib.Path(tempfile.mkdtemp()) / "Config" / "topics.json"
+    paths.TOPICS_CONFIG = missing
+    try:
+        check("loads empty", metadata_editor.load_topics() == [])
+    finally:
+        paths.TOPICS_CONFIG = saved
+
+
 @test("creators: add")
 def _():
     conf_dir = temp_config_dir()
