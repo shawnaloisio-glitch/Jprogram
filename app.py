@@ -39,7 +39,8 @@ import paths
 
 class ApplicationShell:
     """
-    Main application window with the Sources / Processing tabs.
+    Main application window (Sources tab; see module docstring for the
+    retired Processing tab's status).
     """
 
     TAB_SOURCES = "Sources"
