@@ -126,6 +126,23 @@ field can't support.
   ということ from the check above, though note ということ itself has no
   JMdict entry at all — see the coverage-gap note above). Phase 2: scale
   to the full 35,633-entry dictionary once Phase 1 is proven correct.
+- **Phase 1 lemma sequences precomputed, done (2026-08-09).** Ran all
+  1,338 score-having entries through `deterministic_parser.segment_sentence()`
+  itself (reused directly, not reimplemented, to guarantee the dictionary
+  is lemmatized exactly the same way real sentences will be) — saved as
+  `Data Processor/Expression Dictionary/jmdict_expressions_phase1.jsonl`,
+  each entry now carrying a `lemmas` array alongside `surface`/`reading`/
+  `gloss`/`score`. Zero errors across all 1,338. Found and worth knowing:
+  **218 of 1,338 (16%) resolve to a single lemma** — GiNZA's own tokenizer
+  treats these as one fused word rather than a multi-word sequence (e.g.
+  a compound JMdict considers one "expression" but GiNZA's dictionary
+  already treats as one lexical unit). These aren't useful match
+  candidates — a 1-lemma "expression" would just duplicate the existing
+  word layer — leaving **1,120 genuinely multi-lemma candidates** as the
+  real Phase 1 matching set, not 1,338. This precomputation means the
+  actual Coder task is now purely runtime matching + overlap resolution
+  against ready-made lemma sequences, not "tokenize a dictionary AND
+  match AND resolve overlaps" all in one Frozen-Component change.
 - **Dependency risk, not a blocker:** expression spans sit on top of the
   word/chunk layer, which has known, not-yet-fixed edge cases
   (`Audits/Parser_Edge_Cases/`, the word-span-absorbs-next-word bug,
