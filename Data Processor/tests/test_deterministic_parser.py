@@ -343,6 +343,84 @@ def _():
     check("no fatal errors", v["summary"]["fatal_errors"] == 0)
 
 
+@test("expressions: verified ground-truth ことにする match")
+def _():
+    # Real corpus ground truth (verified against segment_sentence output
+    # before writing): words 5-7 are こと/に/しました with lemmas
+    # こと/に/する, matching the dictionary entry "ことにする".
+    result = parse("カレンは猫を買うことにしました,\n")
+    s = result["sentences"][0]
+    check("exact record",
+          s["expressions"] == [[0, "ことにしました", 5, 8, "ことにする"]],
+          str(s["expressions"]))
+    check("surface is verbatim text[8:15]",
+          s["text"][8:15] == "ことにしました", repr(s["text"]))
+
+
+@test("expressions: longest nested expression wins over shorter covering one")
+def _():
+    # Minimal constructed sentence built specifically to exercise the
+    # overlap-resolution rule: あっというま (4 lemmas) is a strict prefix
+    # of あっというまに (5 lemmas), both real dictionary entries. Only the
+    # longer expression must survive.
+    result = parse("あっというまに。\n")
+    s = result["sentences"][0]
+    check("exact record",
+          s["expressions"] == [[0, "あっというまに", 0, 5, "あっというまに"]],
+          str(s["expressions"]))
+
+
+@test("expressions: independent non-overlapping expressions both kept")
+def _():
+    # 雨が降る (words 0-3) and ことにする (words 3-6, conjugated surface
+    # ことにした) are independent, non-overlapping matches in one sentence;
+    # both must survive and be indexed 0..N-1 in start_word order.
+    result = parse("雨が降ることにした。\n")
+    s = result["sentences"][0]
+    check("both expressions",
+          s["expressions"] == [
+              [0, "雨が降る", 0, 3, "雨が降る"],
+              [1, "ことにした", 3, 6, "ことにする"],
+          ],
+          str(s["expressions"]))
+
+
+@test("expressions: real sentence with no dictionary match returns empty")
+def _():
+    result = parse("犬が走る。\n")
+    s = result["sentences"][0]
+    check("no expressions", s["expressions"] == [], str(s["expressions"]))
+
+
+@test("expressions: single-lemma dictionary entries never match")
+def _():
+    # あってない is a real Phase 1 entry but resolves to a single lemma
+    # ["ある"], so it is filtered out at load time and must not produce a
+    # match (a 1-lemma "expression" would duplicate the existing word layer).
+    result = parse("あってない。\n")
+    s = result["sentences"][0]
+    check("no expressions", s["expressions"] == [], str(s["expressions"]))
+
+
+@test("expressions: output with real expressions passes response_validator")
+def _():
+    result = dp.parse_job(
+        "src", 1,
+        "カレンは猫を買うことにしました。\n\n雨が降る。\n",
+    )
+    v = rv.validate_response(result, expected_source_name="src", expected_job_number=1)
+    check("valid", v["valid"] is True, str(v["errors"]))
+    check("no expression errors",
+          not any(e["code"] in (
+              rv.INVALID_EXPRESSION_RECORD,
+              rv.INVALID_EXPRESSION_INDEX,
+              rv.INVALID_EXPRESSION_SPAN,
+              rv.EXPRESSION_SURFACE_MISMATCH,
+              rv.DUPLICATE_EXPRESSION_WARNING,
+          ) for e in v["errors"] + v["warnings"]),
+          str(v["errors"]) + str(v["warnings"]))
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

@@ -44,13 +44,17 @@ Layers:
 3. Chunk mapping uses GiNZA's bunsetu_spans() and re-expresses each
    bunsetu span over the MERGED word indices produced by layer 2.
 
-4. parse_job assembles layers 1-3 into the full contract-shaped dict.
+4. parse_job assembles layers 1-3 into the full contract-shaped dict,
+   including deterministic expression detection (detect_expressions)
+   against a small pre-vetted Phase 1 dictionary of known Japanese
+   expressions.
 
 This module is built and tested in isolation. It is not yet wired
 into the pipeline (Job Builder, Request Builder, Production Manager,
 or app.py) and is not part of the frozen component set yet.
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -101,6 +105,44 @@ def _get_nlp():
             config={"components": {"compound_splitter": {"split_mode": "A"}}},
         )
     return _nlp
+
+
+# Phase 1 expression dictionary (see detect_expressions in Part 4).
+# Each line is one entry {"surface", "reading", "gloss", "score", "lemmas"},
+# where "lemmas" was precomputed by running the entry's surface through this
+# module's own segment_sentence(), so it is guaranteed consistent with how
+# real sentence words are lemmatized.
+EXPRESSIONS_DICTIONARY_PATH = (
+    Path(__file__).resolve().parent
+    / "Expression Dictionary"
+    / "jmdict_expressions_phase1.jsonl"
+)
+
+_expression_index = None
+
+
+def _get_expression_index():
+    """Lazily load the Phase 1 expression dictionary, indexed by first lemma.
+
+    Mirrors _get_nlp()'s lazy-singleton pattern: loaded once on first use,
+    then cached. Entries with fewer than two lemmas are skipped -- a
+    single-lemma "expression" would just duplicate the existing word layer.
+    Returns a dict mapping each kept entry's first lemma to the list of
+    entries starting with it, so detect_expressions() only inspects
+    candidates whose first lemma matches a word, never a full linear scan.
+    """
+    global _expression_index
+    if _expression_index is None:
+        index = {}
+        with open(EXPRESSIONS_DICTIONARY_PATH, encoding="utf-8") as f:
+            for line in f:
+                entry = json.loads(line)
+                lemmas = entry["lemmas"]
+                if len(lemmas) < 2:
+                    continue
+                index.setdefault(lemmas[0], []).append(entry)
+        _expression_index = index
+    return _expression_index
 
 
 # ============================================================
@@ -343,7 +385,68 @@ def segment_sentence(text):
 
 
 # ============================================================
-# Part 4 - Assembly
+# Part 4 - Expression detection (Phase 1) + assembly
+# ============================================================
+
+def detect_expressions(text, words):
+    """Detect known Japanese expressions in one sentence.
+
+    Matches each word's already-computed lexical (lemma) value against the
+    Phase 1 dictionary's precomputed lemma sequences. The
+    longest-complete-expression rule (PARSER_OUTPUT_SPEC section 10) is
+    enforced by explicit overlap resolution: candidates are considered
+    longest-span first (ties broken by earlier start_word), and a candidate
+    is accepted only if its word-index span shares no word index with an
+    already-accepted span. This alone rejects every shorter/nested
+    candidate that a longer accepted expression covers; independent,
+    non-overlapping expressions are all kept.
+
+    Args:
+        text: the sentence text (verbatim, including spaces/punctuation).
+        words: the sentence's 5-column word records
+            [index, surface, lexical, char_start, char_end].
+
+    Returns:
+        A list of 5-column expression records
+        [index, surface, start_word, end_word, pattern], ordered by
+        ascending start_word with index 0-based in that order. surface is
+        the verbatim substring spanning the words
+        (text[words[start][3]:words[end - 1][4]]); pattern is the matched
+        dictionary entry's own surface (advisory, per the spec).
+    """
+    word_lemmas = [w[2] for w in words]
+    n = len(word_lemmas)
+    index = _get_expression_index()
+
+    candidates = []
+    for start in range(n):
+        for entry in index.get(word_lemmas[start], ()):
+            lemmas = entry["lemmas"]
+            end = start + len(lemmas)
+            if end <= n and word_lemmas[start:end] == lemmas:
+                candidates.append((start, end, entry))
+
+    # Longest span first, then earlier start_word as a tiebreaker.
+    candidates.sort(key=lambda c: (-(c[1] - c[0]), c[0]))
+
+    accepted = []
+    covered = set()
+    for start, end, entry in candidates:
+        span = range(start, end)
+        if any(i in covered for i in span):
+            continue
+        covered.update(span)
+        accepted.append((start, end, entry))
+
+    accepted.sort(key=lambda c: c[0])
+    return [
+        [i, text[words[start][3]:words[end - 1][4]], start, end, entry["surface"]]
+        for i, (start, end, entry) in enumerate(accepted)
+    ]
+
+
+# ============================================================
+# Assembly
 # ============================================================
 
 def parse_job(source_name, job_number, clean_text):
@@ -351,7 +454,13 @@ def parse_job(source_name, job_number, clean_text):
 
     Returns {"source_name": str, "job_number": int, "sentences": [...]},
     with sentence_index assigned 0-based in order of appearance.
-    expressions is always [] by design.
+    Each sentence's expressions are detected deterministically by
+    detect_expressions(): lemma-sequence matching against the Phase 1
+    expression dictionary of 1,120 multi-lemma entries, with explicit
+    longest-expression overlap resolution. Matching is deliberately
+    limited to that small pre-vetted dictionary as a known, intentional
+    Phase 1 scope boundary, not a bug; Phase 2 scales to the full
+    35,633-entry dictionary.
     """
     sentences = split_sentences(clean_text)
     parsed = []
@@ -362,7 +471,7 @@ def parse_job(source_name, job_number, clean_text):
             "text": text,
             "words": words,
             "chunks": chunks,
-            "expressions": [],
+            "expressions": detect_expressions(text, words),
         })
     return {
         "source_name": source_name,
@@ -380,8 +489,10 @@ __all__ = [
     "CONTINUATION_TAGS",
     "split_sentences",
     "segment_sentence",
+    "detect_expressions",
     "parse_job",
     "_is_section_marker_line",
     "_merge_groups",
     "_word_from_group",
+    "_get_expression_index",
 ]

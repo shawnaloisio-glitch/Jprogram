@@ -435,8 +435,10 @@ def _validate_expressions(words, expressions, sentence_index, errors, warnings):
         spans.append((ei, start_word, end_word, surface if isinstance(surface, str) else ""))
 
     # Obviously invalid duplicates (identical span and identical surface).
-    # The longest-complete-expression rule is primarily enforced by the
-    # frozen parser prompt; only obvious duplicates are flagged, as warnings.
+    # The longest-complete-expression rule is now enforced by
+    # deterministic_parser.py's detect_expressions() via explicit overlap
+    # resolution, not a prompt; only obvious duplicates are flagged, as
+    # warnings.
     for i in range(len(spans)):
         for j in range(len(spans)):
             if i == j:
