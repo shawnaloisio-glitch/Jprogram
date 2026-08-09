@@ -82,12 +82,23 @@ process, not an Advisor-direct script, wherever it ends up living.
 Remaining scope to settle before drafting that Coder task: one file vs.
 a whole reading-list batch, package format, output location.
 
-**Mechanism note for whoever picks this up:** every Coder task this
-session was dispatched from an isolated worktree of *this* repo
-(`Jprogram`). Since the deliverable here lands in Language Coach's repo
-instead, the Coder task needs to run in Language Coach's own project
-context (its own `CLAUDE.md`/`AGENTS.md`, its own git setup) — not
-default to Jprogram's worktree mechanism out of habit.
+**Mechanism settled (Owner decision, 2026-08-09):** build and test it
+here, in Jprogram, using the normal worktree/Coder process — it needs
+real access to Jprogram's own Workspace data (JSONL, Source
+Package/Registry, `rename_log.csv`) to test against, which it already
+has naturally from inside this repo. Once verified working, move a copy
+into Language Coach's repo (the live, actually-used location) and keep
+an archived copy here too (Jprogram's own record of what it built).
+
+**Real technical detail this raises, for whoever drafts the Coder
+task:** once moved to Language Coach, the tool is no longer sitting
+next to Jprogram's own modules (`paths.py`, `source_package.py`, etc.)
+the way every other Jprogram tool assumes via
+`PROJECT_ROOT = Path(__file__).resolve().parent.parent`-style relative
+resolution. It needs to reference Jprogram's location explicitly
+(an absolute path, or something configurable) rather than relying on
+being co-located — build it that way from the start rather than
+discovering it breaks after the move.
 
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
 
