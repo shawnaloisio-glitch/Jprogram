@@ -466,15 +466,18 @@ lists are merged below into one entry each.
   to also remove the now-purposeless Processing tab/window code itself
   (matching the Analysis tab precedent) is a separate, not-yet-asked
   question — see next item.
-- [ ] **Should the Processing tab/window be removed entirely, not just
-  left inert?** Raised while closing the item above, not yet answered.
-  `processing_tab.py`/`processing_tab_gui.py` still fully work and are
-  wired into both `app.py` and Source Builder's GUI, but their batch-review
-  purpose is confirmed gone. Possible residual uses even without the
-  batching rationale: retrying a source that failed the pipeline, or
-  manually triggering processing for a source created by hand through
-  the Source Builder form rather than a script. Owner's call whether
-  that's still worth keeping a whole tab/window for.
+- [x] **Answered and done (2026-08-09), `1c2f03f`.** Owner's call:
+  middle ground between "leave it" and "delete it" — remove UI access
+  (both `app.py`'s top-level tab and Source Builder's admin-actions
+  button) but keep `processing_tab.py`/`processing_tab_gui.py` and both
+  `_open_processing()` methods fully intact and functional, just
+  unreachable from any visible button, in case wanted again (e.g. for
+  retrying a failed source or a hand-created one). Verified via a real
+  runtime check, not just diff review: instantiated the actual app,
+  confirmed the notebook shows only "Sources" and Source Builder has no
+  `processing_button` attribute, while both `_open_processing()` methods
+  remain present and callable. Full detail in
+  `Audits/Trigger_Log/2026-08-09_remove-processing-tab-ui.md`.
 - [ ] **Analysis tab can't analyze multiple files at once** — single-file only currently.
 - [x] **Import radial/source-type selector defaulting to "podcast_transcript" — confirmed resolved as a side effect, not separately built (2026-08-06).** `podcast_transcript` no longer exists as a concept anywhere in `Source Builder/` (confirmed via grep) — collapsed away by the `source_type` unification (TASK 16-18). The Import Material tab's own default was already fixed to Subtitle in TASK 11 (2026-08-05), before the collapse. Verified, not just assumed: `import_material.py` only defines `FORMAT_SUBTITLE`/`FORMAT_CLEAN_TEXT` now — the format that made this bug possible is gone.
 - [x] **Main-form Source type + Origin dropdowns now display `display_name`, not the raw id — done and verified (TASK 12, 2026-08-05).** Both the main Sources form and the preset editor now show friendly labels while `source_type_var`/`origin_var` keep holding the raw ids (verified: a saved source persists the id, never the label — the anti-corruption guard). New `config_loader.load_source_types_full()`/`load_origins_full()` supply id+display_name; `gui.py` builds id<->label maps and wires the combos with a display var + selection binding + id-var trace, with legacy/unknown ids displaying as-is. OC self-caught and fixed a stale-map closure bug (maps now resolved at call time so metadata reloads stay in sync). See `Audits/OC_Reliability_Log.md` TASK 12. Minor leftover: two dead methods (`_on_source_type_selected`/`_on_origin_selected`) in `gui.py` — harmless, no functional impact. **Owner decision (2026-08-05): fold their removal into the next task that touches `gui.py`** rather than a standalone cleanup.
