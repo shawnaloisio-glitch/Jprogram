@@ -169,10 +169,14 @@ field can't support.
   span-length ties between overlapping candidates resolve to the earlier
   `start_word` — deterministic, but not something the spec explicitly
   mandates.
-- [ ] **Phase 2 — not started.** Scale from the 1,120-entry Phase 1
-  dictionary to the full 35,633-entry set once Phase 1 has had real
-  production use. No urgency; Phase 1 already covers the highest-value,
-  highest-frequency patterns.
+- [x] **Phase 2 — permanent hold (2026-08-09), Owner decision.** Scaling
+  from the 1,120-entry Phase 1 dictionary to the full 35,633-entry set is
+  not planned. Owner's explicit reasoning: 1,000+ of JMdict's own
+  highest-frequency/most-common-flagged expressions is already a very
+  high coverage level for real content — the long tail of the remaining
+  ~34,500 entries (no frequency signal at all, `score: 999`) isn't worth
+  chasing. Not "revisit later," a settled call — don't propose reopening
+  this unprompted, matching how [[project_qwen_code_on_hold]] is handled.
 
 ### Metadata entry for batch-imported sources (2026-08-09) — done as a scripted fill, not a UI tool
 

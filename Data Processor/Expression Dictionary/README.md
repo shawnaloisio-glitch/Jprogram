@@ -69,10 +69,17 @@ sentence text means comparing **lemma sequences**
 not raw surface text — real sentences carry conjugated forms
 (`と思います`) that won't literally appear in this file.
 
-## Not yet used for anything
+## Status
 
-This file is reference data only. No code in this repository reads it yet.
-The actual expression-detection algorithm (lemma-sequence matching +
-longest-match overlap resolution) is a separate, not-yet-started, real
-Coder task against the Frozen `deterministic_parser.py` — see the planning
-writeup referenced above before starting that work.
+`jmdict_expressions.jsonl` (this file, the full 35,633-entry extraction)
+is reference data only — no code in this repository reads it. The real
+detection algorithm (`deterministic_parser.py`'s `detect_expressions()`,
+implemented and Auditor-verified 2026-08-09) reads the separate, smaller
+`jmdict_expressions_phase1.jsonl` instead (the 1,120 entries with a real
+JMdict frequency/commonness signal, each carrying a precomputed `lemmas`
+field this file lacks). **Scaling to the full set here (the originally
+planned "Phase 2") is on permanent hold, Owner decision (2026-08-09)** —
+1,000+ of JMdict's highest-frequency expressions is already very high
+real-world coverage; the long tail of ~34,500 entries with no frequency
+signal at all isn't worth chasing. This file stays as a record of what
+was extracted and why, not as a queued future input.
