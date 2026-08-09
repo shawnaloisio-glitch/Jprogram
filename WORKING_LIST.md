@@ -84,12 +84,21 @@ field can't support.
   (`Reasonix/tools/make_dictionary_pack.py` → `Reasonix/packs/ja-pack.jsonl`,
   built from the real JMdict/EDICT XML dump). JMdict's own `exp`
   ("expressions (phrases, clauses, etc.)") tag directly covers this —
-  confirmed real entries for `ことにする`, `なぜかというと`, etc. A
-  filtered copy (35,547 of 35,765 total `exp` entries, dropping trivial
-  1-2 character noise) is now saved in this repo at
+  confirmed real entries for `ことにする`, `なぜかというと`, etc.
+  (`ということ`, despite being extremely common, has no standalone `exp`
+  entry — a real, confirmed JMdict-coverage gap, not a bug in the
+  extraction). A filtered copy (35,633 distinct expression surfaces,
+  dropping trivial 1-2 character noise) is now saved in this repo at
   `Data Processor/Expression Dictionary/jmdict_expressions.jsonl`, with
   a `README.md` covering the CC BY-SA 3.0 source/license/attribution —
-  reference data only, not wired into any pipeline code yet.
+  reference data only, not wired into any pipeline code yet. **Extracted
+  directly from the raw JMdict XML, not the pre-built Reasonix pack**,
+  specifically to preserve JMdict's own frequency/priority tags as a
+  `score` field (lower = more common; `999` = no signal) — the pack
+  file discards this after using it only to pick the best gloss
+  per surface. **1,338 of 35,633 entries carry a real frequency
+  signal**, which is the actual "smallest set first" slice for Phase 1
+  below, not an arbitrary subset.
 - **Key architecture insight: match on lemma, not surface text.** JMdict
   entries are dictionary/base form (`と思われる` is an entry;
   `と思います`, the real conjugated form that actually appears in
@@ -106,13 +115,17 @@ field can't support.
   contained inside a longer accepted match. Real algorithm work, not a
   lookup.
 - **Phased build plan (Owner's explicit "easiest first, test with a
-  smaller set" guidance):** `make_dictionary_pack.py` already ranks
-  JMdict entries by real corpus frequency (`entry_score()` — `nf01`-`nf48`
-  bands + "common word" flags). Phase 1: implement lemma-matching +
-  overlap resolution against only the highest-frequency expression
-  entries (a few hundred, not 35K), test against real corpus sentences
-  (already have frequency ground truth from the check above). Phase 2:
-  scale to the full dictionary once Phase 1 is proven correct.
+  smaller set" guidance), now concrete.** The `Expression Dictionary`'s
+  `score` field (JMdict's own `nf01`-`nf48` frequency bands + "common
+  word" flags, re-extracted directly from the raw XML specifically to
+  preserve this) gives a real, non-arbitrary Phase 1 slice: **1,338 of
+  35,633 entries have score < 999** (a real frequency/common-word
+  signal). Phase 1: implement lemma-matching + overlap resolution
+  against only those 1,338 entries, test against real corpus sentences
+  (already have frequency ground truth on と思います/かもしれ/ことにし/
+  ということ from the check above, though note ということ itself has no
+  JMdict entry at all — see the coverage-gap note above). Phase 2: scale
+  to the full 35,633-entry dictionary once Phase 1 is proven correct.
 - **Dependency risk, not a blocker:** expression spans sit on top of the
   word/chunk layer, which has known, not-yet-fixed edge cases
   (`Audits/Parser_Edge_Cases/`, the word-span-absorbs-next-word bug,
