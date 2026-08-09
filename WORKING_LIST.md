@@ -67,16 +67,27 @@ Package/Registry data, or `rename_log.csv`. This also settles that the
 naming-resolution logic itself belongs in Jprogram (the data's owner),
 not duplicated or forked into Language Coach.
 
-**Still open:** whether the actual export/rename/package tool (the
-thing that produces the Reasonix-ready bundle after the reading list is
-finalized) lives in Jprogram and hands a finished package to Language
-Coach, or lives in Language Coach and calls into a Jprogram-provided
-read-only interface for the naming/content data — the ownership
-decision above doesn't by itself pick between those two shapes. Settle
-that, plus the rest of the scope (one file vs. a whole reading-list
-batch, package format, output location), before drafting any Coder
-task. Same governance point still applies regardless: this is real,
-reusable-tool logic, not an Advisor-direct build.
+**Tool location settled too (Owner decision, 2026-08-09, same day):**
+the export/rename/package tool itself will **live in Language Coach**
+— its purpose is consuming media that falls under Language Coach's own
+selection/reading-list responsibility, so that's where it belongs
+functionally. But **Jprogram develops it**, since this side owns and
+understands the data chain (`source_id` -> Source Package -> Source
+Registry -> `rename_log.csv`) better than Language Coach does. In
+practice: a Jprogram-side build that reads Jprogram data read-only (per
+the ownership rule above) and gets delivered into Language Coach's repo
+— the read-only boundary holds regardless of who writes the code.
+Governance point still applies: this is real logic, built via the Coder
+process, not an Advisor-direct script, wherever it ends up living.
+Remaining scope to settle before drafting that Coder task: one file vs.
+a whole reading-list batch, package format, output location.
+
+**Mechanism note for whoever picks this up:** every Coder task this
+session was dispatched from an isolated worktree of *this* repo
+(`Jprogram`). Since the deliverable here lands in Language Coach's repo
+instead, the Coder task needs to run in Language Coach's own project
+context (its own `CLAUDE.md`/`AGENTS.md`, its own git setup) — not
+default to Jprogram's worktree mechanism out of habit.
 
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
 
