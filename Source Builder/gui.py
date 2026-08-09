@@ -546,11 +546,6 @@ class SourceBuilderApp:
             command=self._open_metadata_editor, bg=COLOR_ADMIN,
             font=self.admin_font, padding=(14, 9))
         self.metadata_button.pack(side="left", padx=(8, 0))
-        self.processing_button = self._solid_button(
-            self.admin_actions, text="Processing",
-            command=self._open_processing, bg=COLOR_ADMIN,
-            font=self.admin_font, padding=(14, 9))
-        self.processing_button.pack(side="left", padx=(8, 0))
         row += 1
 
         # Status Panel (primary feedback; visually dominant).
@@ -1546,6 +1541,12 @@ class SourceBuilderApp:
         """Launch the metadata editor window (Collections/Creators/Styles)."""
         metadata_editor_gui.MetadataEditorWindow(self)
 
+    # Intentionally retained, though currently unreachable from the UI: no
+    # button calls this as of this change (the "Processing" button in the
+    # admin actions row was removed — the batching rationale is gone now that
+    # the parser is the deterministic local GiNZA parser). Kept in case the
+    # Processing window is wanted again later. The module-level
+    # `import processing_tab_gui` below remains required by this method.
     def _open_processing(self):
         """Launch the Processing tab window."""
         processing_tab_gui.ProcessingTabWindow(self)

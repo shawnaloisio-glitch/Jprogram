@@ -11,7 +11,13 @@ paths are preserved (Source Builder launcher, Production Manager CLI, etc.).
 
 Tabs:
 - Sources      -> embedded Source Builder.
-- Processing   -> opens the existing Processing window.
+
+Only the Sources tab is now visible. Processing UI access was intentionally
+removed: its original purpose was reviewing/selecting/batching sources to time
+processing runs around DeepSeek's discount off-peak API pricing, which is gone
+now that the parser is the deterministic local/free GiNZA parser (no API,
+nothing to time). The underlying capability (_open_processing()) is
+deliberately retained, not deleted, in case it is wanted again later.
 
 This shell contains no pipeline logic and no artifact handling.
 """
@@ -37,7 +43,6 @@ class ApplicationShell:
     """
 
     TAB_SOURCES = "Sources"
-    TAB_PROCESSING = "Processing"
 
     def __init__(self, root):
         self.root = root
@@ -71,7 +76,6 @@ class ApplicationShell:
         main.rowconfigure(0, weight=1)
 
         self._build_sources_tab()
-        self._build_processing_tab()
 
     def _build_sources_tab(self):
         frame = ttk.Frame(self.notebook, padding=8)
@@ -83,25 +87,18 @@ class ApplicationShell:
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
-    def _build_processing_tab(self):
-        frame = ttk.Frame(self.notebook, padding=16)
-        self.notebook.add(frame, text=self.TAB_PROCESSING)
-
-        ttk.Label(frame, text="Processing",
-                  font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
-        ttk.Label(
-            frame, wraplength=460, justify="left",
-            text=("Select sources and process them through to a finished "
-                  "corpus.")
-        ).pack(anchor="w", pady=(6, 12))
-
-        ttk.Button(frame, text="Open Processing",
-                   command=self._open_processing).pack(anchor="w")
-
     # ============================================================
     # Tab actions (adapters to existing functionality)
     # ============================================================
 
+    # Intentionally retained, though currently unreachable from the UI: no tab
+    # or button calls this as of this change (the Processing tab and the Source
+    # Builder "Processing" button were removed — the batching rationale is gone
+    # now that the parser is the deterministic local GiNZA parser). Kept in
+    # case the Processing window is wanted again later. The
+    # "tests/test_app_shell.py" "open processing instantiates the existing
+    # processing window" test calls this method directly and must keep passing
+    # unchanged.
     def _open_processing(self):
         """Open the existing Processing window."""
         import processing_tab_gui
