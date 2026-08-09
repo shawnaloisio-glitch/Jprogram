@@ -40,3 +40,35 @@ confirming the Qwen result was wrong, not a stylistic disagreement. This
 is the ground-truth comparison the whole calibration exercise was set up
 to produce: on this one commit, the real Auditor and Advisor's own prior
 hand-verification agreed exactly; the smallest local model did not.
+
+---
+
+## Addendum (2026-08-09, later the same day): a second, redundant Auditor pass
+
+A second fresh-subagent Auditor pass was launched later this same day
+against this same commit, because `WORKING_LIST.md`'s own tracking entry
+for this item was never checked off after the pass above landed — Advisor
+read that stale unchecked line and mistakenly treated the audit as still
+outstanding. Real process gap, now fixed (`WORKING_LIST.md`'s entry
+marked `[x]` with a pointer to this file). No harm to the commit's
+correctness; just duplicated verification effort.
+
+**Second pass verdict: also CLEAN**, independently re-deriving the same
+facts as above (all 9 removed names confirmed dead via fresh `git grep`
+and a direct pre/post-commit `ruff check` comparison — 12 findings before,
+3 after, matching "15 → 3" repo-wide; the 3 retained names reconfirmed
+live via `test_corpus_builder.py`'s `cb.X` module alias; full suite
+independently re-run clean — 59/59 live test files, 905/905 individual
+cases, plus the specific archived `Analysis/tests/test_sentence_metrics.py`
+file this commit touched, 9/9). No scope creep found, matching the
+original pass.
+
+**One new, useful finding from the second pass:** the second Auditor
+caught that this task's own briefing (written by Advisor, in the same
+session as this addendum) undercounted the commit's file list as 3 files
+instead of the actual 4, omitting `Data Processor/parser_normalizer.py`
+(itself a Frozen Component) from the summary handed to the subagent. This
+didn't affect the second pass's outcome, since Auditor verified from
+`git show` directly rather than trusting the briefing — but it's a real
+reminder to double-check file-scoping when writing audit-trigger
+handoffs, not just when writing Coder task prompts.
