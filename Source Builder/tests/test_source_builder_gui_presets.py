@@ -53,12 +53,20 @@ def sandbox():
             {"collection_id": "teppei_beginner",
              "name": "Con Teppei for Beginner",
              "source_type": "clean_text"},
+            {"collection_id": "other_collection",
+             "name": "Other Collection",
+             "source_type": "clean_text"},
         ]
     }), encoding="utf-8")
     (config_dir / "source_types.json").write_text(json.dumps(
         {"source_types": ["clean_text"]}), encoding="utf-8")
     (config_dir / "creators.json").write_text(json.dumps(
-        {"creators": ["con_teppei_podcast", "nhk_news"]}), encoding="utf-8")
+        {"creators": [
+            {"creator_id": "con_teppei_podcast",
+             "display_name": "Con Teppei Podcast"},
+            {"creator_id": "nhk_news",
+             "display_name": "NHK News"},
+        ]}), encoding="utf-8")
     (config_dir / "styles.json").write_text(json.dumps({"styles": []}),
                                             encoding="utf-8")
     (config_dir / "topics.json").write_text(json.dumps({"topics": []}),
@@ -236,6 +244,43 @@ def _():
             check("source type",
                   app.source_type_var.get() == "clean_text")
             check("creator", app.creator_var.get() == "nhk_news")
+        finally:
+            root.destroy()
+    finally:
+        restore()
+
+
+@test("preset switch updates collection, creator, and creator display label")
+def _():
+    restore = sandbox()
+    try:
+        quick_presets.save_slot(
+            1, "Teppei_Beginner", "collection",
+            collection_id="teppei_beginner",
+            source_type="clean_text", creator="con_teppei_podcast")
+        quick_presets.save_slot(
+            2, "Other Collection", "collection",
+            collection_id="other_collection",
+            source_type="clean_text", creator="nhk_news")
+        root, app = make_app(restore)
+        try:
+            # First preset: teppei collection, Con Teppei Podcast creator.
+            app._on_preset_click(1)
+            check("first preset collection",
+                  app.collection_var.get() == "teppei_beginner")
+            check("first preset creator",
+                  app.creator_var.get() == "con_teppei_podcast")
+            check("first preset creator display label",
+                  app.creator_display_var.get() == "Con Teppei Podcast")
+            # Second preset: other collection, NHK News creator. The display
+            # label must change with the creator, not just the raw id.
+            app._on_preset_click(2)
+            check("second preset collection",
+                  app.collection_var.get() == "other_collection")
+            check("second preset creator",
+                  app.creator_var.get() == "nhk_news")
+            check("second preset creator display label",
+                  app.creator_display_var.get() == "NHK News")
         finally:
             root.destroy()
     finally:
