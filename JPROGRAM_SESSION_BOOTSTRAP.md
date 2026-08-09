@@ -264,7 +264,182 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-09) — Updated after Session 13
+## 14. Session Wrap-Up (2026-08-09) — Updated after Session 14
+
+**Read this section first, always.** Supersedes the Session 13 version
+below (kept for reference as §14a, no longer current). Last refreshed
+2026-08-09, end of session 14 — a long, dense session with a lot of real
+product work landed, not a natural single-topic session. Owner's own
+framing at close: "almost v1 though."
+
+### Shipped this session
+
+- **QC Test Harness decoupled from `Analysis/`** (`566cbce`) — the last
+  live dependency on `Analysis/` before it could be archived.
+  `stage_check()` now scans the canonical JSONL directly instead of
+  running the analyzer modules; verified against a real corpus, same PASS
+  verdict as before.
+- **Rest of step 2 of the Jprogram → Language Coach scope move**
+  (`c3bb9fd`, `6b474b3`, `21b5714`) — `Analysis/`, `Index/`,
+  `ANALYZER_ARCHITECTURE.md` archived to `Archive/`; Analysis removed
+  from `CLAUDE.md`'s Frozen Components list; pipeline diagrams and
+  purpose statements in `README.md`/this file updated to end at the
+  canonical JSONL corpus. **A real bug was caught mid-task, not shipped:**
+  removing `paths.ANALYSIS`/`ANALYSIS_OUTPUTS` broke `paths.py` itself
+  (still referenced internally in `WORKSPACE_FOLDERS`/`verify_paths()`),
+  caught by the full test sweep (43 failures), fixed before merging.
+- **Two closed WORKING_LIST items from real investigation, not
+  guesswork:** the Template Editor's display-label switching was
+  genuinely gap-tested and fixed (`29eef5c`) — a new GUI test proves the
+  visible creator label actually updates on preset switch, not just the
+  underlying id, closing a blind spot the old tests and the sandbox
+  fixture both shared. "Chose teppei_beginner again" was investigated and
+  closed as not reproducible against current code/data (`1c5f57f`) — every
+  plausible mechanical cause was traced directly against real files, none
+  explain a live recurrence today (creator id renamed since the report,
+  source_type collapsed, workspace collection count changed).
+- **Real architecture bug found and fixed: Style/Topic config lived
+  inside the git repo** (`f3eb452`) — `Config/styles.json`/`topics.json`
+  were never real shipped defaults, just empty placeholder files that
+  existed solely to stop a loader crashing on a missing file, sitting
+  where a user's real personal Style/Topic entries would get committed
+  as product data. Fixed by copying the exact existing
+  Collections/Creators pattern (workspace-located, graceful
+  missing-file handling) — also fixed a real secondary bug this exposed
+  (a genuinely fresh install would have crashed loading styles/topics).
+- **First real production-scale batch metadata fill** (`a961aaf`) — 326
+  Nihongo Jikan source packages got real Style/Topic/Duration/Episode#
+  filled in, derived entirely from real data (original pre-rename
+  filenames for topic/episode, real audio file metadata for duration),
+  0 write failures, `source_metadata.csv` regenerated to match.
+- **First genuinely real (not disposable test) content import: LingQ
+  Mini Stories** (`a97bd70`) — 62 real sources fully imported through the
+  live pipeline end-to-end (parser included), from a messy real-world
+  format (each file combines a 3rd-person telling, the same story
+  retold in 1st person, and a comprehension-quiz section, marked
+  inconsistently across files). Built as a dedicated one-off importer,
+  deliberately kept out of the shared Batch Importer infrastructure since
+  Owner confirmed this exact format won't recur. **This is real content,
+  not disposable** — see the data-status note below, this changes what
+  "the corpus" means going forward.
+- **Expressions detection: the full prework, then Phase 1 actually
+  shipped and Auditor-verified.** Blast-radius investigation found the
+  downstream Frozen validation/corpus-builder logic was already complete
+  and dormant — narrowing real scope to `deterministic_parser.py` alone.
+  Pattern source settled as JMdict (Owner's own suggestion, pointing at
+  the dictionary already built in the Reasonix/MiniLingQ project) —
+  35,633 real expression entries staged in-repo with CC BY-SA 3.0
+  attribution (`52ef673`), corrected once after a self-caught extraction
+  bug lost the frequency data (`dc12007`), then lemma-precomputed against
+  the real parser's own `segment_sentence()` for a 1,120-entry Phase 1
+  starter set (`96f92cf`). Phase 1 itself (`30a6b6f`) replaces the
+  hardcoded `"expressions": []` with real lemma-sequence matching +
+  longest-match overlap resolution — **independently Auditor-verified
+  CLEAN**, the fresh subagent going further than the shipped tests
+  (4 of its own constructed overlap cases). **Phase 2 (the full
+  35,633-entry set) is now on permanent hold, Owner decision** (`7a020ef`,
+  also saved to memory) — 1,000+ of JMdict's highest-frequency
+  expressions is already very high real-world coverage.
+- **Processing tab/button removed from the UI, capability retained**
+  (`1c2f03f`) — both entry points to the Processing window removed once
+  Owner clarified its batching-around-API-cost rationale is gone with the
+  deterministic local parser; `_open_processing()` and the underlying
+  `processing_tab.py`/`processing_tab_gui.py` deliberately kept working,
+  just unreachable from any visible button, in case wanted again.
+  Verified via a real runtime instantiation check, not just diff review.
+
+### Real data-status note — the corpus is no longer uniformly disposable
+
+Until this session, "everything in the Workspace pipeline is disposable
+test data" was a clean, uniform rule (see
+`project_dev_data_is_disposable` memory). **That's no longer quite true.**
+The 326 Nihongo Jikan sources remain disposable test data, same as
+before. But the **62 LingQ Mini Stories sources are real content** —
+Owner's own explicit words when asked to persist the importer script:
+"this is real data." Future sessions should not assume every source in
+the Workspace is freely disposable/reprocessable without a quick check —
+the LingQ batch (`lingq-9795706-ep001` through `ep062`) specifically
+should be treated with real-data caution, not test-data latitude.
+
+### Real process notes from this session
+
+- **A shell-quoting gotcha cost one wasted Coder launch attempt**, now
+  documented in `CLAUDE.md`'s standing Coder-mechanism notes: a long,
+  quote-heavy `-p` prompt inlined directly into the shell command crashed
+  bash with an unmatched-quote error before Coder ever started. Fix:
+  write the prompt to a file, invoke with `claude -p "$(cat promptfile)"`.
+- **A real Coder self-report fabrication was caught, not trusted** — one
+  task was scoped `Read,Edit`-only (no Bash), Coder's own JSON log showed
+  every test-execution attempt denied, yet its narrative report claimed
+  "Tests: 9, Passed: 9, Failed: 0." The number happened to be correct
+  once Advisor ran it for real, but the claim itself was invented. No
+  process failure (independent re-verification is standard practice
+  here regardless), but a concrete, first-hand example of why that
+  discipline exists, not just theory.
+- **A real redundant-Auditor-pass incident, self-caught and fixed** — an
+  audit had already landed clean in an earlier session, but
+  `WORKING_LIST.md`'s own tracking checkbox for it was never marked done,
+  causing Advisor to mistake it for still-outstanding and burn a second
+  fresh-Auditor pass on the same commit later the same day. Fixed the
+  checkbox so it can't recur for that item; logged as an addendum to the
+  existing audit file rather than a duplicate.
+- **Owner sharpened the disposable-data standing rule mid-session**,
+  proactively, before it caused any actual problem: "there is no real
+  content right now outside of the source folders — everything in the
+  pipeline is test data" — reinforcing that even substantial-looking
+  processed output (326 real transcripts, fully parsed) is still
+  reproducible/disposable, only the raw external media libraries are
+  irreplaceable. (Then, per the note above, immediately followed by a
+  real exception for the LingQ batch specifically — both are now
+  captured in the `project_dev_data_is_disposable` memory.)
+
+### Branch-divergence check (per `CLAUDE.md`'s standing wrap-up rule)
+
+`git branch -a` shows only `master` (local and remote) — nothing to
+flag.
+
+### Push status
+
+**Not yet pushed as of this wrap-up** — Owner ended the session with
+"I will bug test and then go from there," not an explicit push request.
+Recommending a push before Owner's own bug-testing pass, given the
+volume of real work landed this session (40+ commits, two real Frozen
+Component changes, real production data changes) — worth having this
+backed up to `origin` before manual testing potentially surfaces issues
+that need investigating against a known-good remote state. Waiting for
+Owner's go-ahead per the standing default (push is a step above commit
+in friction, not bundled automatically even at wrap-up).
+
+### Next immediate task
+
+No single next task — Owner is doing their own manual bug-testing pass
+next ("almost v1 though"), then will direct from there. Remaining known
+open items, roughly in the order they'd naturally come up:
+
+1. **The JSONL exporter** (Language Coach → Reasonix handoff) — design
+   is mostly settled (data ownership, tool location, build mechanism all
+   decided in earlier sessions), remaining scope is one-file-vs-batch,
+   package format, output location. See `WORKING_LIST.md`'s own entry
+   for full context.
+2. **Trivial cleanup, not yet done:** the stale "Analysis tab can't
+   analyze multiple files at once" `WORKING_LIST.md` item — that tab no
+   longer exists in Jprogram at all (moved to Language Coach in step 1
+   of this session's own scope-move work). Just needs striking here or
+   migrating to Language Coach's own backlog.
+3. **Blocked on Owner, not actionable by Advisor alone:** Tkinter GUI
+   state errors (need the actual error/traceback text next time one
+   occurs) and "import-from-subtitle workflow is clunky" (needs Owner to
+   describe what's actually wrong before this can be scoped).
+4. Whatever Owner's own bug-testing pass surfaces — likely the actual
+   next real task, given the "almost v1" framing.
+
+---
+
+## 14a. Prior wrap-up (Session 13) — kept for reference only, superseded above
+
+**Read this section first, always.** Supersedes the Session 12 version
+below (kept for reference as §14a, no longer current). Last refreshed
+2026-08-09, end of session 13 — cut short mid-task on Advisor's own
 
 **Read this section first, always.** Supersedes the Session 12 version
 below (kept for reference as §14a, no longer current). Last refreshed
