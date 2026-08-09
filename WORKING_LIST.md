@@ -450,7 +450,31 @@ lists are merged below into one entry each.
 - [x] **No cancel button in Processing tab / no useful status indicator during processing — fixed and verified (TASK 9, 2026-08-05).** `processing_tab.py`'s `process_sources()` gained optional `cancel_event`/`on_progress` params (backward-compatible); the GUI now has a Cancel button (disabled by default, enabled while a run is active) and shows real per-source progress ("Processing (2/5) ..."), plus a distinct terminal message on completion/cancellation/error instead of a stale "Processing…" text that used to linger after the run actually finished. See `Audits/OC_Reliability_Log.md` TASK 9.
 - [x] **Redundant "Run Analysis" button in the Processing tab — fixed and verified (TASK 9, 2026-08-05).** Confirmed exact duplicate of the dedicated Analysis tab's own "Run Analysis" button (same underlying `processing_tab.run_analysis()` call, better UX). Removed from the Processing tab entirely; the Analysis tab's own button/logic confirmed untouched via its own test suite. See `Audits/OC_Reliability_Log.md` TASK 9.
 - [ ] **Tkinter GUI state errors** — surfaces as console output in the terminal Owner uses to launch the app (`cd /d "C:\AI Development Projects\Jprogram"` then `python app.py`), triggered by specific UI interactions. Not reproducible from an agent session (no way to interact with the actual GUI). **Blocked on Owner pasting the actual error/traceback text** next time it occurs.
-- [ ] **Processing and Analysis sub-windows should be embedded in their tabs, not opened as separate pop-up windows** — reported twice, described as "sloppy workflow." Structural GUI change, not a small fix.
+- [x] **Closed as moot (2026-08-09), Owner decision surfaced now but made
+  earlier — this item was simply missed at an end-of-day wrap-up and
+  never marked closed.** Originally reported twice as "sloppy workflow" —
+  Processing and Analysis sub-windows should be embedded in their tabs,
+  not opened as separate pop-up windows. Owner: after the switch to the
+  deterministic (local, free, no-API) parser, batch processing itself —
+  the whole reason the Processing tab exists as a review/select/trigger
+  surface — stopped being needed, since the original rationale was
+  timing runs around DeepSeek's discount off-peak API pricing windows.
+  With no API cost to time around, there's nothing left for an
+  embedded-vs-pop-up redesign to improve. The Analysis half is doubly
+  moot since that tab was already deleted entirely (see the
+  Jprogram -> Language Coach scope move earlier this session). Whether
+  to also remove the now-purposeless Processing tab/window code itself
+  (matching the Analysis tab precedent) is a separate, not-yet-asked
+  question — see next item.
+- [ ] **Should the Processing tab/window be removed entirely, not just
+  left inert?** Raised while closing the item above, not yet answered.
+  `processing_tab.py`/`processing_tab_gui.py` still fully work and are
+  wired into both `app.py` and Source Builder's GUI, but their batch-review
+  purpose is confirmed gone. Possible residual uses even without the
+  batching rationale: retrying a source that failed the pipeline, or
+  manually triggering processing for a source created by hand through
+  the Source Builder form rather than a script. Owner's call whether
+  that's still worth keeping a whole tab/window for.
 - [ ] **Analysis tab can't analyze multiple files at once** — single-file only currently.
 - [x] **Import radial/source-type selector defaulting to "podcast_transcript" — confirmed resolved as a side effect, not separately built (2026-08-06).** `podcast_transcript` no longer exists as a concept anywhere in `Source Builder/` (confirmed via grep) — collapsed away by the `source_type` unification (TASK 16-18). The Import Material tab's own default was already fixed to Subtitle in TASK 11 (2026-08-05), before the collapse. Verified, not just assumed: `import_material.py` only defines `FORMAT_SUBTITLE`/`FORMAT_CLEAN_TEXT` now — the format that made this bug possible is gone.
 - [x] **Main-form Source type + Origin dropdowns now display `display_name`, not the raw id — done and verified (TASK 12, 2026-08-05).** Both the main Sources form and the preset editor now show friendly labels while `source_type_var`/`origin_var` keep holding the raw ids (verified: a saved source persists the id, never the label — the anti-corruption guard). New `config_loader.load_source_types_full()`/`load_origins_full()` supply id+display_name; `gui.py` builds id<->label maps and wires the combos with a display var + selection binding + id-var trace, with legacy/unknown ids displaying as-is. OC self-caught and fixed a stale-map closure bug (maps now resolved at call time so metadata reloads stay in sync). See `Audits/OC_Reliability_Log.md` TASK 12. Minor leftover: two dead methods (`_on_source_type_selected`/`_on_origin_selected`) in `gui.py` — harmless, no functional impact. **Owner decision (2026-08-05): fold their removal into the next task that touches `gui.py`** rather than a standalone cleanup.
