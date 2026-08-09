@@ -149,9 +149,30 @@ field can't support.
   ~5 real cases). Any sentence hitting that bug would also get
   unreliable expression spans.
 
-**Not yet started:** the actual detection algorithm (real Coder task,
-Frozen Component, automatic audit trigger) — this prework only staged
-the pattern-source data and settled the open design questions.
+- [x] **Phase 1 detection algorithm — done and Auditor-clean (2026-08-09),
+  `30a6b6f`.** `deterministic_parser.py`'s `detect_expressions()` matches
+  each sentence's word lemmas against the 1,120-entry Phase 1 dictionary
+  via a first-lemma-indexed lookup, then resolves overlaps by accepting
+  candidates longest-span-first and rejecting anything that shares a word
+  index with an already-accepted span — this is what enforces the
+  longest-complete-expression rule now that no LLM prompt exists to do it
+  implicitly. `response_validator.py` got one stale-comment fix (no logic
+  change) reflecting this. Independently verified twice: once by Advisor
+  (diff review, full 59-file suite re-run, real-sentence smoke test
+  beyond the fixtures) and once by a genuinely fresh-subagent Auditor
+  pass (automatic trigger, two Frozen Components touched) that went
+  further still — constructed 4 of its own independent overlap test
+  cases beyond what shipped and confirmed the rule holds on all of them.
+  Verdict: CLEAN. Full detail in
+  `Audits/Trigger_Log/2026-08-09_expressions-phase1-auditor-pass.md`.
+  One non-defect implementation detail flagged for awareness: exact
+  span-length ties between overlapping candidates resolve to the earlier
+  `start_word` — deterministic, but not something the spec explicitly
+  mandates.
+- [ ] **Phase 2 — not started.** Scale from the 1,120-entry Phase 1
+  dictionary to the full 35,633-entry set once Phase 1 has had real
+  production use. No urgency; Phase 1 already covers the highest-value,
+  highest-frequency patterns.
 
 ### Metadata entry for batch-imported sources (2026-08-09) — done as a scripted fill, not a UI tool
 
