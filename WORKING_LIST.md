@@ -32,28 +32,41 @@ Importer's current hard-fail-on-unmatched-folder behavior for Material
 Level (see Batch Importer's own note below) if that turns out to matter
 once real batches start.
 
-### New small tool needed: JSONL exporter for the reader (2026-08-09)
+### New small tool needed: JSONL exporter for the reader (2026-08-09, expanded)
 
-Owner request, not yet scoped or built. The canonical corpus JSONL files
-live under `Jprogram Workspace\jsonl\` named by internal `source_id`
-(e.g. `clean_text_nij-id00001.jsonl`) — opaque, not something a human
-wants to see in Reasonix/MiniLingQ's import picker. Need a small
-exporter: take a corpus JSONL file (or a source_id/creator batch),
-look up the source's real name (`source_name`/`original_filename` is
-already on the Source Package — no need to touch the personal rename
-tool's `rename_log.csv`), copy/rename it to `<that name>.jsonl`, and
-write it wherever the reader is meant to pick files up from (a designated
-export folder — Reasonix imports via its own file picker/drag-drop, so
-this tool doesn't need to talk to Reasonix directly, just produce a
-correctly-named file for the user to hand it).
+Owner request, not yet scoped or built. Real workflow it needs to serve
+(clarified 2026-08-09, same day): Language Coach helps Owner decide what
+to read next, but has to *display* human-friendly titles while doing
+that — Owner is picking a reading list by title, not by `source_id`.
+Once the reading list is finalized, the export/rename step runs, and
+packages the renamed JSONL file(s) together with Language Coach's own
+report for that content, ready for Owner to import into Reasonix for a
+daily lesson. So this isn't just a rename utility — it's the real
+Language Coach → Reasonix handoff mechanism (see
+`Shared\ECOSYSTEM_OVERVIEW.md`'s "Language Coach → Reasonix" row, which
+only documents the grammar-list/known-words half of that handoff today,
+not this content-selection-and-packaging half).
 
-Same governance question as the Batch Importer applies: this reads
-Jprogram's real corpus + Source Package data and would live in the repo
-as a reusable tool, not a one-off script, so it should go through the
-Coder process rather than being an Advisor-direct build. Scope precisely
-(one file vs. a whole creator's batch, output folder location, whether
-to also touch Reasonix's own `sample/`-style intake) before drafting the
-Coder task.
+Two real naming hops now, not one: `source_id` -> Source Package
+`source_name` (e.g. `NHGJM id00056`, already resolvable without touching
+`rename_log.csv`) -> `rename_log.csv`'s `real_name` (the true original
+title, e.g. `264 - Chatting with My Daughter 娘とおしゃべり.html`). If
+Owner wants to see real original titles (not just the rename tool's
+short label) both when Language Coach is presenting choices AND in the
+final exported filename, the second hop matters too — meaning this tool
+(or Language Coach itself, for the display half) needs read access to
+`rename_log.csv`, not just the Source Package.
+
+**Open question, not yet decided:** which project this actually lives
+in. It touches Jprogram's corpus/naming data, Language Coach's
+selection+report, and Reasonix's import format — genuinely cross-project,
+not obviously a Jprogram-repo tool the way the Batch Importer is. Settle
+this, and the rest of the scope (one file vs. a whole reading-list batch,
+package format, output location, whether Language Coach needs its own
+naming-lookup capability for the display half separately from the export
+half) before drafting any Coder task. Same governance point still
+applies regardless of which repo it ends up in: this is real,
+reusable-tool logic, not an Advisor-direct build.
 
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
 
