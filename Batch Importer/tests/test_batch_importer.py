@@ -16,11 +16,11 @@ GiNZA/production pipeline to run:
 - the pipeline subprocess command shape (venv python, --timeout passthrough),
 - material level suggestion pass-through to the source package.
 
-The production_manager.py subprocess call and the analysis step are mocked;
-the pipeline stages themselves are tested elsewhere and are out of scope
-here. All writes are sandboxed to temporary directories (Sources, Source
-Registry, Cleaning Jobs, and the creators config) — the real workspace and
-Config/creators.json are never touched.
+The production_manager.py subprocess call is mocked; the pipeline stages
+themselves are tested elsewhere and are out of scope here. All writes are
+sandboxed to temporary directories (Sources, Source Registry, Cleaning Jobs,
+and the creators config) — the real workspace and Config/creators.json are
+never touched.
 
 Run:
     python "Batch Importer/tests/test_batch_importer.py"
@@ -212,9 +212,7 @@ def _():
 
         pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch("batch_importer.subprocess.run",
-                        return_value=pipeline_ok) as run, \
-             mock.patch("batch_importer.processing_tab.run_analysis",
-                        return_value={}) as analysis:
+                        return_value=pipeline_ok) as run:
             code, _out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)
@@ -228,7 +226,6 @@ def _():
                 "1\n00:00:01,000 --> 00:00:02,000\nお元気ですか。\n",
                 encoding="utf-8")
             run.reset_mock()
-            analysis.reset_mock()
             code, out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)
@@ -238,7 +235,6 @@ def _():
                   "[SKIP already-imported] A id00001.html" in out)
             check("B imported", "[IMPORTED] B id00002.srt" in out)
             check("pipeline ran once (only for B)", run.call_count == 1)
-            check("analysis ran once (only for B)", analysis.call_count == 1)
             check("B canonical exists",
                   (controller.SOURCES_ROOT / "B id00002.txt").is_file())
     finally:
@@ -265,8 +261,7 @@ def _():
         (controller.SOURCES_ROOT / "B id00002.txt").write_text(
             "お元気ですか。\n", encoding="utf-8")
 
-        with mock.patch("batch_importer.subprocess.run") as run, \
-             mock.patch("batch_importer.processing_tab.run_analysis") as analysis:
+        with mock.patch("batch_importer.subprocess.run") as run:
             code, out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator",
                  "--dry-run"],
@@ -280,7 +275,6 @@ def _():
         check("would-skip unsupported",
               "[WOULD-SKIP unsupported-format] C notes.txt" in out)
         check("no pipeline run", not run.called)
-        check("no analysis run", not analysis.called)
         # Nothing new was written: only the pre-existing canonical file exists.
         check("only pre-existing canonical",
               sorted(p.name for p in controller.SOURCES_ROOT.iterdir())
@@ -357,7 +351,7 @@ def _():
 
 
 # ============================================================
-# End-to-end orchestration (pipeline + analysis mocked)
+# End-to-end orchestration (pipeline mocked)
 # ============================================================
 
 @test("valid creator imports a file end-to-end with mocked pipeline")
@@ -371,9 +365,7 @@ def _():
 
         pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch("batch_importer.subprocess.run",
-                        return_value=pipeline_ok) as run, \
-             mock.patch("batch_importer.processing_tab.run_analysis",
-                        return_value={"output_path": "x", "summary": {}}) as analysis:
+                        return_value=pipeline_ok) as run:
             code, out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)
@@ -388,7 +380,6 @@ def _():
         check("registry created",
               (handoff.SOURCE_REGISTRY / "clean_text_a-id00001.json").is_file())
         check("pipeline ran once", run.call_count == 1)
-        check("analysis ran once", analysis.call_count == 1)
     finally:
         restore(saved)
 
@@ -406,9 +397,7 @@ def _():
 
         pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch("batch_importer.subprocess.run",
-                        return_value=pipeline_ok) as run, \
-             mock.patch("batch_importer.processing_tab.run_analysis",
-                        return_value={}) as analysis:
+                        return_value=pipeline_ok) as run:
             code, out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)
@@ -418,7 +407,6 @@ def _():
         check("B failed at convert", "[FAIL convert] B id00002.html" in out)
         check("summary failed 1", "failed: 1" in out)
         check("pipeline ran once (only for A)", run.call_count == 1)
-        check("analysis ran once", analysis.call_count == 1)
     finally:
         restore(saved)
 
@@ -435,8 +423,7 @@ def _():
         pipeline_fail = mock.Mock(returncode=1, stdout="",
                                   stderr="boom from pipeline")
         with mock.patch("batch_importer.subprocess.run",
-                        return_value=pipeline_fail) as run, \
-             mock.patch("batch_importer.processing_tab.run_analysis") as analysis:
+                        return_value=pipeline_fail) as run:
             code, out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)
@@ -445,7 +432,6 @@ def _():
         check("failed at pipeline", "[FAIL pipeline] A id00001.html" in out)
         check("exit code in message", "exit code 1" in out)
         check("stderr tail in message", "boom from pipeline" in out)
-        check("no analysis after pipeline failure", not analysis.called)
         check("pipeline ran once", run.call_count == 1)
     finally:
         restore(saved)
@@ -463,9 +449,7 @@ def _():
 
         pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
         with mock.patch("batch_importer.subprocess.run",
-                        return_value=pipeline_ok), \
-             mock.patch("batch_importer.processing_tab.run_analysis",
-                        return_value={}):
+                        return_value=pipeline_ok):
             code, _out, _err = run_cli(
                 ["--folder", str(input_dir), "--creator", "test_creator"],
                 tmp, saved)

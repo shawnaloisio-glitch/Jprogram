@@ -5,10 +5,9 @@ test_app_shell.py
 Tests for the application shell (single user entry point):
 
 - the shell window launches,
-- the three tabs exist (Sources / Processing / Analysis),
 - the Sources tab embeds the existing Source Builder interface,
 - the embedded save flow creates canonical text + source package,
-- tab actions are wired (Processing open, Analysis placeholder),
+- tab actions are wired (Processing open),
 - existing modules import correctly,
 - the shell preserves existing launch paths (no files moved/deleted).
 
@@ -59,20 +58,6 @@ def _():
     try:
         check("root title", "Japanese Corpus Pipeline" in root.title())
         check("notebook present", isinstance(shell.notebook, ttk.Notebook))
-    finally:
-        root.destroy()
-
-
-@test("three tabs exist in order")
-def _():
-    root, shell = make_shell()
-    try:
-        tabs = [shell.notebook.tab(tab_id, "text")
-                for tab_id in shell.notebook.tabs()]
-        check("tab order", tabs == ["Sources", "Processing", "Analysis"])
-        check("sources tab", "Sources" in tabs)
-        check("processing tab", "Processing" in tabs)
-        check("analysis tab", "Analysis" in tabs)
     finally:
         root.destroy()
 
@@ -164,23 +149,12 @@ def _():
         root.destroy()
 
 
-@test("open analysis opens the analysis window")
-def _():
-    root, shell = make_shell()
-    try:
-        with mock.patch("analysis_tab_gui.AnalysisTabWindow") as cls:
-            shell._open_analysis()
-        cls.assert_called_once_with(shell)
-    finally:
-        root.destroy()
-
-
 @test("existing modules import correctly")
 def _():
     modules = {
         "Source Builder": ("controller", "source_package", "handoff",
                            "processing_tab", "processing_tab_gui",
-                           "analysis_tab_gui", "diagnostics", "gui"),
+                           "diagnostics", "gui"),
         "Production Manager": ("production_manager",),
     }
     saved_path = list(sys.path)

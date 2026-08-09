@@ -6,7 +6,7 @@ Japanese Corpus Pipeline - Batch Importer.
 
 Bulk-imports a folder of already-normalized source files through the real
 pipeline (Handoff -> Cleaner -> Job Builder -> Parser -> Validator -> Corpus
-Builder -> Analysis) as standalone sources.
+Builder) as standalone sources.
 
 A separate personal tool (outside this repo) already normalizes messy
 real-world filenames into "<Label> id<NNNNN>.<ext>" before this importer
@@ -24,8 +24,7 @@ file's failure never aborts the batch).
 
 Per supported file, in filename order:
     convert -> create_standalone_source -> handoff ->
-    production_manager.py --source <id> --pipeline --auto (subprocess) ->
-    run_analysis
+    production_manager.py --source <id> --pipeline --auto (subprocess)
 
 Exit codes:
     0  every supported file was imported or skipped; no failures
@@ -49,7 +48,6 @@ import controller
 import handoff
 import import_material
 import paths
-import processing_tab
 import source_package
 
 PRODUCTION_MANAGER_SCRIPT = PROJECT_ROOT / "Production Manager" / "production_manager.py"
@@ -217,11 +215,6 @@ def import_one(path, creator, stage_timeout=None):
         if detail:
             message += f": {detail}"
         return "pipeline", message
-
-    try:
-        processing_tab.run_analysis(package)
-    except Exception as exc:
-        return "analysis", str(exc)
 
     return None
 

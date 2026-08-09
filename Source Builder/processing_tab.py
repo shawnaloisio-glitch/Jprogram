@@ -33,7 +33,6 @@ sys.path.insert(0, str(PROJECT_ROOT / "Source Builder"))
 sys.path.insert(0, str(PROJECT_ROOT / "Production Manager"))
 
 import config_loader
-import paths
 import production_manager as pm
 
 
@@ -130,26 +129,6 @@ def discover_packages(sources_root=None):
                 packages.append(package)
     packages.sort(key=_sort_key)
     return packages
-
-
-def completed_corpora(sources_root=None):
-    """
-    Return the source packages that have a completed corpus (JSONL exists).
-
-    Reuses discover_packages and the Production Manager jsonl path. Used by
-    the Analysis tab to list available corpora.
-
-    Input: sources_root (Path|None, default the canonical Sources\\ store).
-    Output: list of package dicts with a corpus, sorted by label.
-    """
-    completed = []
-    for package in discover_packages(sources_root):
-        source_id = package.get("source_id", "")
-        if not source_id:
-            continue
-        if pm.jsonl_path(source_id).is_file():
-            completed.append(package)
-    return completed
 
 
 def package_to_row(package):
@@ -305,54 +284,6 @@ def failed_sources(packages):
     return failed
 
 
-def run_analysis(package, output_dir=None):
-    """
-    Run a basic analysis for a corpus-ready source.
-
-    Reads the canonical JSONL (existing corpus output), runs the frequency
-    analyzer, and writes a JSON report. Analysis is independent; no
-    processing artifact is modified.
-
-    Input:
-        package (dict),
-        output_dir (Path|None, default Analysis\\outputs).
-
-    Output: dict {"output_path": str, "summary": dict}.
-    Raises: ProcessingTabError when the source has no corpus or analysis
-    fails.
-    """
-    source_id = package.get("source_id", "")
-    jsonl_path = pm.jsonl_path(source_id)
-    if not jsonl_path.is_file():
-        raise ProcessingTabError(
-            f"No corpus available for {source_id}.")
-
-    sys.path.insert(0, str(PROJECT_ROOT / "Analysis"))
-    try:
-        import corpus_loader
-        from frequency_analyzer import analyze
-    except ImportError as exc:
-        raise ProcessingTabError(f"Analysis tools unavailable: {exc}")
-
-    try:
-        records = corpus_loader.load_all(jsonl_path)
-        result = analyze(records)
-    except Exception as exc:
-        raise ProcessingTabError(f"Analysis failed: {exc}")
-
-    if output_dir is None:
-        output_dir = paths.ANALYSIS_OUTPUTS
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    output_path = out_dir / f"{source_id}.frequency.json"
-
-    import json as _json
-    _json.dump(result, output_path.open("w", encoding="utf-8"),
-               ensure_ascii=False, indent=2)
-    summary = result.get("summary", {})
-    return {"output_path": str(output_path), "summary": summary}
-
-
 __all__ = [
     "ProcessingTabError",
     "STATUS_PENDING",
@@ -362,11 +293,9 @@ __all__ = [
     "STATUS_FAILED",
     "human_label",
     "discover_packages",
-    "completed_corpora",
     "package_to_row",
     "simple_status",
     "friendly_failure_message",
     "process_sources",
     "failed_sources",
-    "run_analysis",
 ]

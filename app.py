@@ -12,8 +12,6 @@ paths are preserved (Source Builder launcher, Production Manager CLI, etc.).
 Tabs:
 - Sources      -> embedded Source Builder.
 - Processing   -> opens the existing Processing window.
-- Analysis     -> minimal report surface (completed corpora, Run Analysis,
-                  Open Reports).
 
 This shell contains no pipeline logic and no artifact handling.
 """
@@ -35,12 +33,11 @@ import paths
 
 class ApplicationShell:
     """
-    Main application window with the Sources / Processing / Analysis tabs.
+    Main application window with the Sources / Processing tabs.
     """
 
     TAB_SOURCES = "Sources"
     TAB_PROCESSING = "Processing"
-    TAB_ANALYSIS = "Analysis"
 
     def __init__(self, root):
         self.root = root
@@ -75,7 +72,6 @@ class ApplicationShell:
 
         self._build_sources_tab()
         self._build_processing_tab()
-        self._build_analysis_tab()
 
     def _build_sources_tab(self):
         frame = ttk.Frame(self.notebook, padding=8)
@@ -102,21 +98,6 @@ class ApplicationShell:
         ttk.Button(frame, text="Open Processing",
                    command=self._open_processing).pack(anchor="w")
 
-    def _build_analysis_tab(self):
-        frame = ttk.Frame(self.notebook, padding=16)
-        self.notebook.add(frame, text=self.TAB_ANALYSIS)
-
-        ttk.Label(frame, text="Analysis",
-                  font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
-        ttk.Label(
-            frame, wraplength=460, justify="left",
-            text=("See completed corpora and run the existing analysis "
-                  "workflow.")
-        ).pack(anchor="w", pady=(6, 12))
-
-        ttk.Button(frame, text="Open Analysis",
-                   command=self._open_analysis).pack(anchor="w")
-
     # ============================================================
     # Tab actions (adapters to existing functionality)
     # ============================================================
@@ -125,11 +106,6 @@ class ApplicationShell:
         """Open the existing Processing window."""
         import processing_tab_gui
         processing_tab_gui.ProcessingTabWindow(self)
-
-    def _open_analysis(self):
-        """Open the Analysis report window."""
-        import analysis_tab_gui
-        analysis_tab_gui.AnalysisTabWindow(self)
 
     # ============================================================
     # Child-window placement helper (used by Processing window)
