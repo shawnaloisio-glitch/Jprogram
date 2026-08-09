@@ -57,18 +57,53 @@ discipline as any Frozen touch. Motivated by Language Coach's real need
 for grammar-pattern extraction, which the current empty `expressions`
 field can't support.
 
-### New small tool needed: metadata entry UI for batch-imported sources (2026-08-09)
+### Metadata entry for batch-imported sources (2026-08-09) — done as a scripted fill, not a UI tool
 
-Owner plan, next session: a simple UI to hand-assign Style/Topic/Duration/
-Episode#/Season# (and override Material Level where needed) for sources
-created by the Batch Importer, which currently leaves all five of those
-fields unset. Owner's explicit call: test the Batch Importer as-is for
-now (test-data phase, per `project_dev_data_is_disposable`), build this
-separately rather than trying to make the importer auto-infer metadata
-it can't reliably guess. Also the natural place to revisit the Batch
-Importer's current hard-fail-on-unmatched-folder behavior for Material
-Level (see Batch Importer's own note below) if that turns out to matter
-once real batches start.
+- [x] **Closed (2026-08-09), `a961aaf`.** Originally scoped as a small
+  hand-assignment UI (Style/Topic/Duration/Episode#/Season#, Material
+  Level override) for the 326 Batch-Importer-created `nihongo_jikan`
+  sources, which left all of those fields unset. During scoping, real
+  per-episode data turned out to be recoverable directly from disk (the
+  original pre-rename filenames embed show name + episode number;
+  matching `.mp3` files in a sibling Audio folder carry real duration
+  metadata), so a one-off deterministic script
+  (`Batch Metadata Fill/fill_nihongo_jikan_metadata.py`) replaced the
+  planned UI entirely — no hand-entry needed for 322 of the 326 fields
+  filled. Style is uniform ("Comprehensible Input"); Topic is derived
+  per-source (`Let's Play`/`Father and Son`/`Mini-Fantasy Theater`/
+  `Various`, Owner-specified grouping rules); Episode# parsed from the
+  original title (89 of 326, the recurring-series subset); Duration
+  read from real audio file metadata (326/326 matched); Season# and
+  Material Level left as-is (no data source for the former; already
+  correctly set for the latter). Full detail, including a real
+  architecture bug found and fixed along the way (Style/Topic config
+  was incorrectly living inside the git repo instead of the Workspace,
+  unlike Collections/Creators — see the separate entry below), in
+  `Audits/Trigger_Log/2026-08-09_batch-metadata-fill.md` and
+  `2026-08-09_style-topic-config-workspace-move.md`.
+  - The Batch Importer's hard-fail-on-unmatched-folder behavior for
+    Material Level (see Batch Importer's own note below) remains
+    open, untouched by this task — revisit separately if it turns out
+    to matter for a future real batch.
+
+### Style/Topic config lived inside the git repo instead of the Workspace (2026-08-09)
+
+- [x] **Found and fixed (2026-08-09), `f3eb452`.** Discovered while
+  scoping the batch metadata fill task above: `Config/styles.json`/
+  `Config/topics.json` lived under `PROJECT_ROOT` (tracked, committed)
+  instead of `WORKSPACE_ROOT` like the same category of user-managed
+  vocabulary (Collections/Creators) already correctly does — meaning a
+  user's real Style/Topic entries would get committed as product data,
+  violating the standing "zero user-specific data in product" principle.
+  Root cause: the repo's `styles.json`/`topics.json` were never real
+  shipped defaults, just empty placeholder files that existed solely to
+  stop `load_json()` raising `ConfigError` on a missing file — a gap
+  that also meant a genuinely fresh install with no styles.json/
+  topics.json yet would crash rather than start with an empty
+  vocabulary. Fixed by copying the exact existing Collections/Creators
+  pattern (new `paths.STYLES_CONFIG`/`TOPICS_CONFIG` workspace
+  constants, graceful missing-file handling, 10 test files updated).
+  Full detail in `Audits/Trigger_Log/2026-08-09_style-topic-config-workspace-move.md`.
 
 ### New small tool needed: JSONL exporter for the reader (2026-08-09, expanded)
 
