@@ -26,9 +26,8 @@ Stages, in order:
                    job-in/response-out contract, but deterministic and
                    offline.
      7. corpus   - Corpus Builder (no cost, no network)
-     8. check    - Run frequency_analyzer / distribution_analyzer /
-                   chunk_analyzer on the real output and compare against
-                   qc_test_001_expected.json.
+     8. check    - Scan the canonical JSONL records directly (no analyzer
+                   modules) and compare against qc_test_001_expected.json.
 
 Usage:
     python "QC Test Harness/run_qc_pipeline.py" setup
@@ -60,7 +59,6 @@ PROJECT_ROOT = HARNESS_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "Source Builder"))
 sys.path.insert(0, str(PROJECT_ROOT / "Source Intake"))
-sys.path.insert(0, str(PROJECT_ROOT / "Analysis"))
 
 SOURCE_NAME = "qc_test_001"
 SOURCE_TYPE = "clean_text"
@@ -144,10 +142,6 @@ def stage_corpus():
 
 
 def stage_check():
-    import corpus_loader
-    import frequency_analyzer
-    import distribution_analyzer
-    import chunk_analyzer
     import paths
 
     expected = json.loads((HARNESS_DIR / "qc_test_001_expected.json").read_text(encoding="utf-8"))
@@ -157,10 +151,87 @@ def stage_check():
         print(f"No canonical corpus found at {corpus_path} -- run the 'corpus' stage first.")
         return 1
 
-    records = corpus_loader.load_all(corpus_path)
-    freq = frequency_analyzer.analyze(records)
-    dist = distribution_analyzer.analyze(records)
-    chunks = chunk_analyzer.analyze(records)
+    # Inline canonical JSONL reader (replaces corpus_loader.load_all):
+    # one record per non-blank line, in file order.
+    records = []
+    with corpus_path.open("r", encoding="utf-8") as file:
+        for line in file:
+            if not line.strip():
+                continue
+            records.append(json.loads(line))
+
+    # Frequency (replaces frequency_analyzer.analyze): per lexical key,
+    # total occurrences and per-surface counts. Grouping key matches
+    # Analysis/frequency_analyzer.py: word[2] (lexical) when it is a
+    # non-empty string, else word[1] (surface).
+    freq_items = {}
+    for record in records:
+        for word in record.get("words") or []:
+            surface = word[1]
+            lexical = word[2]
+            key = lexical if isinstance(lexical, str) and lexical else surface
+            item = freq_items.setdefault(key, {"occurrences": 0, "surfaces": {}})
+            item["occurrences"] += 1
+            item["surfaces"][surface] = item["surfaces"].get(surface, 0) + 1
+
+    freq = {
+        "frequency": {
+            key: {
+                "occurrences": item["occurrences"],
+                "surfaces": {
+                    surface: item["surfaces"][surface]
+                    for surface in sorted(item["surfaces"])
+                },
+            }
+            for key, item in sorted(freq_items.items())
+        }
+    }
+
+    # Distribution (replaces distribution_analyzer.analyze): only
+    # sentence_distance min/max is read by the comparison below, so only
+    # that is computed. The running global sentence index is 0-based and
+    # incremented once per record, matching Analysis/distribution_analyzer.py.
+    prev_sentence_by_key = {}
+    sentence_gaps_by_key = {}
+    global_sentence_index = 0
+    for record in records:
+        for word in record.get("words") or []:
+            surface = word[1]
+            lexical = word[2]
+            key = lexical if isinstance(lexical, str) and lexical else surface
+            gaps = sentence_gaps_by_key.setdefault(key, [])
+            if key in prev_sentence_by_key:
+                gaps.append(global_sentence_index - prev_sentence_by_key[key])
+            prev_sentence_by_key[key] = global_sentence_index
+        global_sentence_index += 1
+
+    dist = {
+        "distribution": {
+            key: {
+                "sentence_distance": {
+                    "min": min(gaps) if gaps else None,
+                    "max": max(gaps) if gaps else None,
+                }
+            }
+            for key, gaps in sentence_gaps_by_key.items()
+        }
+    }
+
+    # Chunks (replaces chunk_analyzer.analyze): per chunk-text occurrence
+    # count, grouped by chunk[1] (text), matching Analysis/chunk_analyzer.py.
+    chunk_counts = {}
+    for record in records:
+        for chunk in record.get("chunks") or []:
+            key = chunk[1]
+            chunk_counts[key] = chunk_counts.get(key, 0) + 1
+
+    chunks = {
+        "chunks": {
+            key: {"occurrences": chunk_counts[key]}
+            for key in sorted(chunk_counts)
+        },
+        "summary": {"distinct_chunks": len(chunk_counts)},
+    }
 
     print(f"records loaded: {len(records)} (expected sentence_count: {expected['sentence_count']})")
     print()
