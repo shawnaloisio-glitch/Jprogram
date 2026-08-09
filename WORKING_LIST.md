@@ -100,6 +100,15 @@ resolution. It needs to reference Jprogram's location explicitly
 being co-located — build it that way from the start rather than
 discovering it breaks after the move.
 
+**Also required (Owner, 2026-08-09):** the copy that lands in Language
+Coach must ship with its own README covering what a fresh agent working
+in Language Coach's context needs to do to actually set it up there —
+at minimum: how to point it at Jprogram's location (per the path-config
+detail above), what real data it needs read access to and where that
+lives, and how to verify it's working before trusting it. A future
+Language Coach session won't have this conversation's context, so the
+README needs to stand alone.
+
 ### Cleaner bug: two sentences sharing one source line breaks reconstruction (2026-08-07)
 
 Found via a real "Failed" processing run on `con_teppei_beginner_ep002`
