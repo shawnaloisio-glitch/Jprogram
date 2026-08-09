@@ -261,7 +261,220 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
-## 14. Session Wrap-Up (2026-08-08) — Updated after Session 12
+## 14. Session Wrap-Up (2026-08-09) — Updated after Session 13
+
+**Read this section first, always.** Supersedes the Session 12 version
+below (kept for reference as §14a, no longer current). Last refreshed
+2026-08-09, end of session 13 — cut short mid-task on Advisor's own
+context limit, not a natural stopping point. **The very next thing to
+do is named precisely under "Next immediate task" below — read that
+before doing anything else this session.**
+
+### Shipped this session
+
+- **File Rename Tool** (`C:\AI Development Projects\File Rename Tool\`,
+  personal tool, outside any product repo) — built after testing showed
+  local LLMs (qwen2.5-coder:14b, deepseek-r1:14b) couldn't reliably
+  handle even a "minimal logic" batch rename task (see
+  `Audits/Trigger_Log/2026-08-08_qwen-calibration_coder-tier_*.md`, 3
+  trials). Final design: type a Label, every file becomes
+  `<Label> id00000.ext` (fully automatic, starts at 0, always continues
+  from the highest existing ID — never backfills a gap), writes
+  `rename_log.csv` (new_name/real_name/size/date) as a lookup table from
+  the start. Verified working via live GUI testing, including the
+  "add more files later" resume case. Desktop shortcuts for both this
+  and Jprogram itself (`Launch.bat` + `.lnk`, `pythonw.exe`, no console
+  flash) — `Launch.bat` in Jprogram's own root is still untracked in
+  git, harmless, low priority to commit or gitignore.
+- **Nihongo Jikan Importer** (`Nihongo Jikan Importer/`) + **Batch
+  Importer** (`Batch Importer/`) — real Coder tasks, both independently
+  verified (diff review + full-suite re-run + real-file/real-batch
+  smoke tests), both merged. The Nihongo Jikan importer parses the
+  HTML/ruby-furigana format (bare `<p>` = sentence, furigana discarded,
+  scraped "Copyright Info" widget excluded — verified exhaustively
+  against the real 874-file corpus before implementation). The Batch
+  Importer bulk-imports an already-normalized folder through the real
+  pipeline (Handoff -> Cleaner -> Parser -> Validator -> Corpus Builder),
+  idempotent, failure-isolated, `--dry-run` support.
+- **First real production-scale run**: 326 real files
+  (`D:\Nihongo Jikan media\Transcripts\Beginner`, renamed in place to
+  `NHGJM id00000`-`id00325`, creator `nihongo_jikan`). **321/326
+  imported successfully.** The 5 failures are real, diagnosed, and
+  logged with a directly-verified-reproducible fixture in
+  `Audits/Parser_Edge_Cases/` — two distinct root causes in the Frozen
+  parser (a word-span-absorbs-next-word bug, 4 cases sharing one likely
+  root cause; a content-truncation bug, 1 case). **Owner's explicit
+  call: don't fix these one at a time — accumulate real cases and batch
+  them into one real Coder task + audit later**, since the failure mode
+  is "doesn't make it into the corpus yet," not "wrong data gets in."
+  This batch's source data is disposable test data and will be purged
+  before real use; the edge-case log is what's meant to survive that.
+- **`Jprogram Workspace/jsonl/source_metadata.csv`** — a one-off export
+  (Source Package metadata: material_level/style/topic/duration/
+  episode/season, one row per source_id with a real corpus JSONL file)
+  built because Language Coach needs it for sorting/filtering, joined
+  by `source_id` alongside the JSONL and `rename_log.csv` (also copied
+  there). Confirmed directly: this metadata lives ONLY on the Source
+  Package, never in the JSONL or Registry — grepped `corpus_builder.py`/
+  `parser_normalizer.py`, zero references.
+- **Real gap found and logged, not yet fixed**:
+  `Data Processor/deterministic_parser.py`'s `expressions` field is
+  hardcoded to always `[]` ("by design", a deliberate curb of the old
+  API-parser's grammar-pattern/longest-expression detection, confirmed
+  not viable at the time) even though `PARSER_OUTPUT_SPEC.md` still
+  fully describes it as required output. POS labels were separately
+  confirmed **never** part of either parser's output (explicitly
+  forbidden by the same spec) — a different gap, don't conflate the two.
+  Forward path (Owner, explicit): rebuild `expressions` deterministically
+  (never an API parser again), GiNZA's already-computed `token.tag_`
+  POS tags being a likely ingredient. Logged in `WORKING_LIST.md` with
+  full evidence; Frozen-Component-touching, needs real scoping before
+  a Coder task.
+- **Major architecture decision, in progress: Jprogram's scope now ends
+  at the finished canonical JSONL corpus.** Analysis (and the old
+  identity/metadata SQL index) move to Language Coach, which has
+  **already, independently, rebuilt both** — confirmed directly by
+  reading LC's own code: `Language Coach/tools/analysis/` has all 7+
+  analyzer modules plus its own `candidate_filter.py`, and
+  `library.db` (real SQLite, 5 tables, verified 321 rows in `sources`
+  matching today's exact batch) via `build_library_db.py`, whose own
+  docstring already states *"Language Coach owns everything downstream
+  of the corpus... Jprogram stops at the parser output"* (dated
+  2026-08-09, same day). It already reads `source_metadata.csv` and
+  `rename_log.csv` as its real data source.
+  - **Step 1 DONE, merged (`01abde5`):** removed every place Jprogram's
+    own live pipeline/GUI still called into `Analysis/` — the Batch
+    Importer's per-file analysis call, and the GUI's entire Analysis
+    tab (`analysis_tab_gui.py` deleted, `app.py`'s trigger removed,
+    the 2 analysis-only `processing_tab.py` functions removed after
+    confirming via repo-wide search they had no other callers).
+    Independently verified: diff review, full-suite re-run (69/69
+    files, 988/988 tests), and a live GUI smoke test (launched the
+    real app, confirmed only Sources/Processing tabs remain).
+  - **Step 2 NOT STARTED — see "Next immediate task."**
+- **Cross-project docs updated** (`Shared/ECOSYSTEM_OVERVIEW.md`, not a
+  git repo, edited directly, no commit needed there): Reasonix/MiniLingQ
+  V1-complete status; a real cross-project dependency (Reasonix's Pad
+  rollout blocked on Jprogram's Chinese parser); the JSONL/naming
+  exporter's full real design — data ownership (Jprogram, read-only for
+  consumers), tool location (Language Coach, since that's where its
+  consumption purpose belongs), build mechanism (built/tested in
+  Jprogram against real data, then copied to LC with its own standalone
+  setup README, archived copy kept in Jprogram too). All mirrored into
+  Jprogram's own `WORKING_LIST.md`.
+- **Reasonix/MiniLingQ code review + one real fix**, off-Jprogram work
+  (Advisor was asked to look, no Coder involved — that project has no
+  formal governance process yet): read ~2,100 lines across
+  `parse.js`/`db.js`/`dict.js`/`tts_relay.py`/`make_dictionary_pack.py`.
+  Found and fixed one real security gap: `tts_relay.py`'s
+  `Access-Control-Allow-Origin: "*"` let any website in another tab
+  silently spend the user's paid ElevenLabs quota through the local
+  relay. Fixed (locked to the app's own origin) and logged in that
+  project's `progress/PROGRESS.md`. Everything else reviewed came back
+  genuinely clean (consistent HTML-escaping, proper IndexedDB
+  transaction handling, a real invariant-verification test).
+- **Local-LLM coding-tier calibration, 3 trials** (extends Session 12's
+  judgment-tier calibration into actual code generation) — see
+  `Audits/Trigger_Log/2026-08-08_qwen-calibration_coder-tier_*.md`.
+  Headline finding: `deepseek-r1:14b` produced the single best individual
+  answers of any trial (two genuinely correct fixes neither Claude nor
+  qwen found) and, in the same response, fabricated 5 fictional file
+  entries in a rename-index task, formatted identically to the real
+  ones. Confirms the standing "never let a local model execute
+  unsupervised" call with a concrete example, not just theory.
+
+### Real process notes from this session
+
+- **Advisor caught and corrected its own error the same day**: an
+  initial re-verification of the Nihongo Jikan importer wrongly reported
+  2 test files "couldn't run, missing ginza" — Advisor had invoked plain
+  `python` instead of the project's own `.venv/Scripts/python.exe`. Fixed
+  same-day in both the trigger log and this bootstrap. New standing
+  memory: always use `.venv/Scripts/python.exe` for anything real in
+  this repo.
+- **Two broad `taskkill //IM ... //F` calls this session were wider than
+  intended** — one likely closed an IDLE window Owner had open, the
+  other (later, `python.exe`) has no specific confirmed casualty but
+  can't be ruled out. Switched to closing app windows via their own
+  close button for the rest of the session. Worth being deliberate about
+  this going forward — prefer closing by specific PID or window control,
+  never a blanket image-name kill, on a machine that isn't sandboxed.
+- **Owner's own framing, worth remembering**: finding a use for the
+  local Ollama models is now explicitly a personal-challenge/hobby
+  pursuit, not ROI-driven — don't re-gate future proposals on "is this
+  worth it," that bar was already applied and the original judgment-tier
+  use case closed.
+
+### Next immediate task — mid-task, do this first
+
+**Fixing `QC Test Harness/run_qc_pipeline.py`'s `stage_check()`, which
+is the last known live dependency on `Analysis/` before it can be
+archived (step 2 of the Analysis->LC move).** Confirmed by direct repo
+grep: nothing else in the live codebase references `Analysis/`'s
+modules (the Batch Importer/GUI dependency was already removed in step
+1). `QC Test Harness` is Jprogram's own real pipeline-correctness
+self-check (hand-authored ground truth, `qc_test_001_expected.json`),
+not GUI/downstream plumbing — this needs a real fix, not archiving.
+
+**The plan, already worked out, not yet built:** `stage_check()`
+currently imports `corpus_loader`/`frequency_analyzer`/
+`distribution_analyzer`/`chunk_analyzer` from `Analysis/` and compares
+their output against `qc_test_001_expected.json` (checks: occurrence
+counts + sentence positions + min/max sentence-gap for 犬/猫, inflected
+surface-form grouping for 食べる, a qualitative chunk-pattern check for
+ことにしました). None of this actually needs the analyzer modules —
+it can all be computed by directly scanning the raw canonical JSONL
+records' own `words`/`chunks` arrays (`corpus_loader.load_all()` itself
+is trivial, confirmed by reading it — just a JSONL line reader with
+error handling, easily inlined). Rewrite `stage_check()` to:
+1. Drop the `Analysis/` sys.path insert and all 4 imports.
+2. Load records directly (a small inline JSONL reader replacing
+   `corpus_loader.load_all`).
+3. For each lexical item, scan every sentence's `words` array for
+   matching `lemma`; collect occurrence count, sentence positions
+   (for min/max gap, computed directly), and surface-form counts —
+   same checks, same PASS/FAIL semantics and output format, just
+   computed directly instead of via the analyzer modules.
+4. For the qualitative chunk check, scan `chunks` arrays directly for
+   `ことにし`/`こと` in the surface text — same as today, just not
+   routed through `chunk_analyzer`.
+5. Update the module docstring's step-8 description to match.
+6. **Verify for real**, not just diff review: run it against the real
+   existing `clean_text_qc-test-001` corpus (already in the Workspace
+   from prior sessions) and confirm the same PASS verdict as before the
+   change.
+
+This is real validation logic being rewritten, not file cleanup — goes
+through the normal Coder process (confirmation gate, isolated worktree,
+independent evaluation after), same as every other real task this
+session. Not a Frozen Component itself, so not an automatic audit
+trigger, but touches correctness-checking logic — judgment call at
+evaluation time.
+
+**Once that's done and verified, resume the rest of step 2** (not yet
+started, no code written): archive `Analysis/` + `ANALYZER_ARCHITECTURE.md`
+and `Index/` (to `Archive/`, matching the existing project convention —
+confirmed via `git status`/grep that nothing else references either),
+remove Analysis from `CLAUDE.md`'s Frozen Components list, update the
+pipeline diagram/purpose statement in this bootstrap (§1-2) and
+`README.md` to end at the canonical JSONL corpus.
+
+### Branch-divergence check (per `CLAUDE.md`'s standing wrap-up rule)
+
+`git branch -a` shows only `master` (local and remote) — nothing to
+flag. `git status` shows only the pre-existing untracked `Launch.bat`
+(harmless, a desktop-shortcut convenience file, not committed or
+gitignored — low priority either way).
+
+### Push status
+
+Pushed to `origin/master` as part of this wrap-up (Owner explicitly
+asked to save/push before ending the session, not the normal
+end-of-day-only default).
+
+---
+
+## 14a. Prior wrap-up (Session 12) — kept for reference only, superseded above
 
 **Read this section first, always.** Supersedes the Session 11 version
 below (kept for reference as §14a, no longer current). Last refreshed
