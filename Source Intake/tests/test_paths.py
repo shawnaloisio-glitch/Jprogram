@@ -103,7 +103,7 @@ def _():
 
 @test("product constants remain under PROJECT_ROOT")
 def _():
-    for name in ("ANALYSIS", "DATA_PROCESSOR", "PROMPTS",
+    for name in ("DATA_PROCESSOR", "PROMPTS",
                  "TRANSCRIPT_CLEANER"):
         value = getattr(paths, name)
         check(f"{name} under PROJECT_ROOT",

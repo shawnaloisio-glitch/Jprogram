@@ -48,8 +48,6 @@ WORKSPACE_ROOT = Path(
 # Project Folders (repository / product)
 # --------------------------------------------------
 
-ANALYSIS = PROJECT_ROOT / "Analysis"
-
 DATA_PROCESSOR = PROJECT_ROOT / "Data Processor"
 
 PROMPTS = PROJECT_ROOT / "Prompts"
@@ -74,8 +72,6 @@ CLEANED_ARCHIVE = WORKSPACE_ROOT / "Cleaned Archive"
 PROCESSING_RESULTS = WORKSPACE_ROOT / "Processing Results"
 
 LOGS = WORKSPACE_ROOT / "Logs"
-
-ANALYSIS_OUTPUTS = WORKSPACE_ROOT / "Analysis" / "outputs"
 
 DIAGNOSTICS = WORKSPACE_ROOT / "Diagnostics"
 
@@ -160,7 +156,6 @@ WORKSPACE_FOLDERS = (
     LOG_CORPUS_BUILDER,
     LOG_SOURCE_INTAKE,
     LOG_PRODUCTION_MANAGER,
-    ANALYSIS_OUTPUTS,
     DIAGNOSTICS,
     INTAKE,
     RAW_IMPORTS,
@@ -216,7 +211,6 @@ def verify_paths():
     ensure_workspace()
 
     required = [
-        ANALYSIS,
         DATA_PROCESSOR,
         PROMPTS,
         TRANSCRIPT_CLEANER,
@@ -244,7 +238,6 @@ def verify_paths():
         CLEANING_JOBS,
         CLEANING_RESULTS,
         SOURCES,
-        ANALYSIS_OUTPUTS,
         DIAGNOSTICS,
         INTAKE,
         RAW_IMPORTS,
