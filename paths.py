@@ -7,7 +7,7 @@ Every project script imports paths from here.
 
 Product/repository folders stay under PROJECT_ROOT. Customer/runtime/log
 folders live under WORKSPACE_ROOT (outside the repository by default; the
-JPROGRAM_WORKSPACE environment variable overrides the default location).
+JAPANESECORPUS_WORKSPACE environment variable overrides the default location).
 """
 
 import os
@@ -34,12 +34,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 # --------------------------------------------------
 #
 # Customer/runtime data lives outside the repository by default. The
-# JPROGRAM_WORKSPACE environment variable overrides the default location.
+# JAPANESECORPUS_WORKSPACE environment variable overrides the default location.
 
 WORKSPACE_ROOT = Path(
     os.environ.get(
-        "JPROGRAM_WORKSPACE",
-        PROJECT_ROOT.parent / "Jprogram Workspace"
+        "JAPANESECORPUS_WORKSPACE",
+        PROJECT_ROOT.parent / "Workspace"
     )
 )
 

@@ -37,9 +37,9 @@ flat-file layout under that same directory.
 Relevant tables:
 
 - **`project`** — one row per project OpenCode has opened. Columns include
-  `id`, `worktree` (e.g. `C:/AI Development Projects/Jprogram`), `name`.
+  `id`, `worktree` (e.g. `C:/AI Development Projects/JapaneseCorpus/JapaneseCorpus`), `name`.
   Find Jprogram's project row by filtering
-  `worktree = 'C:/AI Development Projects/Jprogram'`. Sessions from before
+  `worktree = 'C:/AI Development Projects/JapaneseCorpus/JapaneseCorpus'`. Sessions from before
   the 2026-08-06 relocation have a separate project row with the old
   `worktree = 'C:/Jprogram'` — check both if searching across that date.
 - **`session`** — one row per OC session/conversation. Columns include `id`

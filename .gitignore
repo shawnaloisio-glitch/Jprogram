@@ -53,3 +53,11 @@ __pycache__/
 
 # ---- Project-local virtual environment --------------------------
 .venv/
+
+# ---- Local agent/tool state (machine-specific, not source) ------
+.reasonix/
+reasonix.toml
+
+# ---- Language Coach J: regenerable analysis output --------------
+Language Coach J/tools/analysis/outputs/
+Language Coach J/tools/analysis/library.db

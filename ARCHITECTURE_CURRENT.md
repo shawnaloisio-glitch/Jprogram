@@ -15,7 +15,7 @@ tested. Runtime data is reset and metadata config is cleaned.
 ## 1. Application Structure
 
 ```
-C:\AI Development Projects\Jprogram\
+C:\AI Development Projects\JapaneseCorpus\JapaneseCorpus\
 │
 ├── app.py                          # Application Shell (primary entry point)
 │

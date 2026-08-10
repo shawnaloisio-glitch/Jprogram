@@ -4,7 +4,7 @@
       "mcp__visualize__show_widget",
       "Bash(git add *)",
       "Bash(git commit -m *)",
-      "Bash(python \"C:\\AI Development Projects\\Jprogram\\oc_session_dump.py\"*)",
+      "Bash(python \"C:\\AI Development Projects\\JapaneseCorpus\\JapaneseCorpus\\oc_session_dump.py\"*)",
       "Bash(python oc_session_dump.py*)",
       "Bash(python \"Source Builder/tests/test_*)",
       "Bash(python \"Subtitle Cleaner/tests/test_*)",
