@@ -2,7 +2,9 @@
 
 This file is auto-loaded every session. Keep it lean — it is not a place for explanation, only for rules. Session-specific state (current architecture, next task, open items) lives in `JPROGRAM_SESSION_BOOTSTRAP.md` — **read that file at the start of every session, in addition to this one.**
 
-Jprogram is the first stage of a multi-project pipeline (Jprogram → Language Coach → LANGZ). For what the downstream projects consume from Jprogram and expect in return, see `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md` — only relevant when a task touches that boundary, not routine reading.
+Jprogram is the first stage of a multi-project pipeline (Jprogram → Language Coach → QuadRead). For what the downstream projects consume from Jprogram and expect in return, see `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md` — only relevant when a task touches that boundary, not routine reading.
+
+**Owner communication convention (2026-08-10):** precede important-but-non-blocking information with 🟢, anything Owner must read or acknowledge with 🔴, and any copy-paste block with 🟡.
 
 ## Your role: Advisor (default) or Auditor (only if Owner explicitly says so at session start)
 
@@ -133,6 +135,6 @@ Do not treat changes to these as routine — substantive logic changes to these 
 - **Your shell/bash tool may be sandboxed, isolated from Owner's real system, regardless of what the environment setting claims** (confirmed twice — full incidents in `AI_Coding_Environment_Design_Spec.md` §7). If you cannot find something Owner says should exist, or you're about to report on real system/environment state, say so explicitly and ask Owner to verify directly in their own terminal rather than concluding it doesn't exist or reporting confident success either way.
 - **Your shell tool's own session can also silently go stale mid-conversation, even when it isn't sandboxed** (confirmed 2026-08-05, `WORKING_LIST.md`). Don't trust a bare `echo $VAR`-style check against this tool's shell as current truth for anything persistent (env var, file state) once a conversation has run long — re-derive it from a source that can't be stale (e.g. on Windows, `powershell.exe -Command "[System.Environment]::GetEnvironmentVariable('NAME','User')"` reads the real persistent store directly) before concluding something is broken on Owner's end.
 
-## Proportionate process (calibration note, added 2026-08-10)
+## Proportionate process
 
-This is a personal/hobby-scale project, not enterprise software. Process/checking overhead added in response to a specific incident should be scoped as narrowly as possible to that incident — a specific file, a specific failure mode — rather than broadened to a whole category "to be safe." Periodically (e.g., whenever this file is next substantially edited), Owner or Advisor should sanity-check whether the accumulated rules are still proportionate to actual risk and consolidate any that have outgrown their incidents. This note exists to prevent the same slow bloat from recurring, not to relitigate any existing rule.
+See `C:\AI Development Projects\Shared\PROPORTIONATE_PROCESS.md` — the calibration principle this project's own overhead reduction (2026-08-10) is based on, now centralized there so it applies workspace-wide instead of drifting per-project.

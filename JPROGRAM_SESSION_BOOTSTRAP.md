@@ -487,7 +487,7 @@ before doing anything else this session.**
   is "doesn't make it into the corpus yet," not "wrong data gets in."
   This batch's source data is disposable test data and will be purged
   before real use; the edge-case log is what's meant to survive that.
-- **`Jprogram Workspace/jsonl/source_metadata.csv`** — a one-off export
+- **`C:\AI Development Projects\JapaneseCorpus\Workspace\jsonl\source_metadata.csv`** — a one-off export
   (Source Package metadata: material_level/style/topic/duration/
   episode/season, one row per source_id with a real corpus JSONL file)
   built because Language Coach needs it for sorting/filtering, joined
@@ -697,7 +697,7 @@ below, not a queue of product changes.
   an explicit go-ahead before every real Coder task launches, even
   though the new mechanism no longer technically requires the old
   copy-paste step that used to force that moment of visibility.
-- **Same standard extended to Language Coach and LANGZ**, reversing
+- **Same standard extended to Language Coach and QuadRead**, reversing
   their prior 2026-08-06 "no separate Coder" decisions (confirmed
   explicitly when asked, not assumed) — each got its own updated
   `CLAUDE.md` "Coder command format" section and a new `AGENTS.md`.
