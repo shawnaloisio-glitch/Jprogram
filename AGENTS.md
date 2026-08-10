@@ -26,8 +26,17 @@ If any part remains — including a part you decided to skip, defer, or couldn't
 Continue to next section?
 ```
 Do not end with STOPPED. while silently leaving part of the assignment
-undone. If you're unsure whether something counts as "done," treat it as
-not done and ask.
+undone.
+
+The "treat it as not done and ask" caution applies only to genuine
+ambiguity about requirements or scope — not to routine completion of
+clearly-specified mechanical work. If a part's requirements are
+unambiguous and the work is mechanical/deterministic, complete it and
+move directly to the next part within the same task WITHOUT a check-in:
+the ask-before-continuing rule is for real uncertainty, not a default
+caution posture to manufacture. Multi-part tasks still report per-part
+status (done / not done / blocked) at the end, and STOPPED. is still
+never claimed while something is silently left undone.
 
 ## Core rules (see `README.md` for full rationale)
 

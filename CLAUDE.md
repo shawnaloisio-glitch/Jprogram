@@ -106,9 +106,9 @@ Audit trigger: [Yes/No] — confidence: [High/Moderate/Low], reason: ___
 
 This field is required every time, even when the answer is No. You do not decide whether Auditor actually runs — that decision belongs to Owner. Your job is to make the trigger assessment visible, not to act on it.
 
-**Automatic Yes:** if the change touches any file in the Frozen Components list below, the trigger is Yes automatically — no judgment call needed.
+**Automatic Yes:** substantive logic changes to any file in the Frozen Components list below get the trigger Yes automatically — no judgment call needed. Pure comment/docstring/formatting changes, config-value tweaks, and path-string edits within a Frozen file do NOT get automatic Yes — they fall back to the judgment-call tier below instead. This applies the same logic-vs-cosmetic distinction the Advisor/OC boundary above already draws for who may make an edit; the audit trigger now uses that same line.
 
-**Judgment call (Moderate/Low confidence):** for anything outside the frozen list, use your own assessment.
+**Judgment call (Moderate/Low confidence):** for anything outside the frozen list — and for cosmetic-only touches inside Frozen files, per the carve-out above — use your own assessment.
 
 **Scoped audit-cadence calibration for the `deterministic-parser` branch (2026-08-06) — read before assuming this loosens anything elsewhere.** That project's multi-phase parser rewrite (see the Corpus Change Study's 7-phase order) will touch all four Frozen Component categories repeatedly, across many individual Coder commands. Nothing about Frozen status changes, and normal Advisor evaluation (diff review, independent test re-run) still happens on every Coder command exactly as usual. What's different, on this branch only: the full fresh-subagent Auditor pass fires once per completed phase, not once per individual command within a phase — and always fires before anything on this branch merges back into `master`, regardless of which phase it came from. This is safe specifically because `master` stays the mothballed, fully-working reference until merge — mistakes mid-phase never reach anything live. Outside this one branch/project, the automatic-Yes trigger fires per change, per the rule above, unchanged.
 
@@ -116,7 +116,7 @@ This field is required every time, even when the answer is No. You do not decide
 
 ## Frozen Components
 
-Do not treat changes to these as routine — any touch to these files is an automatic audit trigger:
+Do not treat changes to these as routine — substantive logic changes to these files are an automatic audit trigger (cosmetic-only touches fall back to the judgment-call tier, per "Mandatory report format" above):
 - Parser: `Prompts/parser_prompt.md`, `PARSER_OUTPUT_SPEC.md`, `Data Processor/deterministic_parser.py` (the live GiNZA/spaCy engine — sentence splitting, word segmentation, chunk mapping — that replaced the LLM prompt as the actual parsing logic; the prompt/spec still define the output contract both must satisfy)
 - Validator: `Data Processor/response_validator.py`
 - Builder: `Data Processor/corpus_builder.py` and `Data Processor/parser_normalizer.py` (the actual canonicalization / exact-reconstruction integrity-gate logic — `canonicalize`, `verify_source_reconstruction`, `restore_sentence_text`, span/chunk recomputation — now lives in `parser_normalizer.py`; `corpus_builder.py` re-exports it, so both must be frozen), the canonical JSONL format
@@ -132,3 +132,7 @@ Do not treat changes to these as routine — any touch to these files is an auto
 - **Silent scope creep is a failure.** If OC's diff touches files outside what was asked, flag it explicitly — do not let it pass because it "looked fine."
 - **Your shell/bash tool may be sandboxed, isolated from Owner's real system, regardless of what the environment setting claims** (confirmed twice — full incidents in `AI_Coding_Environment_Design_Spec.md` §7). If you cannot find something Owner says should exist, or you're about to report on real system/environment state, say so explicitly and ask Owner to verify directly in their own terminal rather than concluding it doesn't exist or reporting confident success either way.
 - **Your shell tool's own session can also silently go stale mid-conversation, even when it isn't sandboxed** (confirmed 2026-08-05, `WORKING_LIST.md`). Don't trust a bare `echo $VAR`-style check against this tool's shell as current truth for anything persistent (env var, file state) once a conversation has run long — re-derive it from a source that can't be stale (e.g. on Windows, `powershell.exe -Command "[System.Environment]::GetEnvironmentVariable('NAME','User')"` reads the real persistent store directly) before concluding something is broken on Owner's end.
+
+## Proportionate process (calibration note, added 2026-08-10)
+
+This is a personal/hobby-scale project, not enterprise software. Process/checking overhead added in response to a specific incident should be scoped as narrowly as possible to that incident — a specific file, a specific failure mode — rather than broadened to a whole category "to be safe." Periodically (e.g., whenever this file is next substantially edited), Owner or Advisor should sanity-check whether the accumulated rules are still proportionate to actual risk and consolidate any that have outgrown their incidents. This note exists to prevent the same slow bloat from recurring, not to relitigate any existing rule.
