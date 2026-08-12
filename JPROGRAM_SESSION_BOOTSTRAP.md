@@ -2,7 +2,7 @@
 
 Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format, Frozen Components trigger list) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
 
-**Note:** the status content below is carried over from the prior version of this doc and has not been independently re-verified as of this rewrite — a project audit is planned as a near-term task specifically to confirm or correct it (see Jprogram design spec, §8, task 9).
+**Note:** structure, section cross-references, entry points, and Frozen Components below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs.
 
 **Small, concrete pending items** (things to check/decide/fix that aren't major scope) go in `WORKING_LIST.md`, not here — keeps this file about architecture/state/major tasks only.
 
@@ -16,7 +16,7 @@ Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standin
   ```
   Raw source → cleaned data → parsed structured data → validated corpus → canonical JSONL corpus
   ```
-- The project builds an immersion-oriented corpus that preserves raw linguistic evidence so later analyzers can compute frequency, distribution, exposure, and other measurements deterministically. **Jprogram's own scope ends at the finished canonical JSONL corpus (2026-08-09)** — the analyzers themselves now live in Language Coach, not here (see §14, "Major architecture decision").
+- The project builds an immersion-oriented corpus that preserves raw linguistic evidence so later analyzers can compute frequency, distribution, exposure, and other measurements deterministically. **Jprogram's own scope ends at the finished canonical JSONL corpus (2026-08-09)** — the analyzers themselves now live in Language Coach, not here (see §14).
 
 ---
 
@@ -35,8 +35,8 @@ Cleaner             (Transcript Cleaner / Subtitle Cleaner; future cleaners plug
    ↓
 Data Processor
     Job Builder     (clean text → jobs)
-    Request Builder (jobs → DeepSeek requests)
-    Parser          (DeepSeek, non-thinking + hybrid format)
+    Request Builder (jobs → parser requests)
+    Parser          (deterministic GiNZA/spaCy engine; DeepSeek API path retired)
     Validator       (deterministic gate)
     Corpus Builder  (deterministic → canonical corpus)
    ↓
@@ -46,14 +46,14 @@ Canonical JSONL Corpus   (sentence-per-line, the single source of truth)
 Jprogram's pipeline ends here. Analysis (deterministic analyzer utilities
 → evidence datasets → interpretation) is now a separate project's
 responsibility — Language Coach, which reads this corpus but is not part
-of this repo. See §14's "Major architecture decision" entry.
+of this repo. See §14.
 
 Entry points today:
 
 - **`app.py`** — the application shell (Sources / Processing / Analysis tabs). This is the primary entry point.
 - **`Source Builder\source_builder.py`** — standalone Source Builder launcher.
 - **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.)
-- Pipeline stage scripts: `job builder.py`, `request builder.py`, `deepseek_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners.
+- Pipeline stage scripts: `job builder.py`, `request builder.py`, `deterministic_parser.py`, `deterministic_parser_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners. (The DeepSeek API path — `deepseek_client.py` — is retired; kept frozen in case it's ever revived.)
 
 Source Intake (utilities, artifact writers, and coordinator) is implemented.
 The current GUI path creates Registry + Cleaning Job through
@@ -131,7 +131,7 @@ Phase 3 (coordinator + duplicate detection):
 - `resolver.py`
 - configuration integration
 
-**Tests:** Source Intake suite — **109 tests passing** (corrected 2026-08-05; see §10 step 6 and the 2026-08-05 deep audit in `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` — the "106" figure was stale and never propagated here even after the correction was first found).
+**Tests:** Source Intake suite — **109 tests passing** (corrected 2026-08-05; see the 2026-08-05 deep audit in `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` — the "106" figure was stale and never propagated here even after the correction was first found).
 
 **Current GUI path note:** The Application Shell / Source Builder creates the
 Source Registry entry and Cleaning Job through `Source Builder\handoff.py`,
@@ -203,36 +203,12 @@ Source Intake\
 
 ---
 
-## 10. Next Planned Task — First Advisor-CC Session Checklist
+## 10. First Advisor-CC Session Checklist — executed (2026-08-05)
 
-Work through these in order. Don't skip ahead — several depend on confirming the prior step actually worked.
-
-1. **Sanity-check your own setup.** Confirm you've loaded `CLAUDE.md` and understand you're Advisor by default (read-only, Plan mode). State this back before doing anything else, so Owner can catch a misconfiguration immediately rather than after real work starts.
-
-2. **Verify the standing-instruction files are actually in place** at repo root: `CLAUDE.md`, `QWEN.md`, `AGENTS.md`, this file. Report what you find — don't assume.
-
-3. **Qwen Code authentication — permanently on hold (Owner decision, 2026-08-05) until Owner explicitly says otherwise.** Not "revisit when convenient" — do not propose or pursue this unprompted. Alibaba ModelStudio signup hit a broken email-verification loop; Owner has since decided to leave this on indefinite hold rather than revisit it. Auditor's frozen-component tier falls back to a second CC session when needed (see `CLAUDE.md`'s Auditor section) — Advisor must state plainly in the trigger report whenever this fallback is used, since it's weaker independence than the design calls for.
-
-4. **Delete the two confirmed-identical duplicate files** (verified byte-for-byte identical earlier): `Daily Handoff/Handoff_2026-08-04/PROJECT_STATUS.md` and `Daily Handoff/Handoff_2026-08-04/Session_Handoff_Audit.md`. Keep the root-level / `Audits/2026-08-04/` originals.
-
-5. **Propose a restructure plan for `Daily Handoff/` — propose only, do not execute without Owner approval.** Prior analysis (outside this session) found three distinct things mixed in that folder:
-   - `HANDOFF_2026-07-31.md`, `HANDOFF_2026-08-01_QWEN_BUILDER_REVIEW.md`, `HANDOFF_2026-08-02_FLASH_EXPRESSION_POLICY.md` — artifacts of the old ChatGPT-session-handoff system, now superseded by this file. Likely fine to leave in place (git history preserves them) but should not be treated as current input.
-   - `Handoff_2026-08-04/CURRENT_IMPLEMENTATION_MAP.md`, `CURRENT_TEST_STATE.md`, `DATA_LIFECYCLE_REALITY.md`, `IMPLEMENTATION_VS_DOCUMENTATION.md` — look like a partial prior attempt at the project audit (task below). Treat as useful starting input to that audit, not clutter.
-   - `SOURCE_BUILDER_*.md`, `SOURCE_METADATA_SPEC.md`, `GUI_ARCHITECTURE.md`, the undated `PROJECT_CONTEXT.md` — genuine design/spec docs that don't belong in a folder called "Daily Handoff." Confirm this read is correct and propose where they should actually live.
-
-6. **The actual project audit** (per the design spec, sequenced to happen only after setup is confirmed working): verify current status of everything in §§1–9 above, using the `Handoff_2026-08-04/` snapshot files from step 5 as a starting point rather than starting from zero. Confirm or correct the "Source Intake Phase 3 complete, 106 tests passing" claim and the "5 test failures — stale fixture config" claim specifically — both are unverified carryovers from before the git migration.
-
-   **Done (2026-08-05). Findings, from raw test-run evidence (every `test_*.py` in the repo run directly — this project's tests are standalone scripts, not pytest/unittest — 60 files, 748 tests total):**
-   - Entry points (§2) and Frozen Components (§4 / `CLAUDE.md`): all confirmed present on disk, no gaps.
-   - Source Intake: **109/109 passing** (not 106 — count grew slightly, e.g. `test_paths.py` covers the newer workspace-separation logic).
-   - Repo-wide: **742/748 passing**, 6 failures, two distinct causes:
-     - **1 failure was self-inflicted this session**, by the step-5 `Daily Handoff/` → `Archive/` move: `Production Manager/tests/test_production_manager_api_docs.py` hardcoded the old path to `GUI_ARCHITECTURE.md`. Fixed by updating the test to point at the new archive path; confirmed passing again (7/7).
-     - **5 failures confirm the old "stale fixture config" claim exactly** (4 in `Source Builder/tests/test_source_builder_gui_presets.py` + 1 in `test_source_builder_quick_presets.py` = 5) — not in Source Intake as the old wording implied, but in Source Builder. Root cause: these tests depend on a `"teppei_beginner"` collection resolving via `Config/collections.json`, which no longer has that entry after the intentional runtime-data reset noted in the checkpoint below. **This is an expected side effect of that reset, not a bug and not migration damage — left as-is per Owner decision (2026-08-05).** Restore the fixture data only if/when real collection config work resumes.
-   - `cleaner common.py` (present in the pre-migration backup `C:\Jprogram stable build backup 8-4-26`, absent from the git repo): confirmed dead/unreferenced (zero imports anywhere, content was a stray stale draft of `paths.py` under the wrong filename) — correctly excluded from the git baseline, not lost migration content.
-   - Conclusion: **the git migration itself did not break anything found so far.** The only real breakage found was caused by this session's own archive move, and was fixed within the same session.
-
-   **Follow-up (2026-08-05, TASK 1, first Coder command under this protocol):** the 5 confirmed config-isolation failures above were traced further and fixed — `test_source_builder_quick_presets.py` and `test_source_builder_gui_presets.py` were missing the `paths.COLLECTIONS_CONFIG` isolation pattern that 8 sibling test files already use correctly (temp `collections.json` fixture instead of the live workspace config). Fixed by OC, independently verified against raw `git status` and direct test re-runs (not OC's self-report): `quick_presets` now 21/21, `gui_presets` now 7/8, zero regressions across the other 18 Source Builder test files.
-   - **New, separate, non-blocking issue found during that fix:** `test_source_builder_gui_presets.py`'s "standalone preset populates identity and source name" test asserts `source_type == "article"`, but the GUI's `_processable_source_types()` (`Source Builder/gui.py:48-55`) filters to `PROCESSING_PROFILES` keys only (`anime_subtitle`, `podcast_transcript`) — `"article"` can never pass regardless of config. This is a latent test-vs-app mismatch, not a config/isolation problem, and not something the isolation fix could address. Left as-is per Owner decision (2026-08-05) — a known, understood, non-blocking single test failure. Revisit if/when `PROCESSING_PROFILES` gains an `article` profile, or the test's expected value should simply change to a currently-processable type.
+Executed and superseded; the checklist itself was removed from this
+current-state file (git history preserves it). Full record of that
+session: `Audits/2026-08-05/DEEP_AUDIT_REPORT.md` and
+`Audits/Trigger_Log/2026-08-05_first-advisor-session.md`.
 
 ---
 
@@ -242,9 +218,9 @@ Work through these in order. Don't skip ahead — several depend on confirming t
 
 ## 11. OC Operating Instructions
 
-See `AGENTS.md` (auto-loaded by OpenCode) for the authoritative reporting format and core rules — keeping a single copy there avoids this file and `AGENTS.md` drifting out of sync.
+See `AGENTS.md` (auto-loaded into every Coder session by reasonix-cli) for the authoritative reporting format and core rules — keeping a single copy there avoids this file and `AGENTS.md` drifting out of sync.
 
-Advisor reads OC's output from `opencode session export` / raw session storage (see `CLAUDE.md`), not terminal display text.
+Advisor reads OC's final result from the reasonix-cli `--output-format json` stdout (see `CLAUDE.md`'s "Coder command format"), not terminal display text.
 
 ---
 
@@ -271,6 +247,12 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ---
 
+
+## 14. Major architecture decision (2026-08-09): analysis moved to Language Coach
+
+Jprogram's scope ends at the finished canonical JSONL corpus. The analysis layer (deterministic analyzer utilities → evidence datasets → interpretation) moved to the separate Language Coach project, which reads this corpus but is not part of this repo. See `CLAUDE.md` ("Analysis is no longer a Jprogram Frozen Component") and `Shared\ECOSYSTEM_OVERVIEW.md`.
+
+---
 
 ## 15. Live Artifact Contract Trace (read-only grounding practice)
 
