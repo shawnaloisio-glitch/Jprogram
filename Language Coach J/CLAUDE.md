@@ -97,8 +97,11 @@ why it's needed, and its scope boundary, and get an explicit go-ahead —
 same standing rule as Jprogram, added 2026-08-08 at Owner's request.
 
 This project has no Frozen Components list yet (nothing built enough to
-freeze) — if/when one emerges, add it to `AGENTS.md` and reference it from
-the template the same way Jprogram does.
+freeze) — if/when one emerges, add it here in `CLAUDE.md` (per the framework
+convention: project rules live in CLAUDE.md, never only in AGENTS.md) and
+reference it from the Coder template the same way Jprogram does. If a task
+references a Frozen list before this one exists, treat that task-level list
+as authoritative for that task.
 
 ## Working style
 

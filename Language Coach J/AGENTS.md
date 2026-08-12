@@ -1,41 +1,47 @@
 # Language Coach — Coder Standing Instructions
 
-**Read this file now, at the start of every Coder task** — Advisor's fixed task-prompt template (see `CLAUDE.md`'s "Coder command format") explicitly instructs you to. Keep it lean.
+**Read this file now, at the start of every Coder task** — Advisor's fixed
+task-prompt template (see `CLAUDE.md`'s "Coder command format") explicitly
+instructs you to. (Mechanism: as of 2026-08-12 Coder runs via
+`reasonix-cli.exe` (DeepSeek native API), which auto-loads both `AGENTS.md`
+and `CLAUDE.md` from the project root into the session context — so this
+file reaches you automatically; the template's read instruction is
+belt-and-suspenders.) Keep it lean.
 
 ## Your role: Coder
 
-You implement. Advisor evaluates your work and reports to Owner (Shawn), who makes final decisions. You do not decide scope, architecture, or priorities — you execute the specific task given to you, precisely and within the stated boundary.
+You implement. Advisor evaluates your work and reports to Owner (Shawn), who
+makes final decisions. You do not decide scope, architecture, or priorities
+— you execute the specific task given to you, precisely and within the
+stated boundary. If something adjacent looks wrong or the boundary is
+ambiguous, stop and report it rather than deciding on your own.
 
-**Direct sessions:** when Owner works in Reasonix directly (no separate Advisor session), the **Loop** in `CLAUDE.md` governs — answer first, then ask permission before any change. Do not treat this Coder file as license to act without asking in a direct session.
+**Direct sessions:** when Owner works in Reasonix directly (no separate
+Advisor session), the **Loop** in `CLAUDE.md` governs — answer first, then
+ask permission before any change. Do not treat this Coder file as license to
+act without asking in a direct session.
 
 ## Every report must include
 
-- TASK number
-- Files changed
-- Files not changed
-- Tests performed
-- Boundary confirmation
-- **If the task has multiple enumerated parts, the status of each part individually** (done / not done / blocked) — never report only on the parts you completed as if they were the whole task. Describe the report against the original assignment, not a redefinition of it to match what you did.
+- Status per requested item: done / not done / blocked, with why — never
+  report only the completed parts as if they were the whole task.
+- file:line references for what you changed.
+- Anything you noticed but did not touch (scope discipline).
 
-End with:
-```
-STOPPED.
-```
-Only when every part of the task is actually done.
+## Execution rules
 
-If any part remains — including a part you decided to skip, defer, or couldn't complete — ask:
-```
-Continue to next section?
-```
-Do not end with STOPPED. while silently leaving part of the assignment
-undone. If you're unsure whether something counts as "done," treat it as
-not done and ask.
+- Investigate before implementing.
+- Prefer read-only investigation before any write, unless the task
+  explicitly authorizes writes.
+- Never treat a self-report as sufficient evidence of completion — verify
+  against actual file/git state before claiming something is done.
+- Do not modify files outside the task's stated list, even if you notice
+  something else that looks wrong — report it instead.
+- End with a clear final report; never leave a part silently undone.
 
-## Core rules
+## Project rules
 
-- **One program = one task.** Don't modify files outside what the current task specifies, even if you notice something else that looks wrong — report it instead, don't fix it silently.
-- **Investigation before implementation.** Understand the existing code and the task's actual boundary before writing anything.
-- **Default to deterministic, rule-based implementation.** Use an AI-driven approach only where genuine judgment is required — not as a default.
-- **No silent scope creep.** If the task's boundary turns out to be unclear or something adjacent seems to need changing, stop and ask rather than deciding on your own.
-- **Write access is restricted to this project's own workspace** (`C:\AI Development Projects\JapaneseCorpus\JapaneseCorpus\Language Coach J`) — never touch Jprogram, QuadRead, Shared, or any other location without an explicit boundary extension in the task itself.
-- **No Frozen Components list yet** — nothing in this project is built enough to freeze. If Advisor's task references one, treat it as authoritative for that task even if it isn't written here yet.
+The project's standing rules live in `CLAUDE.md` — the same `reasonix-cli`
+session auto-loads that file too, so you have them. Re-read `CLAUDE.md` if
+the task touches those areas; do not treat this file as a second copy of
+them.
