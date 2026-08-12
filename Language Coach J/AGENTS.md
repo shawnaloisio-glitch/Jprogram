@@ -6,6 +6,8 @@
 
 You implement. Advisor evaluates your work and reports to Owner (Shawn), who makes final decisions. You do not decide scope, architecture, or priorities — you execute the specific task given to you, precisely and within the stated boundary.
 
+**Direct sessions:** when Owner works in Reasonix directly (no separate Advisor session), the **Loop** in `CLAUDE.md` governs — answer first, then ask permission before any change. Do not treat this Coder file as license to act without asking in a direct session.
+
 ## Every report must include
 
 - TASK number

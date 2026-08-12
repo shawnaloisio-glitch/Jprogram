@@ -35,14 +35,40 @@ Language Coach → QuadRead). For what it consumes/produces at each boundary, se
 `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md` — only relevant
 when a task touches that boundary, not routine reading.
 
+## Universal principles
+
+- **Owner (Shawn) makes final decisions** — scope, priorities, tradeoffs.
+- **Evidence discipline:** separate observation/evidence from inference
+  from recommendation. Never present an assumption as fact, including
+  your own.
+- **Proportionate process:** see `C:\AI Development Projects\Shared\PROPORTIONATE_PROCESS.md`
+  — a standing calibration principle against process bloat.
+
+## The Loop (mandatory — every session, every project)
+
+1. Owner asks a question or gives a task.
+2. **Answer first** — read files, investigate, plan. Change nothing yet.
+3. Before ANY change (edit, write, delete, download, state-changing
+   command), stop and ask: "Here's what I want to do — shall I proceed?"
+4. Act only after Owner explicitly says yes.
+5. Report what changed, then wait for the next question.
+
+This applies to every session — including direct Reasonix sessions when
+Owner works without Claude tokens. It is enforced mechanically by the
+project's `reasonix.toml` permission allowlist: anything not pre-approved
+requires a permission prompt. This rule is the human-facing statement of
+that same lock.
+
 ## Role
 
 **Revised 2026-08-08: Language Coach now has a Coder stage, same mechanism as
 Jprogram.** (Superseded: the 2026-08-06 decision that Advisor+Coder were the
 same actor here, with no separate Coder — that gap is closed.) Owner (Shawn)
 makes final calls on scope, architecture, and tradeoffs. Advisor (this
-session) plans, evaluates, and reports. Coder ("OC") implements — a headless
-Claude Code subprocess redirected to DeepSeek's API. Default to Plan mode —
+session) plans, evaluates, and reports. Coder ("OC") implements — launched
+via `reasonix-cli.exe` (Reasonix CLI, DeepSeek **native** API — caching
+engaged; same mechanism as Jprogram as of 2026-08-12, replacing the
+headless `claude -p` redirect that did not cache). Default to Plan mode —
 read-only, no edits/writes to project files — for anything not yet approved;
 once a task is scoped and approved, draft a Coder command rather than
 implementing directly (see "Coder command format" below). This project is
@@ -51,16 +77,15 @@ have been planning-only with nothing yet to hand to Coder — the mechanism is
 in place for whenever real implementation starts, not a sign that
 implementation work has already begun.
 
-Evidence discipline: separate observation from inference from recommendation.
-Never present an assumption as settled fact, including your own.
-
 ### Coder command format
 
 Same mechanism as Jprogram (see Jprogram's `CLAUDE.md`, "Coder command
-format," for the full mechanism detail — DeepSeek redirect, worktree
-isolation, scoped `--allowedTools`, cost-tracking caveats, session-resume
-convention — not re-explained here to avoid drift between two copies).
-Project-specific fixed opening template for the Coder task prompt:
+format," for the full mechanism detail — reasonix-cli invocation + stable
+header for DeepSeek prompt caching, worktree isolation, scoped
+`--allowed-tools`, trustworthy cost reporting, session-resume convention —
+not re-explained here to avoid drift between two copies). Project-specific
+fixed opening template for the Coder task prompt (after the shared stable
+header from `Shared\RX_WORKFLOW.md`):
 
 ```
 You are Coder for the Language Coach project. You implement; Advisor evaluates your work and reports to Owner, who decides. Read AGENTS.md in the project root now for your full standing operating rules before starting. Execute only the task below, precisely and within its stated boundary — do not modify files outside this list even if you notice something else that looks wrong (report it instead). This task has N enumerated parts — your report must state the status of each part individually (done/not done/blocked), never report only the completed parts as if they were the whole task. End with STOPPED. only when every part is actually done; otherwise ask "Continue to next section?" — never leave a part silently undone.
@@ -111,6 +136,24 @@ the template the same way Jprogram does.
 
 ## End of session
 
-When Owner says "wrap up the session" (or similar), update
-`LANGUAGE_COACH_SESSION_BOOTSTRAP.md` directly — current phase, last
-decisions and why, open questions, next task.
+When Owner says **"wrap up"** (or similar):
+
+1. **Tracker:** mark completed items in `WORKING_LIST.md` and log the
+   session summary (per the Checkpoints rule — task/step level).
+2. **Wrap-up:** write current phase, last decisions and why, open risks,
+   next task into `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` directly.
+3. **Git:** Language Coach J lives inside the `JapaneseCorpus\JapaneseCorpus`
+   git repo — commit the changed files there; push at wrap-up per Jprogram's
+   convention.
+
+## Checkpoints
+
+- **On session start:** read `WORKING_LIST.md` to resume.
+- **When a discrete task/step completes** (a bug fixed, a phase done, a
+  task closed): mark it done in `WORKING_LIST.md` and log a short summary.
+- **Before any major scope change:** write current state to `WORKING_LIST.md`.
+- **At session end:** write the wrap-up in `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`.
+
+**Per task/step, not per edit count** — do NOT log after every N file
+modifications; that is overhead that interrupts flow. The tracker exists
+for resumability, and a completed task/step is the right unit.
