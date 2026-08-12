@@ -1,6 +1,20 @@
 # Japanese Corpus Pipeline
 ## Project Status and Continuation Document
 
+> ## ⚠️ RETIRED AS CURRENT-STATE (2026-08-12)
+>
+> **This document is historical.** It grew section-by-section and its
+> "Current State" block dates to 2026-08-04 — it is no longer the
+> current-state source of truth and should not be read as such.
+>
+> **The current-state home is `JPROGRAM_SESSION_BOOTSTRAP.md`** (per the
+> workspace convention: one authoritative source for current state). Read
+> that file for current architecture, phase, and open items.
+>
+> Everything below this banner is retained as the historical milestone
+> record only (git history also preserves it). Do not update this file as
+> current state; update the bootstrap instead.
+
 **Project root:** `C:\AI Development Projects\JapaneseCorpus\JapaneseCorpus`  
 **Current project name:** Japanese Corpus Pipeline  
 **Project version:** 1.0  

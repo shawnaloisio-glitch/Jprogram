@@ -112,7 +112,13 @@ Instead: apply ordinary git best practice by default (small logical commits, cle
 
 ### End of session / handoff
 
-When Owner says **"wrap up the session"** (or similar), update `JPROGRAM_SESSION_BOOTSTRAP.md` directly — current phase, last 3 decisions and why, open risks/unresolved questions, next immediate task — rather than producing a text block for Owner to carry into the next chat. (This replaces the old "make me a handoff package to paste" trigger, which doesn't fit a setup where session state is auto-read rather than pasted.)
+When Owner says **"wrap up the session"** (or similar), write a **new
+entry in `DONE.md`** — current phase, last 3 decisions and why, open
+risks/unresolved questions, next immediate task. **Never stack wrap-ups
+into `JPROGRAM_SESSION_BOOTSTRAP.md`** — the bootstrap holds current
+architecture/state only; `DONE.md` is the chronological session log.
+(This replaces the old "make me a handoff package to paste" trigger, which
+doesn't fit a setup where session state is auto-read rather than pasted.)
 
 **Branch-divergence check, every wrap-up (added 2026-08-07, after two branches sat unreconciled for multiple sessions and required a real, effortful merge to fix).** Run `git branch -a`. For any branch besides the current one and `master`, check how far it has diverged from `master` in both directions (`git log master..<branch> --oneline` and the reverse) and how long it has existed. Owner does not track git state themselves — this is Advisor's job to surface every time, unprompted, not just when asked. If a branch has real unreconciled divergence, flag it plainly in the wrap-up as an open item, the same as any other open risk — don't let it sit silently into another session.
 
@@ -178,11 +184,13 @@ Do not treat changes to these as routine — substantive logic changes to these 
 
 ## Checkpoints
 
-- **On session start:** read `WORKING_LIST.md` to resume.
+- **On session start:** read `WORKING_LIST.md` + `DONE.md` to resume.
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
-  task closed): mark it done in `WORKING_LIST.md` and log a short summary.
+  task closed): mark it done in `WORKING_LIST.md` and log a short summary
+  in `DONE.md`.
 - **Before any major scope change:** write current state to `WORKING_LIST.md`.
-- **At session end:** write the wrap-up in `JPROGRAM_SESSION_BOOTSTRAP.md`.
+- **At session end:** write the wrap-up as a **new entry in `DONE.md`**
+  (the log — never stack wrap-ups into `JPROGRAM_SESSION_BOOTSTRAP.md`).
 
 **Per task/step, not per edit count** — do NOT log after every N file
 modifications; that is overhead that interrupts flow. The tracker exists

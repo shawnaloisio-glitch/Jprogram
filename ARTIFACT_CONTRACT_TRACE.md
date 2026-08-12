@@ -5,8 +5,9 @@ pipeline chain — Source Registry through canonical JSONL — captured
 directly from real files on disk, not reconstructed from schema docs.
 Companion to the abstract contracts in `JPROGRAM_SESSION_BOOTSTRAP.md` §8;
 read this when you need to see what a real instance actually looks like,
-not just what it's supposed to look like. See bootstrap §15 for the
-practice this file supports and when to refresh it.
+not just what it's supposed to look like. See the "Live Artifact Contract
+Trace" practice section in `JPROGRAM_SESSION_BOOTSTRAP.md` (currently
+§15) for when to refresh it.
 
 **Last captured:** 2026-08-05, from `source_id =
 podcast_transcript_qc-test-001` (the QC Test Harness's standing fixture —
