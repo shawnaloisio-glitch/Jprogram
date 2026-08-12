@@ -77,7 +77,7 @@ Jikan library (`D:\Nihongo Jikan media\Transcripts\`) is raw HTML
 fragments with furigana annotations (`<ruby>漢字<rt>かんじ</rt></ruby>`),
 **no timestamps** — a genuinely different intake format from Natural
 Japanese's timed `.vtt` subtitles. The "transcript-cleanup pass" had been
-noted in Content Collection (`LIBRARY_STATUS.md`) but never started; this
+noted in Content Collection (`TODO.md`) but never started; this
 was that pass, scoped as Jprogram-side intake work.
 
 **Cleaner spec (Owner-confirmed 2026-08-08):** strip `<ruby>`/`<rt>` markup
