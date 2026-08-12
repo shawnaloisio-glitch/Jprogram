@@ -164,10 +164,3 @@ supports real Mode 2 (cross-corpus) work — the earlier "needs a real
 multi-episode set" blocker is resolved; remaining scaling work is the
 full-catalog import and the progression map.
 
-## Session closed 2026-08-08
-
-Wrapped per Owner's explicit request (context window full). All
-language-related findings from this session committed to files above;
-the local-AI/GPU/ROCm exploration tangent at the end was deliberately
-excluded — general curiosity, not project-relevant, not recorded.
-

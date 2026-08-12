@@ -144,7 +144,8 @@ When Owner says **"wrap up"** (or similar):
 1. **Tracker:** mark completed items in `WORKING_LIST.md` and log the
    session summary (per the Checkpoints rule — task/step level).
 2. **Wrap-up:** write current phase, last decisions and why, open risks,
-   next task into `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` directly.
+   next task as a new entry in `DONE.md` — never stack wrap-ups into
+   `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` (current state only).
 3. **Git:** Language Coach J lives inside the `JapaneseCorpus\JapaneseCorpus`
    git repo — commit the changed files there; push at wrap-up per Jprogram's
    convention.
@@ -155,7 +156,7 @@ When Owner says **"wrap up"** (or similar):
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
   task closed): mark it done in `WORKING_LIST.md` and log a short summary.
 - **Before any major scope change:** write current state to `WORKING_LIST.md`.
-- **At session end:** write the wrap-up in `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`.
+- **At session end:** write the wrap-up as a new entry in `DONE.md`.
 
 **Per task/step, not per edit count** — do NOT log after every N file
 modifications; that is overhead that interrupts flow. The tracker exists
