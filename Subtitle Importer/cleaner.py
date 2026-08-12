@@ -101,24 +101,38 @@ class VttParser(SubtitleParser):
     def parse(self, text):
         text = text.replace("\ufeff", "")
         lines = text.split("\n")
-        # Drop the optional WEBVTT header.
+        # Drop leading blank lines.
         while lines and lines[0].strip() == "":
             lines.pop(0)
+        # Drop the WebVTT header block: the WEBVTT line plus every
+        # metadata line after it (X-TIMESTAMP-MAP, NOTE, STYLE, REGION,
+        # custom X-* headers, ...) up to the first blank line, which ends
+        # the header per the WebVTT spec. The skip also stops at a cue
+        # timestamp, so a malformed file with no blank line after the
+        # header cannot lose its first cue.
         if lines and lines[0].strip().startswith("WEBVTT"):
             lines.pop(0)
+            while lines:
+                stripped = lines[0].strip()
+                if stripped == "" or _VTT_TIMESTAMP_RE.match(stripped):
+                    break
+                lines.pop(0)
         return self._parse_cues(lines)
 
     def _parse_cues(self, lines):
         cues = []
         buffer = []
-        for line in lines:
-            stripped = line.strip()
+        i = 0
+        n = len(lines)
+        while i < n:
+            stripped = lines[i].strip()
             if _VTT_TIMESTAMP_RE.match(stripped):
                 # A timestamp line: flush any pending cue, start a new one.
                 cue = self._clean_cue_text("\n".join(buffer))
                 if cue:
                     cues.append(cue)
                 buffer = []
+                i += 1
                 continue
             if stripped == "":
                 # Blank line separates cues; flush pending text.
@@ -126,11 +140,21 @@ class VttParser(SubtitleParser):
                 if cue:
                     cues.append(cue)
                 buffer = []
+                i += 1
+                continue
+            if not buffer and _VTT_BLOCK_START_RE.match(stripped):
+                # A WebVTT block construct (NOTE comment or STYLE block)
+                # between cues: skip to the next blank line, which ends it.
+                i += 1
+                while i < n and lines[i].strip() != "":
+                    i += 1
                 continue
             # Skip a bare sequence number that precedes a cue.
             if _SRT_INDEX_RE.match(stripped) and not buffer:
+                i += 1
                 continue
-            buffer.append(line)
+            buffer.append(lines[i])
+            i += 1
         cue = self._clean_cue_text("\n".join(buffer))
         if cue:
             cues.append(cue)
@@ -145,6 +169,11 @@ _SRT_TIMESTAMP_RE = re.compile(
 _VTT_TIMESTAMP_RE = re.compile(
     r"^\d{1,2}:\d{2}(:\d{2})?\.\d{3}\s*-->\s*"
     r"\d{1,2}:\d{2}(:\d{2})?\.\d{3}")
+
+# WebVTT block constructs that appear between cues: a NOTE comment line
+# (optionally followed by comment text) or a STYLE block keyword on its
+# own line. Both run to the next blank line and are not dialogue.
+_VTT_BLOCK_START_RE = re.compile(r"^(NOTE(?: |$)|STYLE$)")
 
 
 def _split_srt_blocks(text):

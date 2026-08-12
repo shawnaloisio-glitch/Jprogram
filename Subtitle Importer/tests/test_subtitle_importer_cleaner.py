@@ -188,6 +188,96 @@ def _():
     check("keeps text", "おはよう。" in cleaned)
 
 
+@test("vtt: X-TIMESTAMP-MAP header line stripped")
+def _():
+    content = """WEBVTT
+X-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:130000
+
+00:00:01.000 --> 00:00:02.000
+こんにちは。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("no timestamp-map line", "X-TIMESTAMP-MAP" not in cleaned)
+    check("no webvtt line", "WEBVTT" not in cleaned)
+    check("exact output", cleaned == "こんにちは。")
+
+
+@test("vtt: whole header block stripped (unknown metadata lines)")
+def _():
+    content = """WEBVTT
+X-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:130000
+X-GENERATOR:Some Tool 1.0
+NOTE auto-generated file
+
+00:00:01.000 --> 00:00:02.000
+こんにちは。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("no timestamp-map", "X-TIMESTAMP-MAP" not in cleaned)
+    check("no generator", "X-GENERATOR" not in cleaned)
+    check("no note", "auto-generated" not in cleaned)
+    check("exact output", cleaned == "こんにちは。")
+
+
+@test("vtt: no header at all (starts with a cue) parses unchanged")
+def _():
+    content = """00:00:01.000 --> 00:00:02.000
+こんにちは。
+
+00:00:03.000 --> 00:00:04.000
+さようなら。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("exact output", cleaned == "こんにちは。\n\nさようなら。")
+
+
+@test("vtt: malformed header without blank line keeps the first cue")
+def _():
+    content = """WEBVTT
+X-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:130000
+00:00:01.000 --> 00:00:02.000
+こんにちは。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("no timestamp-map", "X-TIMESTAMP-MAP" not in cleaned)
+    check("exact output", cleaned == "こんにちは。")
+
+
+@test("vtt: NOTE comment block between cues stripped")
+def _():
+    content = """WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+こんにちは。
+
+NOTE this is a comment
+
+00:00:03.000 --> 00:00:04.000
+さようなら。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("no note text", "this is a comment" not in cleaned)
+    check("exact output", cleaned == "こんにちは。\n\nさようなら。")
+
+
+@test("vtt: STYLE block between cues stripped")
+def _():
+    content = """WEBVTT
+
+00:00:01.000 --> 00:00:02.000
+こんにちは。
+
+STYLE
+::cue { color: red }
+
+00:00:03.000 --> 00:00:04.000
+さようなら。
+"""
+    cleaned = cleaner.clean_text(content, "vtt")
+    check("no style block", "::cue" not in cleaned and "STYLE" not in cleaned)
+    check("exact output", cleaned == "こんにちは。\n\nさようなら。")
+
+
 # ============================================================
 # Shared cleaning rules
 # ============================================================
