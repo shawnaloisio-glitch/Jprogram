@@ -4,7 +4,34 @@ Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standin
 
 **Note:** structure, section cross-references, entry points, and Frozen Components below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs.
 
-**Small, concrete pending items** (things to check/decide/fix that aren't major scope) go in `WORKING_LIST.md`, not here — keeps this file about architecture/state/major tasks only.
+**Small, concrete pending items** (things to check/decide/fix that aren't
+major scope) live in this file's **Open items** section below (folded from
+the retired `WORKING_LIST.md`, 2026-08-13 — resolved history archived at
+`Archive/WORKING_LIST.md` + `Archive/WORKING_LIST_Resolved.md`). The
+numbered sections above hold architecture/state/major tasks only.
+
+---
+
+## Open items (folded from `WORKING_LIST.md`, 2026-08-13)
+
+- **Processor/analysis output metadata (possible future need)** — `origin`
+  may shift to domain/topic as a *separate* tag (not a replacement);
+  candidate tags: domain/topic, register, format/modality,
+  creator/channel — human-recorded at ingestion. Not a task yet; revisit
+  when real processor/analysis data organization becomes a live problem.
+  (Full discussion in `Archive/WORKING_LIST.md`.)
+- **`sentence_index` "no gaps" not validated** — `response_validator.py`
+  checks strictly-ascending only; `PARSER_OUTPUT_SPEC.md:253` requires no
+  gaps. Confirmed zero current functional impact (inert metadata — nothing
+  reads it). Deliberately deferred per Owner; revisit if anything starts
+  reading `sentence_index` or the UI/user-issue backlog clears. Frozen
+  Component: any fix auto-triggers audit.
+- **Tkinter GUI state errors** — console output on specific UI
+  interactions; not reproducible from an agent session. **Blocked on Owner
+  pasting the actual traceback.**
+- **Analysis tab can't analyze multiple files at once** — single-file only.
+- **Import-from-subtitle workflow is clunky** — Owner flagged for design
+  thought, not an immediate fix.
 
 ---
 

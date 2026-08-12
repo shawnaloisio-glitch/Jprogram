@@ -2,9 +2,10 @@
 
 Reference data for the planned deterministic expression-detection rebuild
 (`Data Processor/deterministic_parser.py`'s `expressions` field, currently
-always `[]` by design — see `WORKING_LIST.md`'s "Rebuild grammar-pattern
-(`expressions`) detection" entry for the full blast-radius/planning
-writeup). Not wired into any pipeline code yet — this is prework staging
+always `[]` by design — the "Grammar discovery" item in Language Coach J's
+bootstrap Open items is the planning home; full blast-radius writeup
+archived at `Language Coach J/Archive/WORKING_LIST.md`). Not wired into
+any pipeline code yet — this is prework staging
 the pattern-source data before real detection logic is built.
 
 ## Source and license
@@ -59,7 +60,7 @@ One JSON object per line, sorted by `(score, surface)`:
   no numeric band, or `999` when JMdict records no frequency signal at all
   for that entry. **1,338 of the 35,633 entries have a real signal**
   (score < 999) — this is the natural "smallest set first" slice for a
-  phased build (see `WORKING_LIST.md`'s phased plan).
+  phased build (see the phased plan in `Language Coach J/Archive/WORKING_LIST.md`).
 
 ## Why base-form matching matters
 

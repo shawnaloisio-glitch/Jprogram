@@ -4,7 +4,7 @@ A running log of things learned from actually running the value criteria
 (design spec §9) against real data — not architecture decisions, not
 open questions to resolve, just accumulated empirical findings and edge
 cases discovered along the way. Grows over time; organize by topic as it
-does. Distinct from `WORKING_LIST.md` (the open-item queue) and the
+does. Distinct from the bootstrap's Open items (the open-item queue) and the
 design spec (architecture/decisions) — this is specifically "things we
 learned by actually doing it."
 

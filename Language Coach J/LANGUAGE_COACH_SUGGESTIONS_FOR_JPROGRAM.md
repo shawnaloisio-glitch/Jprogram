@@ -1,8 +1,8 @@
-# Suggestions for Jprogram's WORKING_LIST.md
+# Suggestions for Jprogram (queue retired 2026-08-13)
 
 Compiled 2026-08-07 from a Language Coach session — surfaced while
 reviewing Jprogram's schema and current state from the consumer side.
-Owner: add whichever of these you want to Jprogram's own `WORKING_LIST.md`
+Owner: add whichever of these you want to Jprogram's own the bootstrap's Open items
 when back in that project. Not written there directly — Language Coach's
 write access doesn't extend to Jprogram.
 

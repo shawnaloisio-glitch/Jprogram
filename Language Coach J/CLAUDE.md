@@ -110,7 +110,7 @@ as authoritative for that task.
   work through a "1000 mile" overview with Owner, the same way QuadRead's outline
   was built**, before treating anything as settled.
 - Don't invent architecture decisions to fill gaps — surface open questions
-  instead (see `WORKING_LIST.md`) and let Owner decide.
+  instead (see the bootstrap's Open items) and let Owner decide.
 - Coder/OC pipeline exists as of 2026-08-08 (see Role above) — same DeepSeek
   mechanism as Jprogram. In practice unused so far since this project hasn't
   reached implementation yet.
@@ -141,8 +141,9 @@ as authoritative for that task.
 
 When Owner says **"wrap up"** (or similar):
 
-1. **Tracker:** mark completed items in `WORKING_LIST.md` and log the
-   session summary (per the Checkpoints rule — task/step level).
+1. **Tracker:** tick items off in `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`'s
+   Open items and log the session summary (per the Checkpoints rule —
+   task/step level).
 2. **Wrap-up:** write current phase, last decisions and why, open risks,
    next task as a new entry in `DONE.md` — never stack wrap-ups into
    `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` (current state only).
@@ -152,10 +153,13 @@ When Owner says **"wrap up"** (or similar):
 
 ## Checkpoints
 
-- **On session start:** read `WORKING_LIST.md` to resume.
+- **On session start:** read `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` +
+  `DONE.md` to resume.
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
-  task closed): mark it done in `WORKING_LIST.md` and log a short summary.
-- **Before any major scope change:** write current state to `WORKING_LIST.md`.
+  task closed): tick it off in the bootstrap's Open items and log a short
+  summary in `DONE.md`.
+- **Before any major scope change:** write current state to
+  `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`.
 - **At session end:** write the wrap-up as a new entry in `DONE.md`.
 
 **Per task/step, not per edit count** — do NOT log after every N file

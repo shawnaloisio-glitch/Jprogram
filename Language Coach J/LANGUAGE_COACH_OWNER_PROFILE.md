@@ -2,7 +2,7 @@
 
 Durable context about Shawn's actual Japanese-acquisition history and
 current state — distinct from `LANGUAGE_COACH_DESIGN_SPEC.md` (project
-architecture) and `WORKING_LIST.md` (open items). This is input data the
+architecture) and the bootstrap's Open items (open items). This is input data the
 project serves, not a decision about the project itself. Expected to be
 updated as Owner's level changes, not just at wrap-up.
 
@@ -261,5 +261,5 @@ frequency rank) before stopping.
   reading than to unknown — **not** a negative signal.
 - **Rows 353–1,374** — not assessed yet, no signal either way.
 
-See `WORKING_LIST.md` for the caveat on the underlying vocab-count data
+See the bootstrap's Open items for the caveat on the underlying vocab-count data
 itself (NotebookLM-derived, unverified against a real parser).

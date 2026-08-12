@@ -149,7 +149,7 @@ report trustworthy** — treat it as mandatory, not optional:
   the cost math for the Coder redirect when that lands.
 - nijapanese.com access ends ~2026-09-25 — **content extraction is already
   complete locally** (904/906 text pieces across all four levels, excl.
-  Yuki; see `WORKING_LIST.md`), so this is no longer a data-preservation
+  Yuki; see the bootstrap's Open items), so this is no longer a data-preservation
   deadline; it only affects re-fetching/reconciliation against the live
   site after the cutoff.
 

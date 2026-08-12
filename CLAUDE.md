@@ -180,15 +180,17 @@ Do not treat changes to these as routine — substantive logic changes to these 
 - **The canonical corpus is the single source of truth.** Analyzers only read it, never write to it.
 - **Silent scope creep is a failure.** If OC's diff touches files outside what was asked, flag it explicitly — do not let it pass because it "looked fine."
 - **Your shell/bash tool may be sandboxed, isolated from Owner's real system, regardless of what the environment setting claims** (confirmed twice — full incidents in `AI_Coding_Environment_Design_Spec.md` §7). If you cannot find something Owner says should exist, or you're about to report on real system/environment state, say so explicitly and ask Owner to verify directly in their own terminal rather than concluding it doesn't exist or reporting confident success either way.
-- **Your shell tool's own session can also silently go stale mid-conversation, even when it isn't sandboxed** (confirmed 2026-08-05, `WORKING_LIST.md`). Don't trust a bare `echo $VAR`-style check against this tool's shell as current truth for anything persistent (env var, file state) once a conversation has run long — re-derive it from a source that can't be stale (e.g. on Windows, `powershell.exe -Command "[System.Environment]::GetEnvironmentVariable('NAME','User')"` reads the real persistent store directly) before concluding something is broken on Owner's end.
+- **Your shell tool's own session can also silently go stale mid-conversation, even when it isn't sandboxed** (confirmed 2026-08-05). Don't trust a bare `echo $VAR`-style check against this tool's shell as current truth for anything persistent (env var, file state) once a conversation has run long — re-derive it from a source that can't be stale (e.g. on Windows, `powershell.exe -Command "[System.Environment]::GetEnvironmentVariable('NAME','User')"` reads the real persistent store directly) before concluding something is broken on Owner's end.
 
 ## Checkpoints
 
-- **On session start:** read `WORKING_LIST.md` + `DONE.md` to resume.
+- **On session start:** read `JPROGRAM_SESSION_BOOTSTRAP.md` + `DONE.md`
+  to resume.
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
-  task closed): mark it done in `WORKING_LIST.md` and log a short summary
-  in `DONE.md`.
-- **Before any major scope change:** write current state to `WORKING_LIST.md`.
+  task closed): tick it off in `JPROGRAM_SESSION_BOOTSTRAP.md`'s Open
+  items and log a short summary in `DONE.md`.
+- **Before any major scope change:** write current state to
+  `JPROGRAM_SESSION_BOOTSTRAP.md`.
 - **At session end:** write the wrap-up as a **new entry in `DONE.md`**
   (the log — never stack wrap-ups into `JPROGRAM_SESSION_BOOTSTRAP.md`).
 

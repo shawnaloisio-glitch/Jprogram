@@ -237,7 +237,7 @@ Practical implications:
 - The interim self-assessment approach (§8, `Shawn/teppei_1-50_self_assessment.tsv`)
   was built from NotebookLM's **lemma**-grouped baseline — now the wrong
   granularity per this decision. Not redone yet; flagged in
-  `WORKING_LIST.md`.
+  the bootstrap's Open items.
 
 ### 8b. Reconciling the two known-word datasets (2026-08-07)
 
@@ -286,7 +286,7 @@ available scale, surface-form-aligned per §8a), with **level ≥4 as the
 "known" threshold** — while acknowledging it will under-count real
 knowledge acquired outside LingQ. The self-assessment approach is better
 suited as an occasional calibration/spot-check than as the primary source.
-Building the actual tooling around this is tracked in `WORKING_LIST.md`.
+Building the actual tooling around this is tracked in the bootstrap's Open items.
 
 **Grammar known-state tracking is explicitly deferred** (confirmed
 2026-08-07) — not attempted until real corpus/learning-history data exists
@@ -436,7 +436,7 @@ detail.
   | Fine-grained numeric `difficulty` | **Not added to Jprogram's schema** — source-specific to nijapanese, and nijapanese will end up a small fraction of the library, so it doesn't belong in a universal field. Language Coach instead cross-references `Content Collection/nijapanese/catalog/` directly when working with nijapanese content. |
   | Teacher identity (`teacherIds`) | **Skipped** — also too site-specific (only nijapanese has multiple teachers under one platform). The original motivating concern (excluding Yuki's content) turns out to already be enforced upstream in `Content Collection`, before anything reaches Jprogram — no loss from skipping this. |
   | Title | **No new field** — nijapanese is standalone-identity (not collection+episode as first assumed), so its existing `source_name` field gets renamed to `title` and directly covers this. For true collection-type series (One Piece, TV series), the collection's `display_name` + episode number serves as the effective title; whether a distinct per-episode title is also needed there is still undecided ("will need more thought," per Owner). |
-  | Traceability from a Jprogram source back to its original catalog row | **Turned out to be a non-issue.** Jprogram only ever ingests from the already-downloaded local catalog snapshot, not a live query — so even though nijapanese will likely reindex/recompile after Yuki's ~800 videos leave the platform, that never needs reconciling against, since Owner loses site access entirely after ~2026-09-25 anyway (see `WORKING_LIST.md`). |
+  | Traceability from a Jprogram source back to its original catalog row | **Turned out to be a non-issue.** Jprogram only ever ingests from the already-downloaded local catalog snapshot, not a live query — so even though nijapanese will likely reindex/recompile after Yuki's ~800 videos leave the platform, that never needs reconciling against, since Owner loses site access entirely after ~2026-09-25 anyway (see the bootstrap's Open items). |
   | Season indicator | **Real gap, added.** Collection-type identity was flat `collection_id`+`episode` with no season field — doesn't work for real multi-season TV series. Now part of the collection schema (alongside `origin`→renamed `creator`, e.g. NIJ/NHG/NHK/ANIME as platform-level tags, not individual-teacher — consistent with skipping teacher identity above). |
 
   Net effect: no field was added to Jprogram's schema for nijapanese-

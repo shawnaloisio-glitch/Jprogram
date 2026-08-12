@@ -12,7 +12,7 @@ reconstructed from Owner's own journey description in
 `LANGUAGE_COACH_OWNER_PROFILE.md`, not a per-item/per-episode log with
 dates. A per-item logging tool (Owner floated this 2026-08-07 — "maybe even
 make a logging tool") would upgrade this to real entry-by-entry tracking
-going forward; see `WORKING_LIST.md`. Until that exists, update this file
+going forward; see the bootstrap's Open items. Until that exists, update this file
 by hand as new consumption happens or gets described.
 
 ## Flags (confirmed 2026-08-07)
