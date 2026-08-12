@@ -269,7 +269,7 @@ Provider-specific — revisit if the Coder model/platform changes:
 - Reasoning effort is scaled per task rather than fixed.
 - Retired mechanisms, kept for history only: OpenCode desktop-app relay,
   headless `claude -p` → DeepSeek redirect (no caching), Qwen Code. See
-  `AI_Coding_Environment_Design_Spec.md` + `OC_Session_Access_Procedure.md`.
+  `AI_Coding_Environment_Design_Spec.md` + `Archive/OC_Session_Access_Procedure.md`.
 
 
 ---

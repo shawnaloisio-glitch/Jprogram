@@ -143,7 +143,7 @@ When evaluating OC's work, primary evidence is:
 
 An agent's own narrative summary of its work (including OC's) is secondary — useful for orientation, but treated as a claim to verify against the above, never accepted as evidence on its own.
 
-**Capture OC's output from its own structured JSON result, not a narrative summary.** `--output-format json` returns the full result, `session_id`, and usage/cost fields directly to stdout, no digging required. (Retired OpenCode-relay session-storage details, kept for reference in case OpenCode is ever revived: `OC_Session_Access_Procedure.md`.)
+**Capture OC's output from its own structured JSON result, not a narrative summary.** `--output-format json` returns the full result, `session_id`, and usage/cost fields directly to stdout, no digging required. (Retired OpenCode-relay session-storage details, kept for reference in case OpenCode is ever revived: `Archive/OC_Session_Access_Procedure.md`.)
 
 ## Mandatory report format (Advisor only — Auditor does not produce this field)
 

@@ -91,7 +91,7 @@ Cleaner execution and pipeline orchestration are implemented (Production
 Manager runs the stage programs). The Application Shell (`app.py`) provides the
 Sources / Processing UI. The Source Package workflow and Handoff
 (`Source Builder\source_package.py`, `Source Builder\handoff.py`) create the
-intake artifacts from saved sources. See `ARCHITECTURE_CURRENT.md` and
+intake artifacts from saved sources. See `Archive/ARCHITECTURE_CURRENT.md` and
 `SOURCE_PACKAGE_HANDOFF.md`.
 
 Architecture: Source creation → Source Package → Handoff → Cleaner → Data Processor → Canonical Corpus. (Downstream analysis is a separate project, Language Coach — see `C:\AI Development Projects\Shared\ECOSYSTEM_OVERVIEW.md`.)
