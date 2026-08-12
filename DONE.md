@@ -2,7 +2,7 @@
 
 Session wrap-up log — one entry per session, oldest first. This is the
 **log**; current-state (architecture, phase, open items) lives in
-`JPROGRAM_SESSION_BOOTSTRAP.md`, which holds ONLY the current state.
+`TODO.md`, which holds ONLY the current state.
 Per the shared convention (2026-08-12): write a new entry here at each
 session wrap-up; never stack wrap-ups into the bootstrap.
 
@@ -117,7 +117,7 @@ authorization and is Frozen-Component territory.
 6. **Uncommitted working tree** (Owner freeze: no changes until Claude
    back): `Subtitle Importer/cleaner.py`,
    `Subtitle Importer/tests/test_subtitle_importer_cleaner.py`,
-   `WORKING_LIST.md`, `JPROGRAM_SESSION_BOOTSTRAP.md` (+ this file). No
+   `WORKING_LIST.md`, `TODO.md` (+ this file). No
    commit/push made.
 7. **Process findings for re-imports (operational, learned this session):**
    - Re-import of an existing source requires deleting ALL artifact types

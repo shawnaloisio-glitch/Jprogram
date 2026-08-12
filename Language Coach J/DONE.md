@@ -1,7 +1,7 @@
 # DONE — Language Coach
 
 Session wrap-up log — one entry per session, oldest first. This is the
-**log**; current state lives in `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`, which
+**log**; current state lives in `TODO.md`, which
 holds ONLY current state (never stack wrap-ups into it).
 
 ---

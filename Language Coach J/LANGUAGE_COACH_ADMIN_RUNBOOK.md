@@ -3,7 +3,7 @@
 Operations guide for the **finished** Language Coach system, written from
 the administrator's seat (drafted 2026-08-08 by Coder per Owner's request,
 as a prospective frame — the project is still mid-build; see
-`LANGUAGE_COACH_SESSION_BOOTSTRAP.md` for actual current state). Distinct
+`TODO.md` for actual current state). Distinct
 from the other roles: Owner consumes content and makes calls; Advisor
 designs/evaluates; Coder builds. **The admin keeps data fresh and the
 machinery trustworthy** so every working session starts from accurate
@@ -36,7 +36,7 @@ Calibration: hobby-project, not enterprise rigor. Cadences below are
 | Corpus (parsed) | Jprogram output (e.g. `clean_text_teppeibeginner_ep004.jsonl`) | Jprogram processing | Only ep004 currently trustworthy; ep1 old/DeepSeek, ep2-3 failed |
 | Consumption log | `LANGUAGE_COACH_CONSUMPTION_LOG.md` | Hand-maintained aggregates | Not per-item; con-teppei 28-vs-50 discrepancy unresolved |
 | Findings log | `LANGUAGE_COACH_VALUE_CRITERIA_FINDINGS.md` | Every new production edge case | Read before trusting any raw value report |
-| Session state | `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` | Each wrap-up | Refresh at session close |
+| Session state | `TODO.md` | Each wrap-up | Refresh at session close |
 
 ## 3. Recurring operations
 

@@ -2,7 +2,7 @@
 
 This file is auto-loaded every session. Keep it lean — rules only, not
 explanation. Session-specific state (current architecture, next task, open
-items) lives in `JPROGRAM_SESSION_BOOTSTRAP.md` — **read that file at the
+items) lives in `TODO.md` — **read that file at the
 start of every session, in addition to this one.**
 
 **Owner communication convention (2026-08-10):** precede
@@ -108,14 +108,14 @@ Owner has minimal git knowledge by design — git was added originally so a diff
 
 Instead: apply ordinary git best practice by default (small logical commits, clear plain-language messages focused on *why*, sensible branch names), and when asking for a go-ahead, explain *what* you'd do and *why* in plain terms — not a menu of git options.
 
-**Commits are pre-approved by default (revised 2026-08-06)** — once a change has passed Advisor's own evaluation (diff review, independent test re-run), commit without asking each time. **Pushes default to end-of-session/day wrap-up**, bundled with the `JPROGRAM_SESSION_BOOTSTRAP.md` wrap-up housekeeping. Outside that default, proactively recommend a push when the moment warrants it (a risky next change coming up, a natural milestone, work Owner would want backed up before a break) — surface it as a recommendation and wait for a go-ahead rather than pushing silently. Push stays a step above commit in friction level: local commits are fully reversible and low-stakes; a push is shared, visible state. (This replaces the prior rule requiring an explicit ask for both commit and push, every time.)
+**Commits are pre-approved by default (revised 2026-08-06)** — once a change has passed Advisor's own evaluation (diff review, independent test re-run), commit without asking each time. **Pushes default to end-of-session/day wrap-up**, bundled with the `TODO.md` wrap-up housekeeping. Outside that default, proactively recommend a push when the moment warrants it (a risky next change coming up, a natural milestone, work Owner would want backed up before a break) — surface it as a recommendation and wait for a go-ahead rather than pushing silently. Push stays a step above commit in friction level: local commits are fully reversible and low-stakes; a push is shared, visible state. (This replaces the prior rule requiring an explicit ask for both commit and push, every time.)
 
 ### End of session / handoff
 
 When Owner says **"wrap up the session"** (or similar), write a **new
 entry in `DONE.md`** — current phase, last 3 decisions and why, open
 risks/unresolved questions, next immediate task. **Never stack wrap-ups
-into `JPROGRAM_SESSION_BOOTSTRAP.md`** — the bootstrap holds current
+into `TODO.md`** — the bootstrap holds current
 architecture/state only; `DONE.md` is the chronological session log.
 (This replaces the old "make me a handoff package to paste" trigger, which
 doesn't fit a setup where session state is auto-read rather than pasted.)
@@ -184,15 +184,15 @@ Do not treat changes to these as routine — substantive logic changes to these 
 
 ## Checkpoints
 
-- **On session start:** read `JPROGRAM_SESSION_BOOTSTRAP.md` + `DONE.md`
+- **On session start:** read `TODO.md` + `DONE.md`
   to resume.
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
-  task closed): tick it off in `JPROGRAM_SESSION_BOOTSTRAP.md`'s Open
+  task closed): tick it off in `TODO.md`'s Open
   items and log a short summary in `DONE.md`.
 - **Before any major scope change:** write current state to
-  `JPROGRAM_SESSION_BOOTSTRAP.md`.
+  `TODO.md`.
 - **At session end:** write the wrap-up as a **new entry in `DONE.md`**
-  (the log — never stack wrap-ups into `JPROGRAM_SESSION_BOOTSTRAP.md`).
+  (the log — never stack wrap-ups into `TODO.md`).
 
 **Per task/step, not per edit count** — do NOT log after every N file
 modifications; that is overhead that interrupts flow. The tracker exists

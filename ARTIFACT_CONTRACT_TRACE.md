@@ -3,10 +3,10 @@
 Purpose: a concrete, currently-verified example of every artifact in the
 pipeline chain — Source Registry through canonical JSONL — captured
 directly from real files on disk, not reconstructed from schema docs.
-Companion to the abstract contracts in `JPROGRAM_SESSION_BOOTSTRAP.md` §8;
+Companion to the abstract contracts in `TODO.md` §8;
 read this when you need to see what a real instance actually looks like,
 not just what it's supposed to look like. See the "Live Artifact Contract
-Trace" practice section in `JPROGRAM_SESSION_BOOTSTRAP.md` (currently
+Trace" practice section in `TODO.md` (currently
 §15) for when to refresh it.
 
 **Last captured:** 2026-08-05, from `source_id =

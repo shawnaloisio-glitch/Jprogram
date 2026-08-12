@@ -5,7 +5,7 @@ This file is auto-loaded every session. Keep it lean — rules only, not explana
 **Owner communication convention (2026-08-10):** precede important-but-non-blocking information with 🟢, anything Owner must read or acknowledge with 🔴, and any copy-paste block with 🟡.
 
 Session-specific state (current scope, open decisions, next task) lives in
-`LANGUAGE_COACH_SESSION_BOOTSTRAP.md` — **read that file at the start of every
+`TODO.md` — **read that file at the start of every
 session, in addition to this one.** Owner's actual language-learning history,
 current exposure levels, and modality-specific calibration notes live in
 `LANGUAGE_COACH_OWNER_PROFILE.md` — **read that file too whenever a task
@@ -141,25 +141,25 @@ as authoritative for that task.
 
 When Owner says **"wrap up"** (or similar):
 
-1. **Tracker:** tick items off in `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`'s
+1. **Tracker:** tick items off in `TODO.md`'s
    Open items and log the session summary (per the Checkpoints rule —
    task/step level).
 2. **Wrap-up:** write current phase, last decisions and why, open risks,
    next task as a new entry in `DONE.md` — never stack wrap-ups into
-   `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` (current state only).
+   `TODO.md` (current state only).
 3. **Git:** Language Coach J lives inside the `JapaneseCorpus\JapaneseCorpus`
    git repo — commit the changed files there; push at wrap-up per Jprogram's
    convention.
 
 ## Checkpoints
 
-- **On session start:** read `LANGUAGE_COACH_SESSION_BOOTSTRAP.md` +
+- **On session start:** read `TODO.md` +
   `DONE.md` to resume.
 - **When a discrete task/step completes** (a bug fixed, a phase done, a
   task closed): tick it off in the bootstrap's Open items and log a short
   summary in `DONE.md`.
 - **Before any major scope change:** write current state to
-  `LANGUAGE_COACH_SESSION_BOOTSTRAP.md`.
+  `TODO.md`.
 - **At session end:** write the wrap-up as a new entry in `DONE.md`.
 
 **Per task/step, not per edit count** — do NOT log after every N file

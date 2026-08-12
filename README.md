@@ -564,4 +564,4 @@ This project is built with AI assistance under an Owner/Advisor/Coder/Auditor pr
 
 (`QWEN.md`, the original cross-vendor Auditor design, is retired — see `Archive/QWEN.md`.)
 
-Current project state, architecture, and next planned work live in `JPROGRAM_SESSION_BOOTSTRAP.md`, refreshed each session.
+Current project state, architecture, and next planned work live in `TODO.md`, refreshed each session.
