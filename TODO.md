@@ -49,10 +49,25 @@ numbered sections above hold architecture/state/major tasks only.
   different filename), so no real data was lost this time, but the
   mechanism has no protection against a genuine non-duplicate collision.
   Orphaned sidecar pairs from these 3 cleaned up same session (see
-  `DONE.md`). **Fix not yet designed/implemented** — options: give
-  `derive_source_id` a real uniqueness check (reject or auto-sequence on
-  collision), or route standalone imports through the same
-  `next_auto_sequence` mechanism collections already use.
+  `DONE.md`). **Confirmed worse in the follow-up `intermediate` import
+  (556 files, same session):** one collision was a genuine content
+  conflict (different sha256 — two real, distinct "Guess the Movie" quiz
+  episodes from different creators/hosts colliding on the same slug) and
+  was correctly caught and reported as `[FAIL handoff]`, requiring manual
+  resolution (re-staged and re-imported under a disambiguated filename to
+  recover it). But a second collision in the *same run* (two filename
+  variants of "Nodame Cantabile") produced **no failure output at all** —
+  both workers reported `[IMPORTED]` successfully even though only one
+  survived in the Registry/corpus. Content happened to be identical
+  (harmless this time), but the silent case proves the sha256-mismatch
+  check is not safe against two parallel workers racing on the same
+  derived `source_id` for *different* files simultaneously — a
+  same-content collision and a genuinely-different-content collision can
+  both pass through undetected depending on timing, not just content.
+  **Fix not yet designed/implemented** — options: give `derive_source_id`
+  a real uniqueness check (reject or auto-sequence on collision) with
+  cross-worker locking/atomicity, or route standalone imports through the
+  same `next_auto_sequence` mechanism collections already use.
 - **Processor/analysis output metadata (possible future need)** — `origin`
   may shift to domain/topic as a *separate* tag (not a replacement);
   candidate tags: domain/topic, register, format/modality,
