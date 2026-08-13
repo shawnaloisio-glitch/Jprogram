@@ -5,8 +5,7 @@ pipeline end-to-end (Source Builder birth-certificate creation through
 Corpus Builder and the canonical JSONL corpus), using the actual
 production functions and scripts -- not a reimplementation or a mock.
 The `check` stage scans the canonical corpus records directly (no
-Analysis/ module dependency, since 2026-08-09 -- see
-`CLAUDE.md`'s Frozen Components note).
+Analysis/ module dependency, since 2026-08-09).
 
 Because the test source is hand-authored with deliberately controlled
 word placement, the expected analyzer output is known in advance

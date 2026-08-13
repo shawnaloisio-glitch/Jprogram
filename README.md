@@ -49,11 +49,11 @@ Job Builder
 Request Builder
       │
       ▼
-DeepSeek Parser
-      (deepseek-v4-flash, non-thinking,
-       response_format json_object,
-       max_tokens, hybrid fixed-position-array
-       intermediate format)
+Deterministic Parser
+      (GiNZA/spaCy — deterministic_parser.py;
+       hybrid fixed-position-array
+       intermediate format;
+       DeepSeek LLM path retired)
       │
       ▼
 Response Validator
@@ -264,7 +264,7 @@ The processor preserves raw linguistic evidence.
 
 The analyzer performs statistical analysis and higher-level corpus analysis.
 
-The processor must NOT calculate frequency, dispersion, clustering, inter-occurrence distance, or other statistics. It must preserve enough evidence that future Python analyzers can calculate those measurements without rerunning DeepSeek.
+The processor must NOT calculate frequency, dispersion, clustering, inter-occurrence distance, or other statistics. It must preserve enough evidence that future Python analyzers can calculate those measurements without rerunning the parser.
 
 ## Approved Corpus Evidence Layers
 
@@ -445,7 +445,7 @@ These measurements MUST NOT be calculated by the processor.
 
 ## Architectural Boundary
 
-The DeepSeek parser:
+The deterministic parser (GiNZA/spaCy; DeepSeek LLM path retired):
 
 Japanese source → interprets it → preserves sentence/word/lexical-form/grammar-chunk/expression evidence → records relationships and positions → saves corpus data
 
@@ -560,7 +560,7 @@ while minimizing API cost and maximizing reproducibility.
 This project is built with AI assistance under an Owner/Advisor/Coder/Auditor protocol. Two files carry standing operating instructions and are auto-loaded by their respective tools — they are not duplicated here:
 
 - `CLAUDE.md` — Advisor and Auditor instructions (Claude Code). Auditor is filled by a fresh Claude Code session/subagent, not a separate vendor — see that file for why.
-- `AGENTS.md` — Coder instructions (OpenCode)
+- `AGENTS.md` — Coder instructions (Coder runs via `reasonix-cli.exe`, DeepSeek native API; see `CLAUDE.md`'s "Coder command format" — this is the AI dev-tooling/coding-agent DeepSeek usage, unrelated to the retired parser transport above)
 
 (`QWEN.md`, the original cross-vendor Auditor design, is retired — see `Archive/QWEN.md`.)
 

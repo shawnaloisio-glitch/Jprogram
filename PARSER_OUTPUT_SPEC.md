@@ -1,11 +1,11 @@
 # Parser Output Field Specification
 
-**Status:** APPROVED CONTRACT (frozen field definitions for the DeepSeek parser output).
+**Status:** APPROVED CONTRACT (frozen field definitions for the parser output).
 **Version:** 1.0
-**Documented basis:** README.md ("Corpus Parser Data-Preservation Architecture") and PROJECT_STATUS.md §§29–31.
-**Contract boundary:** DeepSeek Parser → Response Validator → Corpus Builder → Analyzer.
+**Documented basis:** README.md ("Corpus Parser Data-Preservation Architecture").
+**Contract boundary:** Deterministic Parser (GiNZA/spaCy, `Data Processor/deterministic_parser.py`) → Response Validator → Corpus Builder → Analyzer.
 
-This specification freezes the exact JSON object the DeepSeek parser returns for each job. It is the single contract consumed by the Response Validator and the Corpus Builder, and it is the source of truth for writing `parser_prompt.md`.
+This specification freezes the exact JSON object the parser returns for each job. It is the single contract consumed by the Response Validator and the Corpus Builder. It was originally written for the DeepSeek LLM parser — the DeepSeek transport (`deepseek_client.py`, `Prompts/parser_prompt.md`) is now retired and kept frozen only in case it's ever revived; the live implementation is the deterministic GiNZA/spaCy engine (`deterministic_parser.py`), which satisfies this same contract.
 
 ---
 

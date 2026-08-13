@@ -1,8 +1,8 @@
 # Jprogram Session Bootstrap
 
-Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format, Frozen Components trigger list) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
+Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
 
-**Note:** structure, section cross-references, entry points, and Frozen Components below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs.
+**Note:** structure, section cross-references, and entry points below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs. **Frozen Components were retired 2026-08-13** (Owner override) — see `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section.
 
 **Small, concrete pending items** (things to check/decide/fix that aren't
 major scope) live in this file's **Open items** section below (folded from
@@ -24,8 +24,7 @@ numbered sections above hold architecture/state/major tasks only.
   checks strictly-ascending only; `PARSER_OUTPUT_SPEC.md:253` requires no
   gaps. Confirmed zero current functional impact (inert metadata — nothing
   reads it). Deliberately deferred per Owner; revisit if anything starts
-  reading `sentence_index` or the UI/user-issue backlog clears. Frozen
-  Component: any fix auto-triggers audit.
+  reading `sentence_index` or the UI/user-issue backlog clears.
 - **Tkinter GUI state errors** — console output on specific UI
   interactions; not reproducible from an agent session. **Blocked on Owner
   pasting the actual traceback.**
@@ -80,7 +79,7 @@ Entry points today:
 - **`app.py`** — the application shell (Sources / Processing / Analysis tabs). This is the primary entry point.
 - **`Source Builder\source_builder.py`** — standalone Source Builder launcher.
 - **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.)
-- Pipeline stage scripts: `job builder.py`, `request builder.py`, `deterministic_parser.py`, `deterministic_parser_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners. (The DeepSeek API path — `deepseek_client.py` — is retired; kept frozen in case it's ever revived.)
+- Pipeline stage scripts: `job builder.py`, `request builder.py`, `deterministic_parser.py`, `deterministic_parser_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners. (The DeepSeek API path — `deepseek_client.py` — is retired; kept unused in case it's ever revived.)
 
 Source Intake (utilities, artifact writers, and coordinator) is implemented.
 The current GUI path creates Registry + Cleaning Job through
@@ -108,9 +107,9 @@ Related principles:
 
 ---
 
-## 4. Frozen Components
+## 4. Frozen Components (retired 2026-08-13)
 
-See `CLAUDE.md` for the authoritative list — it's the one Advisor's automatic audit-trigger check runs against. Keeping a single copy there avoids the two files drifting out of sync.
+Removed at Owner's explicit override. See `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section for what this replaces and why the timing (an open correctness bug in two of the formerly-frozen files) is worth remembering.
 
 ---
 
@@ -277,7 +276,7 @@ Provider-specific — revisit if the Coder model/platform changes:
 
 ## 14. Major architecture decision (2026-08-09): analysis moved to Language Coach
 
-Jprogram's scope ends at the finished canonical JSONL corpus. The analysis layer (deterministic analyzer utilities → evidence datasets → interpretation) moved to the separate Language Coach project, which reads this corpus but is not part of this repo. See `CLAUDE.md` ("Analysis is no longer a Jprogram Frozen Component") and `Shared\ECOSYSTEM_OVERVIEW.md`.
+Jprogram's scope ends at the finished canonical JSONL corpus. The analysis layer (deterministic analyzer utilities → evidence datasets → interpretation) moved to the separate Language Coach project, which reads this corpus but is not part of this repo. See `Shared\ECOSYSTEM_OVERVIEW.md`.
 
 ---
 

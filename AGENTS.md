@@ -47,4 +47,3 @@ never claimed while something is silently left undone.
 - **Investigation before implementation.** Understand the existing code and the task's actual boundary before writing anything.
 - **Default to deterministic, rule-based implementation.** Use an AI-driven approach only where genuine judgment is required — not as a default.
 - **No silent scope creep.** If the task's boundary turns out to be unclear or something adjacent seems to need changing, stop and ask rather than deciding on your own.
-- **Frozen components require extra care:** `Prompts/parser_prompt.md`, `PARSER_OUTPUT_SPEC.md`, `Data Processor/response_validator.py`, `Data Processor/corpus_builder.py`, the canonical JSONL format, `Data Processor/deepseek_client.py`. Changes here get flagged for audit automatically — be precise and don't improvise beyond the given task. (See `CLAUDE.md`'s Frozen Components list for the authoritative, currently-maintained version — this line is a summary and can drift.)
