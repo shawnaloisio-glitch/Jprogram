@@ -25,6 +25,7 @@ Supported states:
 """
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -261,24 +262,91 @@ def _validate_api(data):
     return True
 
 
+class ManagerError(Exception):
+    """Raised when the Production Manager cannot perform an operation."""
+
+
+# ============================================================
+# In-process stage execution (batch worker path)
+# ============================================================
+# An additive execution mode alongside the subprocess path below. A
+# long-lived batch worker (see Batch Importer) uses this so each stage
+# module -- and, for the parser stage, the ja_ginza model -- loads once
+# for the whole batch run, not once per file. Each wrapper calls the
+# stage's own existing run(source_id) entry function directly; none of
+# the five scripts are modified. The subprocess path (launch_stage) is
+# untouched and remains the default for standalone single-source use.
+
+_INPROCESS_MODULES = {}
+
+
+def _load_inprocess_module(name, path):
+    """Import a stage module by file path, cached after first load."""
+    if name not in _INPROCESS_MODULES:
+        spec = importlib.util.spec_from_file_location(name, str(path))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _INPROCESS_MODULES[name] = module
+    return _INPROCESS_MODULES[name]
+
+
+def _clean_run_inprocess(source_id):
+    module = _load_inprocess_module(
+        "clean_transcript", TRANSCRIPT_CLEANER / "clean_transcript.py"
+    )
+    return module.run(cleaning_job_path(source_id))
+
+
+def _jobs_run_inprocess(source_id):
+    module = _load_inprocess_module(
+        "job_builder_inprocess", DATA_PROCESSOR / "job builder.py"
+    )
+    return module.run(source_id)
+
+
+def _requests_run_inprocess(source_id):
+    module = _load_inprocess_module(
+        "request_builder_inprocess", DATA_PROCESSOR / "request builder.py"
+    )
+    return module.run(source_id)
+
+
+def _api_run_inprocess(source_id):
+    module = _load_inprocess_module(
+        "deterministic_parser_client",
+        DATA_PROCESSOR / "deterministic_parser_client.py",
+    )
+    return module.run(source_id)
+
+
+def _corpus_run_inprocess(source_id):
+    module = _load_inprocess_module(
+        "corpus_builder_inprocess", DATA_PROCESSOR / "corpus_builder.py"
+    )
+    return module.run(source_id)
+
+
 STAGES = {
     "clean": {
         "script": _cleaner_script,
         "args": _clean_args,
         "result_path": cleaning_result_path,
         "validate": _validate_result_true,
+        "run_inprocess": _clean_run_inprocess,
     },
     "jobs": {
         "script": _job_script,
         "args": _source_args,
         "result_path": job_result_path,
         "validate": _validate_result_true,
+        "run_inprocess": _jobs_run_inprocess,
     },
     "requests": {
         "script": _request_script,
         "args": _source_args,
         "result_path": request_result_path,
         "validate": _validate_result_true,
+        "run_inprocess": _requests_run_inprocess,
     },
     "api": {
         "script": _api_script,
@@ -286,18 +354,16 @@ STAGES = {
         "python": _api_python,
         "result_path": processing_result_path,
         "validate": _validate_api,
+        "run_inprocess": _api_run_inprocess,
     },
     "corpus": {
         "script": _corpus_script,
         "args": _source_args,
         "result_path": corpus_result_path,
         "validate": _validate_result_true,
+        "run_inprocess": _corpus_run_inprocess,
     },
 }
-
-
-class ManagerError(Exception):
-    """Raised when the Production Manager cannot perform an operation."""
 
 
 # ============================================================
@@ -398,6 +464,68 @@ def launch_stage(stage, source_id, timeout=None):
 
     # Exit code is not enough: verify the result artifact.
     entry = STAGES[stage]
+    result_path = entry["result_path"](source_id)
+    data, error = _read_json(result_path)
+    if data is None:
+        result["error"] = (
+            f"stage completed but result artifact missing or unreadable: "
+            f"{result_path} ({error or 'missing'})"
+        )
+        return result
+    if not entry["validate"](data):
+        result["error"] = f"stage result artifact reports failure: {result_path}"
+        return result
+
+    result["success"] = True
+    result["state"] = state_for(source_id)
+    return result
+
+
+def launch_stage_inprocess(stage, source_id, timeout=None):
+    """
+    Launch one pipeline stage in-process (same interpreter), instead of as
+    a subprocess. Mirrors launch_stage()'s exact result-dict contract, so
+    pipeline() can use either launcher interchangeably.
+
+    timeout is accepted for signature compatibility with launch_stage but
+    not enforced here -- there is no subprocess to bound.
+    """
+    result = {
+        "stage": stage,
+        "source_id": source_id,
+        "command": [],
+        "exit_code": None,
+        "stdout": "",
+        "stderr": "",
+        "success": False,
+        "error": None,
+        "state": None,
+    }
+
+    if stage not in STAGES:
+        result["error"] = f"unknown stage: {stage}"
+        return result
+
+    entry = STAGES[stage]
+    run_inprocess = entry.get("run_inprocess")
+    if run_inprocess is None:
+        result["error"] = f"stage {stage!r} has no in-process runner"
+        return result
+
+    try:
+        exit_code = run_inprocess(source_id)
+    except Exception as exc:
+        result["error"] = f"in-process stage raised: {exc}"
+        return result
+
+    result["exit_code"] = exit_code
+
+    if exit_code != 0:
+        result["error"] = f"stage exited with code {exit_code}"
+        return result
+
+    # Exit code is not enough: verify the result artifact (same gate as
+    # launch_stage()).
     result_path = entry["result_path"](source_id)
     data, error = _read_json(result_path)
     if data is None:
@@ -869,7 +997,8 @@ def run_stage(source_id, stage, timeout=None, enabled=None):
 
 
 def pipeline(source_id, auto=False, timeout=None, confirm_fn=None,
-             enabled=None, dry_run=False, collect_events=True):
+             enabled=None, dry_run=False, collect_events=True,
+             launcher=None):
     """
     Execute the pipeline and return structured result data.
 
@@ -882,10 +1011,16 @@ def pipeline(source_id, auto=False, timeout=None, confirm_fn=None,
     caller decides how to present it (CLI uses input(), GUI uses its own
     UI). For a non-interactive caller, pass confirm_fn that returns "y".
 
+    launcher defaults to launch_stage (the subprocess path, one fresh
+    interpreter per stage). Pass launch_stage_inprocess instead to run
+    every stage in this same process -- used by a long-lived batch worker
+    so the parser's model loads once per batch, not once per file. Both
+    launchers share the exact same result-dict contract.
+
     Input:
         source_id (str), auto (bool), timeout (int or None),
         confirm_fn (callable or None), enabled (set or None),
-        dry_run (bool), collect_events (bool).
+        dry_run (bool), collect_events (bool), launcher (callable or None).
 
     Output: dict:
         {
@@ -904,6 +1039,8 @@ def pipeline(source_id, auto=False, timeout=None, confirm_fn=None,
         confirm_fn = input
     if enabled is None:
         enabled = set(STAGE_NAMES)
+    if launcher is None:
+        launcher = launch_stage
 
     info = state_for(source_id)
     events = []
@@ -1050,7 +1187,7 @@ def pipeline(source_id, auto=False, timeout=None, confirm_fn=None,
                     "events": events,
                 }
 
-        result = launch_stage(next_stage, source_id, timeout=timeout)
+        result = launcher(next_stage, source_id, timeout=timeout)
         log_manager_entry(
             source_id,
             result["stage"],
