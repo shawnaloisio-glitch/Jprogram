@@ -19,6 +19,11 @@ API:
   GET  /api/config           -> { creators: [...], styles: [...], topics: [...] }
                                  read from Workspace/Config/*.json, for the
                                  form's dropdowns.
+  GET  /api/browse-folder    -> pops a native OS folder-picker dialog
+                                 (tkinter, run in a subprocess so it never
+                                 touches the server's own thread/event loop)
+                                 and returns { "path": "..." } (path is ""
+                                 if the user cancelled).
   POST /api/submit           -> body: form JSON. Writes it to
                                  pending_submission.json (atomic replace,
                                  timestamped) and returns {"ok": true}.
@@ -27,6 +32,7 @@ Everything else: static files from this folder (forms/, this file's dir).
 Run:  python server.py
 """
 import json
+import subprocess
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -56,6 +62,29 @@ def _write_atomic(path, text):
     tmp.replace(path)
 
 
+_BROWSE_FOLDER_SCRIPT = (
+    "import tkinter, tkinter.filedialog as fd;"
+    "r = tkinter.Tk(); r.withdraw(); r.attributes('-topmost', True);"
+    "print(fd.askdirectory() or '')"
+)
+
+
+def _browse_folder():
+    """
+    Pop a native OS folder-picker dialog and return the chosen path ("" if
+    cancelled). Runs tkinter in a subprocess -- this server is a
+    ThreadingHTTPServer handling the request on a worker thread, and Tk
+    is not safe to drive outside a dedicated main-thread event loop, so a
+    fresh interpreter process with its own Tk mainloop sidesteps that
+    entirely rather than trying to share one with the server.
+    """
+    completed = subprocess.run(
+        [sys.executable, "-c", _BROWSE_FOLDER_SCRIPT],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return completed.stdout.strip()
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -81,6 +110,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "topics": _load_json_list(CONFIG_DIR / "topics.json", "topics"),
             }
             self._send_json(200, payload)
+            return
+        if parsed.path == "/api/browse-folder":
+            self._send_json(200, {"path": _browse_folder()})
             return
         # No-cache for HTML so Ctrl+F5 (or even a plain refresh) always gets
         # the current form -- Advisor may rewrite forms/*.html between one

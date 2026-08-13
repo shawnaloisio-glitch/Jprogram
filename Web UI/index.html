@@ -4,16 +4,45 @@
 <meta charset="utf-8">
 <title>Jprogram — Forms</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 60px auto; padding: 0 16px; color: #222; }
-  a { display: block; padding: 12px 16px; margin: 8px 0; background: #f3f4f6; border-radius: 6px;
-      text-decoration: none; color: #2563eb; font-weight: 600; }
-  a:hover { background: #e5e7eb; }
-  .hint { color: #666; font-size: 0.9em; }
+  :root {
+    --bg: #ffffff; --fg: #222222; --muted: #666666;
+    --card-bg: #f3f4f6; --hover-bg: #e5e7eb; --border: #cccccc;
+    --accent: #2563eb; --accent-fg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a1a; --fg: #e5e5e5; --muted: #999999;
+      --card-bg: #2a2a2a; --hover-bg: #333333; --border: #444444;
+      --accent: #3b82f6; --accent-fg: #ffffff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a1a; --fg: #e5e5e5; --muted: #999999;
+    --card-bg: #2a2a2a; --hover-bg: #333333; --border: #444444;
+    --accent: #3b82f6; --accent-fg: #ffffff;
+  }
+  body {
+    font-family: system-ui, sans-serif; max-width: 480px; margin: 60px auto; padding: 0 16px;
+    background: var(--bg); color: var(--fg);
+  }
+  a { display: block; padding: 12px 16px; margin: 8px 0; background: var(--card-bg); border-radius: 6px;
+      text-decoration: none; color: var(--accent); font-weight: 600; }
+  a:hover { background: var(--hover-bg); }
+  .hint { color: var(--muted); font-size: 0.9em; }
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; display: inline-block; width: auto; margin: 0;
+    padding: 6px 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+    cursor: pointer; font-size: 0.85em; color: var(--fg);
+  }
+  .theme-toggle:hover { background: var(--hover-bg); }
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeToggle" type="button"></button>
 <h1>Jprogram Forms</h1>
 <p class="hint">Whatever's current for the task at hand. Hard-refresh (Ctrl+F5) if a link looks stale.</p>
 <a href="/forms/batch_import.html">Batch Import</a>
+
+<script src="/theme.js"></script>
 </body>
 </html>

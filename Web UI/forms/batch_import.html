@@ -4,29 +4,67 @@
 <meta charset="utf-8">
 <title>Jprogram — Batch Import</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; color: #222; }
+  :root {
+    --bg: #ffffff; --fg: #222222; --muted: #666666;
+    --card-bg: #f3f4f6; --hover-bg: #e5e7eb; --border: #cccccc;
+    --accent: #2563eb; --accent-fg: #ffffff; --ok: #16a34a; --err: #dc2626;
+    --input-bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a1a; --fg: #e5e5e5; --muted: #999999;
+      --card-bg: #2a2a2a; --hover-bg: #333333; --border: #444444;
+      --accent: #3b82f6; --accent-fg: #ffffff; --ok: #4ade80; --err: #f87171;
+      --input-bg: #262626;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a1a; --fg: #e5e5e5; --muted: #999999;
+    --card-bg: #2a2a2a; --hover-bg: #333333; --border: #444444;
+    --accent: #3b82f6; --accent-fg: #ffffff; --ok: #4ade80; --err: #f87171;
+    --input-bg: #262626;
+  }
+  body {
+    font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px;
+    background: var(--bg); color: var(--fg);
+  }
   h1 { font-size: 1.3em; }
   label { display: block; margin-top: 16px; font-weight: 600; }
-  .hint { font-weight: normal; color: #666; font-size: 0.85em; }
+  .hint { font-weight: normal; color: var(--muted); font-size: 0.85em; }
   input[type=text], input[type=number], select {
     width: 100%; padding: 8px; margin-top: 4px; font-size: 1em;
-    box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;
+    box-sizing: border-box; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--input-bg); color: var(--fg);
   }
   button {
     margin-top: 24px; padding: 10px 20px; font-size: 1em; cursor: pointer;
-    background: #2563eb; color: white; border: none; border-radius: 4px;
+    background: var(--accent); color: var(--accent-fg); border: none; border-radius: 4px;
   }
-  button:disabled { background: #999; cursor: default; }
+  button:disabled { background: var(--muted); cursor: default; }
   #status { margin-top: 16px; font-weight: 600; }
-  #status.ok { color: #16a34a; }
-  #status.err { color: #dc2626; }
+  #status.ok { color: var(--ok); }
+  #status.err { color: var(--err); }
   .row { display: flex; gap: 12px; }
   .row > div { flex: 1; }
-  .back { display: inline-block; margin-bottom: 8px; color: #2563eb; text-decoration: none; font-size: 0.9em; }
+  .back { display: inline-block; margin-bottom: 8px; color: var(--accent); text-decoration: none; font-size: 0.9em; }
   .back:hover { text-decoration: underline; }
+  .path-row { display: flex; gap: 8px; margin-top: 4px; }
+  .path-row input { margin-top: 0; }
+  .path-row button {
+    margin-top: 0; padding: 8px 14px; font-size: 0.9em; white-space: nowrap;
+    background: var(--card-bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+  }
+  .path-row button:hover { background: var(--hover-bg); }
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; display: inline-block; width: auto; margin: 0;
+    padding: 6px 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+    cursor: pointer; font-size: 0.85em; color: var(--fg);
+  }
+  .theme-toggle:hover { background: var(--hover-bg); }
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeToggle" type="button"></button>
 <a class="back" href="/">&larr; All forms</a>
 <h1>Batch Import</h1>
 <p class="hint">Fills in fields for <code>batch_importer.py</code>. Applies to every file in the folder.</p>
@@ -34,7 +72,10 @@
 <form id="f">
   <label>Folder path
     <span class="hint">containing the normalized source files (non-recursive)</span>
-    <input type="text" id="folder" required placeholder="D:\Sourced Content\...\some folder">
+    <div class="path-row">
+      <input type="text" id="folder" required placeholder="D:\Sourced Content\...\some folder">
+      <button type="button" id="browseBtn">Browse...</button>
+    </div>
   </label>
 
   <label>Creator
@@ -104,6 +145,27 @@ loadConfig().catch(err => {
   document.getElementById('status').className = 'err';
 });
 
+document.getElementById('browseBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('browseBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Waiting for dialog...';
+  try {
+    const res = await fetch('/api/browse-folder');
+    const result = await res.json();
+    if (result.path) {
+      document.getElementById('folder').value = result.path;
+    }
+  } catch (err) {
+    status.textContent = 'Could not open folder dialog: ' + err.message;
+    status.className = 'err';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
 document.getElementById('f').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
@@ -145,5 +207,6 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   }
 });
 </script>
+<script src="/theme.js"></script>
 </body>
 </html>
