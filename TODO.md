@@ -134,6 +134,15 @@ numbered sections above hold architecture/state/major tasks only.
   unescaped newline instead of `\n`, corrupting the whole file. Not
   Jprogram's file, not related to this block, but worth knowing QuadRead's
   own Permissions UI was broken for an unrelated reason.)
+  **Retested immediately after a fresh Reasonix update (2026-08-14,
+  same session): still blocked.** Version now `reasonix v1.25.1`. Identical
+  `constraint=no-mutation` failure on the same `C:\testingfolder` test —
+  the agent explicitly confirmed `reasonix.toml` already has `"Write"` in
+  its allow list before hitting the block, and characterized the block as
+  coming from *"the task's own execution policy header... a hard
+  host-level constraint for this session"* — i.e. something `reasonix-cli`
+  applies to headless/`-p` sessions itself, not a config value. This is the
+  update Session 18 said to wait for; it did not fix the issue.
 - **Two Audit-trigger-Yes parser fixes (d62eeec, f400d2d) have not had an
   independent Auditor pass** — applied directly by Advisor during the
   reasonix outage, re-verified against tests each time, but never reviewed
