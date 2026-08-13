@@ -421,6 +421,58 @@ def _():
           str(v["errors"]) + str(v["warnings"]))
 
 
+@test("BUG3: merge never fuses words across a punctuation separator (３（み）ですね)")
+def _():
+    # Regression: GiNZA tags み (head) and です (continuation) as a
+    # mergeable pair, but a ） separator sits between them in the source.
+    # Pre-fix the stripped-token list made them look adjacent and produced
+    # the fused surface みです, which is NOT a substring of the text.
+    result = parse("３（み）ですね。\n")
+    s = result["sentences"][0]
+    text = s["text"]
+    for w in s["words"]:
+        check("word surface is exact substring of source",
+              text[w[3]:w[4]] == w[1],
+              f"{w[1]!r} vs {text[w[3]:w[4]]!r} in {text!r}")
+    surfaces = [w[1] for w in s["words"]]
+    check("no fused みです word", "みです" not in surfaces, str(surfaces))
+    check("み is its own word", "み" in surfaces, str(surfaces))
+    check("です is its own word", "です" in surfaces, str(surfaces))
+
+
+@test("BUG3: real sentence with ３（み）ですね also reconstructs exactly")
+def _():
+    result = parse("そして、蛙が１匹、２匹、３匹だから、３、３つの「３（み）」ですね。\n")
+    s = result["sentences"][0]
+    text = s["text"]
+    for w in s["words"]:
+        check("word surface is exact substring of source",
+              text[w[3]:w[4]] == w[1],
+              f"{w[1]!r} vs {text[w[3]:w[4]]!r} in {text!r}")
+    check("no fused みです word",
+          "みです" not in [w[1] for w in s["words"]], str(s["words"]))
+
+
+@test("BUG3: legitimate separator-free merges are unaffected (食べました / 勉強する)")
+def _():
+    # Negative control: normal merges with no intervening separator must
+    # still fuse exactly as before.
+    result = parse("食べました。\n\n勉強する。\n")
+    sents = result["sentences"]
+    check("食べました one word",
+          [w[1] for w in sents[0]["words"]] == ["食べました"], str(sents[0]["words"]))
+    check("食べました lexical",
+          sents[0]["words"][0][2] == "食べる", str(sents[0]["words"][0]))
+    check("勉強する one word",
+          [w[1] for w in sents[1]["words"]] == ["勉強する"], str(sents[1]["words"]))
+    check("勉強する lexical",
+          sents[1]["words"][0][2] == "勉強", str(sents[1]["words"][0]))
+    for s in sents:
+        for w in s["words"]:
+            check("span equals surface",
+                  s["text"][w[3]:w[4]] == w[1], f"{w[1]!r} in {s['text']!r}")
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

@@ -228,6 +228,13 @@ def _merge_groups(doc, token_bunsetu=None):
             j = i + 1
             while j < n:
                 nxt = tokens[j]
+                # Adjacency guard: only merge a token that is truly
+                # adjacent to the current group tail in the ORIGINAL doc
+                # token stream. A gap (nxt.i > tokens[j-1].i + 1) means a
+                # separator token was stripped out from between them, so
+                # merging would silently drop a source character.
+                if nxt.i != tokens[j - 1].i + 1:
+                    break
                 if token_bunsetu is not None and token_bunsetu[nxt.i] != group_boundary:
                     break
                 if _is_terminal_form(tokens[j - 1]):
@@ -245,6 +252,9 @@ def _merge_groups(doc, token_bunsetu=None):
             j = i + 1
             while j < n:
                 nxt = tokens[j]
+                # (identical adjacency guard -- same bug in this branch)
+                if nxt.i != tokens[j - 1].i + 1:
+                    break
                 if token_bunsetu is not None and token_bunsetu[nxt.i] != group_boundary:
                     break
                 if _is_terminal_form(tokens[j - 1]):
