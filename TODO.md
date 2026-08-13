@@ -38,23 +38,76 @@ numbered sections above hold architecture/state/major tasks only.
   after Advisor showed the raw command instead of a summary. The technical
   detail still exists (prompt file, worktree, invocation) but stays
   something Advisor can produce on request, not the default gate output.
-- **Reasonix headless Coder writes still not fully reliable, 2026-08-13.**
-  Two root causes found and fixed (missing `Edit`/`Write` rule in
-  `reasonix.toml`; stable header duplicating `AGENTS.md`'s read-only
-  guardrail — see `Shared\RX_WORKFLOW.md`), but a real multi-part task
-  (`batch_importer.py` extension) still blocked with `constraint=no-mutation`
-  after both fixes and had to be applied directly by Advisor. Suspected,
-  unconfirmed: `AGENTS.md`'s own copy of the same guardrail line, auto-loaded
-  per task. Needs a cheap isolated test before spending more on real tasks.
-- **Web UI watcher not yet wired.** `Web UI/server.py` (port 8001) is built
-  and confirmed working end-to-end (config API, form load, submit
-  round-trip), but no real submission has been made yet — the agreed
-  watch-for-submission mechanism (Advisor watches `pending_submission.json`,
-  no "done" message needed) needs setting up before the first real use.
+- **Reasonix headless Coder writes: extensively investigated 2026-08-13
+  (Session 18), still unresolved, work-around is direct Advisor
+  implementation for now.** Removed `AGENTS.md`'s "Direct sessions" ask-first
+  paragraph and `CLAUDE.md`'s matching "direct Reasonix sessions" callout
+  (both auto-loaded into every Coder session) — real task still blocked
+  identically afterward. Built a clean-room test workspace (`C:\testingfolder`)
+  and ruled out, one at a time, with the actual file verified on disk after
+  each test (never trusting the JSON self-report, which lies in both
+  directions): missing permission rule, `reasonix-cli`'s `-p` mode itself,
+  the large 66-rule `reasonix.toml`, Advisor's own tool being sandboxed
+  (Owner independently reproduced the same result in their own terminal),
+  the stable header + task-template wording, `AGENTS.md`'s content in every
+  variant tried, `AGENTS.md`'s specific filename, accumulated session
+  history, and a fully fresh Reasonix uninstall+reinstall. A raw DeepSeek API
+  call (no agent framework at all) responded instantly and cleanly, ruling
+  out DeepSeek-server-side load/throttling as the cause *at that moment*.
+  Owner reported ~6 Reasonix updates since Monday and the same problem now
+  showing up in the manual copy-paste desktop workflow too — the strongest
+  lead is a regression in a recent Reasonix release, external to this
+  project's own config. **Not going to keep spending on this for now**
+  (Owner's call) — Parts 1/2/3 of the batch-import optimization below were
+  implemented directly by Advisor instead, bypassing Coder entirely for this
+  stretch of work. Revisit Reasonix once a further update lands.
 - **Two Audit-trigger-Yes parser fixes (d62eeec, f400d2d) have not had an
   independent Auditor pass** — applied directly by Advisor during the
   reasonix outage, re-verified against tests each time, but never reviewed
-  fresh per the normal process. Worth doing before full production volume.
+  fresh per the normal process. Session 17 (2026-08-13) added strong real-data
+  evidence (156 real Natural Japanese files, including all 106 originally-
+  failing sources, 0 failures) but that is re-verification, not the
+  independent code-review pass this item asks for. Worth doing before full
+  production volume.
+- **Language Coach J does not use Jprogram's Source Registry for
+  human-readable filenames (found 2026-08-13, Session 17).** Verified by
+  reading its code, not assumed: `corpus_loader.py` reads only the JSONL
+  corpus (raw `source_id`, no name resolution); the one place a title gets
+  produced (`build_library_db.py:43-91,165-166`) reads a separate
+  `rename_log.csv`/`source_metadata.csv`, not
+  `Workspace/Source Registry/<source_id>.json`. If a `source_id` isn't in
+  `rename_log.csv`, it falls back to showing the raw slugified `source_id`.
+  The Source Registry is real, persistent, and one-file-per-source (never
+  overwritten — confirmed via `registry.py`), so the data exists; it's just
+  not the thing Language Coach actually reads. Practical effect: none of the
+  176 sources imported in Session 17 will show a human-readable title in
+  Language Coach unless something else populates `rename_log.csv` for them.
+  This is Language Coach J's project, not Jprogram's, so no fix belongs
+  here — flagging so it isn't lost, and because it directly affects how
+  trustworthy any name shown for Jprogram-sourced content is downstream.
+- **`natural_japanese` re-import: parser fixes validated against real
+  production data AND the import path is now ~20x faster (Session 17+18,
+  2026-08-13).** Session 17: ran all 106 originally-failing sources plus 50
+  random unseen files through the fixed pipeline as a real import spanning
+  all 4 level folders — 156/156, 0 failures, no recurrence of prior bugs.
+  Session 18: measured the batch-import pipeline was ~79% process-launch
+  overhead (fresh interpreter + model reload per file per stage) and built
+  `Batch Importer/parallel_batch_import.py` (6 parallel `--batch-mode`
+  workers) to fix it — real 268-file run, 170s, 0 failures, ~0.63s/file
+  effective (was ~12.9s/file). Corpus now at 858 JSONL files. Remaining
+  unimported `complete-beginner` files would take roughly 24 minutes at this
+  rate; Owner has not yet decided whether/when to run the remaining files or
+  the other 3 level folders (`beginner`/`intermediate`/`advanced`), and this
+  only covers the `Subtitles` category.
+- **Environment gotcha for future process investigation (2026-08-13):** this
+  machine's Python installations (both the project `.venv` and standalone
+  installs) show every `python.exe` invocation as **two OS processes** —
+  a stub parent that re-execs into a real-interpreter child, identical
+  command line, near-zero CPU on the stub. Confirmed via `ParentProcessId`
+  chains, not assumed. Don't mistake this for a duplicate/racing process —
+  killing the wrong half (the working child, not an idle stub) can interrupt
+  real work. Check `ParentProcessId` before killing anything that looks like
+  a duplicate.
 
 ---
 
@@ -102,7 +155,10 @@ Entry points today:
 
 - **`app.py`** — the application shell (Sources / Processing / Analysis tabs). This is the primary entry point.
 - **`Source Builder\source_builder.py`** — standalone Source Builder launcher.
-- **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.)
+- **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.) Gained an in-process execution path (Session 18, commit `584888f`): `pipeline(..., launcher=launch_stage_inprocess)` runs all 5 stages via direct function calls instead of a subprocess per stage; the existing subprocess-per-stage default (`launch_stage`) and every stage's own standalone CLI are unchanged.
+- **`Batch Importer\batch_importer.py`** — bulk-imports a folder of already-normalized source files (`.vtt`/`.srt`/`.html`) through the real pipeline as standalone sources. Non-recursive, idempotent, failure-isolated. Real production use confirmed 2026-08-13 (Session 17): 176 real Natural Japanese sources imported this way, 0 failures. Gained `--batch-mode` (Session 18, commit `39cd4c8`): runs every file's pipeline stage in the same long-lived process instead of a fresh subprocess per file per stage, so the parser model loads once per batch, not once per file (~1.97s/file vs ~12.9s/file baseline).
+- **`Batch Importer\parallel_batch_import.py`** (Session 18, commit `cb8a665`) — orchestration-only wrapper around `batch_importer.py --batch-mode`: splits a folder's still-unimported files across N (default 6) parallel worker processes. No changes to `batch_importer.py`/`production_manager.py` themselves. Real 268-file run: 170s, 0 failures, ~0.63s/file effective (~20x the original baseline).
+- **`Web UI\server.py`** (port 8001) — generic Advisor-served form channel, stdlib `http.server`, no framework. Currently serves the batch-import form (`Web UI\forms\batch_import.html`) plus a landing page (`Web UI\index.html`) linking to whatever forms exist. Submissions land in `Web UI\pending_submission.json`; Advisor watches for them during a live session (Monitor-based, archives to `Web UI\submission_archive\` rather than deleting). First real submission handled 2026-08-13 (Session 17). Also has a native OS folder-picker (`/api/browse-folder`, tkinter-in-subprocess) and a shared dark/light theme (`Web UI\theme.js`) any new form can pick up.
 - Pipeline stage scripts: `job builder.py`, `request builder.py`, `deterministic_parser.py`, `deterministic_parser_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners. (The DeepSeek API path — `deepseek_client.py` — is retired; kept unused in case it's ever revived.)
 
 Source Intake (utilities, artifact writers, and coordinator) is implemented.
