@@ -115,6 +115,25 @@ numbered sections above hold architecture/state/major tasks only.
   (Owner's call) — Parts 1/2/3 of the batch-import optimization below were
   implemented directly by Advisor instead, bypassing Coder entirely for this
   stretch of work. Revisit Reasonix once a further update lands.
+  **One more theory tested and eliminated (Session 19, 2026-08-14):** Owner
+  found the Reasonix desktop app's Settings → Permissions → "Writer mode"
+  was set to "ask (prompt before writers)" with no fine-grained overrides —
+  plausible cause, since a headless session has nobody to answer an "ask"
+  prompt. Owner switched it to "allow (auto-run ordinary writers)"; verified
+  the change actually persisted to `C:\Users\Shawn\AppData\Roaming\reasonix\
+  config.toml`'s `[permissions] mode = "allow"` (file mtime matched the
+  change). Reran the exact same `C:\testingfolder` headless write test
+  immediately after — **still blocked, identical `constraint=no-mutation`
+  failure.** This is first-hand proof (file confirmed changed, test rerun
+  after, same result), not inference — rules out the writer-mode fallback
+  setting definitively. Combined with everything else already ruled out,
+  very little remains on the "something in our config" side; strengthens
+  the external-regression conclusion further. (Separately, while
+  investigating: found and fixed an unrelated real `reasonix.toml` TOML
+  parse error in **QuadRead** — two permission-allow entries had a raw
+  unescaped newline instead of `\n`, corrupting the whole file. Not
+  Jprogram's file, not related to this block, but worth knowing QuadRead's
+  own Permissions UI was broken for an unrelated reason.)
 - **Two Audit-trigger-Yes parser fixes (d62eeec, f400d2d) have not had an
   independent Auditor pass** — applied directly by Advisor during the
   reasonix outage, re-verified against tests each time, but never reviewed
