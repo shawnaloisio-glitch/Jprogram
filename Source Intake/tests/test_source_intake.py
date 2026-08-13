@@ -153,6 +153,48 @@ def _():
         restore(saved)
 
 
+@test("registry path collision: existing file with mismatched source_id -> error, no overwrite")
+def _():
+    root, raw, reg, jobs, saved = fixture()
+    try:
+        raw_file = make_raw(raw, "con.txt", b"podcast content")
+        sid = "clean_text_con-teppei_ep051"
+        target = reg / f"{sid}.json"
+        # A well-formed registry entry stored under a colliding file name
+        # but whose internal source_id does not match the candidate.
+        planted = {
+            "schema_version": schemas.schema_version("registry"),
+            "source_id": "clean_text_other_ep999",
+            "original_filename": "other.txt",
+            "sha256": "0" * 64,
+            "source_type": "clean_text",
+            "format": "txt",
+            "language": "ja",
+            "cleaning_profile": "clean_text",
+            "cleaner_version": "v1",
+        }
+        target.write_text(
+            json.dumps(planted, ensure_ascii=False, sort_keys=True, indent=4)
+            + "\n",
+            encoding="utf-8",
+        )
+        before = target.read_bytes()
+        raised = False
+        try:
+            si.register_source(
+                str(raw_file), "clean_text", "ja", "Con Teppei", "ep051"
+            )
+        except si.SourceIntakeError as ex:
+            raised = True
+            check("error identifies registry path", str(target) in str(ex))
+        check("SourceIntakeError raised", raised)
+        check("registry file unchanged", target.read_bytes() == before)
+        check("no cleaning job created",
+              not (jobs / f"{sid}.cleaning_job.json").exists())
+    finally:
+        restore(saved)
+
+
 @test("invalid metadata rejected")
 def _():
     root, raw, reg, jobs, saved = fixture()

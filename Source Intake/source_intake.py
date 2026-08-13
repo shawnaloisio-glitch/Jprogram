@@ -296,6 +296,17 @@ def _run_intake(raw_path, source_type, language, title, sequence, log_file):
             "cleaning_job_path": str(job_path),
         }
 
+    # Registry-path collision: a file exists at the target registry path
+    # but its internal source_id does not match the candidate -> stop, no
+    # writes, so the pre-existing entry is never silently overwritten.
+    if verdict["registry_exists"] and not verdict["match_by_source_id"]:
+        registry_path = SOURCE_REGISTRY / f"{source_id_str}.json"
+        raise SourceIntakeError(
+            f"existing registry file at {registry_path} does not match "
+            f"expected source_id {source_id_str!r}; cannot safely resolve "
+            f"automatically"
+        )
+
     # CASE E: no existing registration -> write registry first, then job.
     entry = _build_registry_entry(
         resolved, source_id_str, sha256, source_type, language
