@@ -22,10 +22,20 @@ PROCESSOR_VERSION = "1.0"
 # Job Builder
 # ==================================================
 
-# Maximum number of Japanese characters per API job.
+# Maximum number of Japanese characters per job.
 # (Approximate limit. Jobs are split on line boundaries.)
+#
+# Raised from 10,000 to 200,000 (2026-08-13): the original limit existed to
+# keep chunks within the retired DeepSeek LLM parser's cost/context budget.
+# The live parser (deterministic_parser.py, GiNZA/spaCy) is local and has no
+# such constraint -- its own configured max_length is 1,000,000 characters.
+# 200,000 keeps a 5x safety margin under that hard ceiling while making a
+# job split rare for real sources, which avoids a confirmed bug class where
+# canonical_sentence_texts() could miscount a job boundary that lands on an
+# internal "\n\n" separator (fixed separately, but splitting less often is
+# still a reduction in exposure to any related edge case).
 
-MAX_JOB_CHARACTERS = 10000
+MAX_JOB_CHARACTERS = 200000
 
 # Number of digits used when numbering jobs.
 # Example:
