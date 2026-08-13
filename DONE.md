@@ -8,6 +8,41 @@ session wrap-up; never stack wrap-ups into the bootstrap.
 
 ---
 
+## Session 19 (2026-08-13) — Language Coach J extracted from repo, backup zip made, pre-corpus-run cleanup
+
+### Current phase
+
+Owner wanted the repo brought to a clean, shareable state (zip backup) before starting a real corpus production run. Investigation surfaced a real problem beyond just "tidy up for a zip": `Language Coach J/` was tracked inside this git repo, which a stored memory had described as a deliberate 2026-08-10 decision — Owner corrected this on the spot as a mistake from an earlier cleanup, not a real decision, and confirmed the downstream-handoff reasoning didn't require sharing one repo. Fixed by moving it out; then completed the original zip-backup task.
+
+### What happened (chronological)
+
+1. **Investigated repo cleanliness for a zip.** Working tree was already clean (287 tracked files, no untracked-not-ignored files, nothing unpushed at session start). Bulk of on-disk size (836M) was gitignored dev junk (`.venv` 596M, `.git` 39M, `.reasonix`, `.ruff_cache`) — none of it a real concern since `git archive` naturally excludes gitignored content. Confirmed the actual corpus/customer data (`Sources`, `Source Registry`, etc.) already lives outside this repo folder entirely (`Workspace/`, a sibling per `paths.py:42`).
+2. **Found real personal data tracked in git.** `Language Coach J/Shawn/vocab_snapshot_2026-08-07.md`, `Language Coach J/Shawn/teppei_1-50_self_assessment.tsv`, and `Language Coach J/bootstrap/{lingq_known_words.jsonl,known_kanji_first400_speedrun.txt}` — Owner's own vocab/kanji progress data, tracked in a repo that could end up shared.
+3. **Owner: "Language coach was put in the wrong spot on cleanup. It is supposed to be one level up outside of JapaneseCorpus."** This directly conflicted with a stored memory (`repo_structure_shared_directory.md`) claiming deliberate 2026-08-10 co-location. Surfaced the conflict rather than acting on either claim; Owner confirmed the downstream-handoff reasoning was right but co-location inside the repo wasn't necessary for it and violated the one-program-one-task separation principle.
+4. **Confirmed the correct target path by inspecting the Thai side directly** (not assumed): `ThaiCorpus\Language Coach T` sits as a sibling of `ThaiCorpus\ThaiCorpus` (the repo), untracked by git — exact pattern to replicate for Japanese.
+5. **Verified zero code dependency** — grepped all `.py` files in the repo for `Language Coach J`, zero matches, confirming the move was safe (no import/path coupling).
+6. **Moved `Language Coach J/` (28 tracked files) to `C:\AI Development Projects\JapaneseCorpus\Language Coach J`** — `git rm -r --cached` then a plain move (Bash `mv` hit a transient file-lock permission error; PowerShell `Move-Item` succeeded cleanly on retry). Committed (`6c6d807`). Removed the now-dead `Language Coach J/tools/analysis/{outputs/,library.db}` `.gitignore` rules in a second commit.
+7. **Corrected the stale memory** (`repo_structure_shared_directory.md`) that had claimed deliberate co-location, and updated `MEMORY.md`'s index line to match.
+8. **Checked the one remaining tracked data-like file**, `Audits/Parser_Edge_Cases/bad_sentences.clean.txt` — 5 real single-sentence excerpts from copyrighted `nihongo_jikan` transcript sources, kept as a parser-bug repro fixture. Asked Owner whether to include it in the zip; Owner chose to exclude it (recommended option) rather than include.
+9. **Built the zip** via `git archive --format=zip -o Jprogram_backup_2026-08-13.zip HEAD -- . ":!Audits/Parser_Edge_Cases/bad_sentences.clean.txt"` — verified afterward by listing the zip's contents directly: 303 files, 1.6MB, no `Language Coach J`, no `.venv`/`__pycache__`/`reasonix`, no `bad_sentences.clean.txt`. Saved to `C:\AI Development Projects\JapaneseCorpus\Jprogram_backup_2026-08-13.zip`.
+10. **Pushed both commits to `origin/master`** on Owner's request (`9e09800..3b8d614`).
+
+### Last decisions and why
+
+- **Plain move, no git-history preservation for `Language Coach J`** — matches the ThaiCorpus precedent, where the sibling project isn't git-tracked at all; Owner explicitly agreed to this framing before the move.
+- **Exclude `bad_sentences.clean.txt` from the zip rather than include it** — Owner's choice between two presented options; the file is third-party copyrighted transcript content even at small excerpt size, and the zip may go to a friend outside this project's own dev use.
+- **Correct the memory immediately rather than leave the conflict for a future session** — a memory actively claiming the opposite of current reality (co-location was "deliberate, not accidental") is worse than no memory at all; left uncorrected it would have misdirected a future session's read of `git status`.
+
+### Open risks / unresolved questions
+
+Unchanged from Session 18's list (Reasonix headless-write block, two un-audited parser fixes, remaining `natural_japanese` import volume) — none touched this session. New: none — this session's own work was verified end-to-end (file existence checks post-move, zip content listing, git status clean, push confirmed).
+
+### Next immediate task
+
+Owner to start the corpus production run.
+
+---
+
 ## Session 18 (2026-08-13) — Reasonix write-block investigation (unresolved), pivot to direct implementation, ~20x batch-import speedup
 
 ### Current phase

@@ -14,6 +14,20 @@ numbered sections above hold architecture/state/major tasks only.
 
 ## Open items (folded from `WORKING_LIST.md`, 2026-08-13)
 
+- **Repo cleaned for sharing / pre-corpus-run (Session 19, 2026-08-13).**
+  `Language Coach J/` was found nested inside this git repo — a mistake
+  from an earlier cleanup, not (as a now-corrected memory had claimed) a
+  deliberate decision. Moved to `C:\AI Development Projects\JapaneseCorpus\Language Coach J`,
+  a sibling of this repo folder, matching the existing `ThaiCorpus\Language
+  Coach T` precedent; no longer git-tracked here (commit `6c6d807`), dead
+  `.gitignore` rules for it removed. This also resolved a real personal-data
+  exposure risk (`Language Coach J/Shawn/` vocab/kanji files were tracked in
+  git). Verified afterward: no personal data and no code dependency on
+  `Language Coach J` remains in this repo. A clean backup zip (303 files,
+  code/docs/tests only, excludes one copyrighted parser-fixture file at
+  Owner's call) was made at
+  `C:\AI Development Projects\JapaneseCorpus\Jprogram_backup_2026-08-13.zip`.
+  Both commits pushed to `origin/master`.
 - **Processor/analysis output metadata (possible future need)** — `origin`
   may shift to domain/topic as a *separate* tag (not a replacement);
   candidate tags: domain/topic, register, format/modality,
