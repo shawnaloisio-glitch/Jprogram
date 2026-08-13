@@ -51,6 +51,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# ---- Web UI runtime data (ephemeral form submissions) -----------
+Web UI/pending_submission.json
+
 # ---- Project-local virtual environment --------------------------
 .venv/
 
