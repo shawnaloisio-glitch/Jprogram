@@ -66,6 +66,7 @@ _FOLDER_NAME_TO_LEVEL_LABEL = {
     "complete-beginner": "Absolute Beginner",
     "intermediate": "Intermediate",
     "advanced": "Advanced",
+    "ungraded": "Ungraded",
 }
 
 
