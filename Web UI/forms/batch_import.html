@@ -198,11 +198,11 @@ document.getElementById('f').addEventListener('submit', async (e) => {
     } else {
       status.textContent = 'Error: ' + (result.error || 'unknown');
       status.className = 'err';
-      btn.disabled = false;
     }
   } catch (err) {
     status.textContent = 'Error: ' + err.message;
     status.className = 'err';
+  } finally {
     btn.disabled = false;
   }
 });

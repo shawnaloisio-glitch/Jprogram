@@ -129,6 +129,19 @@ loadConfig().catch(err => {
   document.getElementById('existingList').textContent = 'Could not load current entries: ' + err.message;
 });
 
+document.getElementById('creator_id').addEventListener('input', (e) => {
+  const input = e.target;
+  const start = input.selectionStart;
+  const before = input.value;
+  const masked = before.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  if (masked !== before) {
+    input.value = masked;
+    const removed = before.length - masked.length;
+    const pos = Math.max(0, (start || masked.length) - removed);
+    input.setSelectionRange(pos, pos);
+  }
+});
+
 document.getElementById('type').addEventListener('change', () => {
   const type = document.getElementById('type').value;
   document.getElementById('creatorFields').style.display = (type === 'creator') ? '' : 'none';
