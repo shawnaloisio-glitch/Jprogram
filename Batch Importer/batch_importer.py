@@ -48,6 +48,7 @@ import controller
 import handoff
 import import_material
 import paths
+import production_manager
 import source_package
 
 PRODUCTION_MANAGER_SCRIPT = PROJECT_ROOT / "Production Manager" / "production_manager.py"
@@ -175,30 +176,30 @@ def build_pipeline_command(source_id, stage_timeout=None):
     return argv
 
 
-def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,
-               episode_number=None, season_number=None):
+def _create_and_handoff(path, creator, style_id=None, topic_id=None,
+                        episode_number=None, season_number=None):
     """
-    Import one file through the full pipeline.
+    Convert -> create_standalone_source -> handoff for one file.
 
-    Assumes the file was already classified for import (supported format and
-    no existing canonical source).
+    Shared first half of importing a file, used by both import_one() (the
+    per-file subprocess pipeline path) and import_one_inprocess() (the
+    --batch-mode in-process path) -- the two differ only in how the final
+    pipeline stage is launched, not in how the source itself gets created.
 
-    Input: path (Path), creator (str), stage_timeout (int|None),
-        style_id (int|None), topic_id (int|None), episode_number (int|None),
-        season_number (int|None) -- applied uniformly to every file in the
-        batch (this importer processes one folder as one batch of the same
-        content, no per-file overrides).
-    Output: None on success, or (stage, message) on failure.
+    Input: path (Path), creator (str), style_id (int|None), topic_id
+        (int|None), episode_number (int|None), season_number (int|None).
+    Output: (source_id, None) on success, or (None, (stage, message)) on
+        failure.
     """
     source_format = format_for_path(path)
     if source_format is None:
-        return "format", "unsupported format"
+        return None, ("format", "unsupported format")
     source_name = Path(path).stem
 
     try:
         source_text = import_material.convert_file(path, source_format)
     except import_material.ImportError as exc:
-        return "convert", str(exc)
+        return None, ("convert", str(exc))
 
     # suggested_material_level may be None for an unmatched folder; that is a
     # valid "no suggestion" outcome and is passed through unchanged (matching
@@ -211,26 +212,50 @@ def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,
         style_id=style_id, topic_id=topic_id,
         episode_number=episode_number, season_number=season_number)
     if not created["success"]:
-        return "create", "; ".join(created["errors"])
+        return None, ("create", "; ".join(created["errors"]))
     if created.get("package_error"):
         # The canonical file was written but the Source Package was not, so
         # the source cannot be handed off. Treat this as a create failure.
-        return "create", f"source package was not written: {created['package_error']}"
+        return None, ("create",
+                      f"source package was not written: {created['package_error']}")
 
     package_path = source_package.package_path_for(created["path"])
     try:
         package = handoff.load_source_package(package_path)
     except handoff.HandoffError as exc:
-        return "create", f"cannot read source package: {exc}"
+        return None, ("create", f"cannot read source package: {exc}")
 
     try:
         handoff_result = handoff.handoff(package)
     except handoff.HandoffError as exc:
-        return "handoff", str(exc)
+        return None, ("handoff", str(exc))
     if handoff_result.get("errors"):
-        return "handoff", "; ".join(handoff_result["errors"])
+        return None, ("handoff", "; ".join(handoff_result["errors"]))
 
-    source_id = package["source_id"]
+    return package["source_id"], None
+
+
+def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,
+               episode_number=None, season_number=None):
+    """
+    Import one file through the full pipeline (per-file subprocess path).
+
+    Assumes the file was already classified for import (supported format and
+    no existing canonical source).
+
+    Input: path (Path), creator (str), stage_timeout (int|None),
+        style_id (int|None), topic_id (int|None), episode_number (int|None),
+        season_number (int|None) -- applied uniformly to every file in the
+        batch (this importer processes one folder as one batch of the same
+        content, no per-file overrides).
+    Output: None on success, or (stage, message) on failure.
+    """
+    source_id, failure = _create_and_handoff(
+        path, creator, style_id=style_id, topic_id=topic_id,
+        episode_number=episode_number, season_number=season_number)
+    if failure is not None:
+        return failure
+
     argv = build_pipeline_command(source_id, stage_timeout)
     try:
         completed = subprocess.run(
@@ -256,6 +281,47 @@ def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,
         return "pipeline", message
 
     return None
+
+
+def import_one_inprocess(path, creator, stage_timeout=None, style_id=None,
+                         topic_id=None, episode_number=None,
+                         season_number=None):
+    """
+    Import one file through the full pipeline, in-process (--batch-mode path).
+
+    Identical create/handoff steps to import_one(); the only difference is
+    the final pipeline stage, which runs via
+    production_manager.pipeline(..., launcher=launch_stage_inprocess) in this
+    same interpreter instead of spawning production_manager.py as a fresh
+    subprocess. Used so a long batch's parser model loads once for the whole
+    run, not once per file -- see production_manager.py's own docstring on
+    launch_stage_inprocess for the mechanism.
+
+    Input/Output: identical contract to import_one().
+    """
+    source_id, failure = _create_and_handoff(
+        path, creator, style_id=style_id, topic_id=topic_id,
+        episode_number=episode_number, season_number=season_number)
+    if failure is not None:
+        return failure
+
+    data = production_manager.pipeline(
+        source_id, auto=True, timeout=stage_timeout,
+        launcher=production_manager.launch_stage_inprocess,
+    )
+    if data["success"]:
+        return None
+
+    # Mirror import_one()'s "pipeline" failure shape as closely as possible
+    # so batch-mode's [FAIL ...] report lines stay readable the same way.
+    failed_stage = data.get("failed_stage") or "pipeline"
+    detail = None
+    for event in reversed(data.get("events") or []):
+        if event.get("stage") == failed_stage and event.get("error"):
+            detail = event["error"]
+            break
+    message = detail or f"boundary: {data.get('boundary')}"
+    return "pipeline", message
 
 
 def main(argv=None):
@@ -310,6 +376,15 @@ def main(argv=None):
         type=int,
         default=None,
         help="optional season_number. Applies to every file in the batch.",
+    )
+    parser.add_argument(
+        "--batch-mode",
+        action="store_true",
+        help="run every file's pipeline stage in this same process instead "
+             "of spawning production_manager.py as a subprocess per file, "
+             "so the parser's model loads once for the whole batch instead "
+             "of once per file. Default off; the existing per-file "
+             "subprocess path is unaffected either way.",
     )
     args = parser.parse_args(argv)
 
@@ -380,13 +455,18 @@ def main(argv=None):
             print(f"[WOULD-IMPORT {source_format}] {path.name}")
             continue
 
+        import_fn = import_one_inprocess if args.batch_mode else import_one
         try:
-            failure = import_one(
+            failure = import_fn(
                 path, args.creator, args.stage_timeout,
                 style_id=style_id, topic_id=topic_id,
                 episode_number=args.episode, season_number=args.season)
         except Exception as exc:
-            # Defensive catch-all: never let one file abort the batch.
+            # Defensive catch-all: never let one file abort the batch. This
+            # also gives --batch-mode the same failure isolation the
+            # subprocess path already had for free from its process
+            # boundary -- one file's unexpected exception is caught here and
+            # the loop continues to the next file.
             failure = ("unexpected", str(exc))
 
         if failure is None:
