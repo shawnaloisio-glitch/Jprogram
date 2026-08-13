@@ -105,6 +105,38 @@ def validate_creator(creator):
     )
 
 
+def validate_style(style):
+    """
+    Return an error message when the style_id is not configured, else None.
+
+    Input: style (int).
+    """
+    styles = config_loader.load_styles()
+    if style in styles:
+        return None
+    available = ", ".join(str(s) for s in styles) if styles else "(none configured)"
+    return (
+        f"unknown style_id {style!r}: not found in the workspace styles "
+        f"config ({paths.STYLES_CONFIG}). Available styles: {available}"
+    )
+
+
+def validate_topic(topic):
+    """
+    Return an error message when the topic_id is not configured, else None.
+
+    Input: topic (int).
+    """
+    topics = config_loader.load_topics()
+    if topic in topics:
+        return None
+    available = ", ".join(str(t) for t in topics) if topics else "(none configured)"
+    return (
+        f"unknown topic_id {topic!r}: not found in the workspace topics "
+        f"config ({paths.TOPICS_CONFIG}). Available topics: {available}"
+    )
+
+
 def classify(path):
     """
     Classify one file for the batch (shared by real and dry-run modes).
@@ -143,14 +175,19 @@ def build_pipeline_command(source_id, stage_timeout=None):
     return argv
 
 
-def import_one(path, creator, stage_timeout=None):
+def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,
+               episode_number=None, season_number=None):
     """
     Import one file through the full pipeline.
 
     Assumes the file was already classified for import (supported format and
     no existing canonical source).
 
-    Input: path (Path), creator (str), stage_timeout (int|None).
+    Input: path (Path), creator (str), stage_timeout (int|None),
+        style_id (int|None), topic_id (int|None), episode_number (int|None),
+        season_number (int|None) -- applied uniformly to every file in the
+        batch (this importer processes one folder as one batch of the same
+        content, no per-file overrides).
     Output: None on success, or (stage, message) on failure.
     """
     source_format = format_for_path(path)
@@ -170,7 +207,9 @@ def import_one(path, creator, stage_timeout=None):
     material_level = import_material.suggested_material_level(path)
     created = controller.create_standalone_source(
         source_name, SOURCE_TYPE, creator, source_text,
-        material_level=material_level)
+        material_level=material_level,
+        style_id=style_id, topic_id=topic_id,
+        episode_number=episode_number, season_number=season_number)
     if not created["success"]:
         return "create", "; ".join(created["errors"])
     if created.get("package_error"):
@@ -248,6 +287,30 @@ def main(argv=None):
         help="optional timeout in seconds, passed through to "
              "production_manager.py --timeout.",
     )
+    parser.add_argument(
+        "--style",
+        default=None,
+        help="optional style_id; must exist in the workspace "
+             "Config/styles.json. Applies to every file in the batch.",
+    )
+    parser.add_argument(
+        "--topic",
+        default=None,
+        help="optional topic_id; must exist in the workspace "
+             "Config/topics.json. Applies to every file in the batch.",
+    )
+    parser.add_argument(
+        "--episode",
+        type=int,
+        default=None,
+        help="optional episode_number. Applies to every file in the batch.",
+    )
+    parser.add_argument(
+        "--season",
+        type=int,
+        default=None,
+        help="optional season_number. Applies to every file in the batch.",
+    )
     args = parser.parse_args(argv)
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -262,6 +325,32 @@ def main(argv=None):
     if creator_error:
         print(f"Error: {creator_error}", file=sys.stderr)
         return 1
+
+    style_id = None
+    if args.style is not None:
+        try:
+            style_id = int(args.style)
+        except ValueError:
+            print(f"Error: --style must be an integer, got {args.style!r}",
+                  file=sys.stderr)
+            return 1
+        style_error = validate_style(style_id)
+        if style_error:
+            print(f"Error: {style_error}", file=sys.stderr)
+            return 1
+
+    topic_id = None
+    if args.topic is not None:
+        try:
+            topic_id = int(args.topic)
+        except ValueError:
+            print(f"Error: --topic must be an integer, got {args.topic!r}",
+                  file=sys.stderr)
+            return 1
+        topic_error = validate_topic(topic_id)
+        if topic_error:
+            print(f"Error: {topic_error}", file=sys.stderr)
+            return 1
 
     files = sorted(p for p in folder.iterdir() if p.is_file())
 
@@ -292,7 +381,10 @@ def main(argv=None):
             continue
 
         try:
-            failure = import_one(path, args.creator, args.stage_timeout)
+            failure = import_one(
+                path, args.creator, args.stage_timeout,
+                style_id=style_id, topic_id=topic_id,
+                episode_number=args.episode, season_number=args.season)
         except Exception as exc:
             # Defensive catch-all: never let one file abort the batch.
             failure = ("unexpected", str(exc))

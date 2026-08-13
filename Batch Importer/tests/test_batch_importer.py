@@ -65,13 +65,18 @@ def check(name, cond, detail=""):
 
 
 def setup():
-    """Patch Sources, Registry, Cleaning Jobs, and creators config into temp dirs."""
+    """Patch Sources, Registry, Cleaning Jobs, and creators/styles/topics config
+    into temp dirs. styles.json/topics.json are NOT written by default (tests
+    that need them write their own, matching load_styles()/load_topics()'s
+    documented "file absent -> []" behavior for everyone else)."""
     tmp = pathlib.Path(tempfile.mkdtemp())
     saved = (
         controller.SOURCES_ROOT,
         handoff.SOURCE_REGISTRY,
         handoff.CLEANING_JOBS,
         paths.CREATORS_CONFIG,
+        paths.STYLES_CONFIG,
+        paths.TOPICS_CONFIG,
     )
     controller.SOURCES_ROOT = tmp / "Sources"
     handoff.SOURCE_REGISTRY = tmp / "Source Registry"
@@ -82,12 +87,15 @@ def setup():
     paths.CREATORS_CONFIG.write_text(
         json.dumps({"creators": ["test_creator", "nhk_news"]}),
         encoding="utf-8")
+    paths.STYLES_CONFIG = config_dir / "styles.json"
+    paths.TOPICS_CONFIG = config_dir / "topics.json"
     return tmp, saved
 
 
 def restore(saved):
     (controller.SOURCES_ROOT, handoff.SOURCE_REGISTRY,
-     handoff.CLEANING_JOBS, paths.CREATORS_CONFIG) = saved
+     handoff.CLEANING_JOBS, paths.CREATORS_CONFIG,
+     paths.STYLES_CONFIG, paths.TOPICS_CONFIG) = saved
 
 
 def run_cli(args, tmp, saved):
@@ -333,6 +341,131 @@ def _():
         check("clear error on stderr",
               "unknown creator_id" in err and "none configured" in err)
         check("no pipeline run", not run.called)
+    finally:
+        restore(saved)
+
+
+@test("unknown style fails clearly and does not proceed")
+def _():
+    tmp, saved = setup()
+    try:
+        paths.STYLES_CONFIG.write_text(
+            json.dumps({"styles": [{"style_id": 3, "display_name": "x"}]}),
+            encoding="utf-8")
+        input_dir = tmp / "input"
+        input_dir.mkdir()
+        (input_dir / "A id00001.html").write_text(
+            "<p>こんにちは。</p>", encoding="utf-8")
+
+        with mock.patch("batch_importer.subprocess.run") as run:
+            code, out, err = run_cli(
+                ["--folder", str(input_dir), "--creator", "test_creator",
+                 "--style", "999"],
+                tmp, saved)
+
+        check("non-zero exit", code == 1)
+        check("clear error on stderr",
+              "unknown style_id" in err and "999" in err)
+        check("no import started", "[IMPORTED]" not in out)
+        check("no canonical created",
+              not (controller.SOURCES_ROOT / "A id00001.txt").exists())
+        check("no pipeline run", not run.called)
+    finally:
+        restore(saved)
+
+
+@test("unknown topic fails clearly and does not proceed")
+def _():
+    tmp, saved = setup()
+    try:
+        paths.TOPICS_CONFIG.write_text(
+            json.dumps({"topics": [{"topic_id": 7, "display_name": "x"}]}),
+            encoding="utf-8")
+        input_dir = tmp / "input"
+        input_dir.mkdir()
+        (input_dir / "A id00001.html").write_text(
+            "<p>こんにちは。</p>", encoding="utf-8")
+
+        with mock.patch("batch_importer.subprocess.run") as run:
+            code, out, err = run_cli(
+                ["--folder", str(input_dir), "--creator", "test_creator",
+                 "--topic", "999"],
+                tmp, saved)
+
+        check("non-zero exit", code == 1)
+        check("clear error on stderr",
+              "unknown topic_id" in err and "999" in err)
+        check("no import started", "[IMPORTED]" not in out)
+        check("no pipeline run", not run.called)
+    finally:
+        restore(saved)
+
+
+@test("style/topic/episode/season metadata reaches the source package")
+def _():
+    tmp, saved = setup()
+    try:
+        paths.STYLES_CONFIG.write_text(
+            json.dumps({"styles": [{"style_id": 3, "display_name": "x"}]}),
+            encoding="utf-8")
+        paths.TOPICS_CONFIG.write_text(
+            json.dumps({"topics": [{"topic_id": 7, "display_name": "y"}]}),
+            encoding="utf-8")
+
+        input_dir = tmp / "Beginner"
+        input_dir.mkdir()
+        (input_dir / "A id00001.html").write_text(
+            "<p>こんにちは。</p>", encoding="utf-8")
+
+        pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch("batch_importer.subprocess.run",
+                        return_value=pipeline_ok) as run:
+            code, out, _err = run_cli(
+                ["--folder", str(input_dir), "--creator", "test_creator",
+                 "--style", "3", "--topic", "7",
+                 "--episode", "5", "--season", "2"],
+                tmp, saved)
+
+        check("exit 0", code == 0)
+        check("imported", "[IMPORTED] A id00001.html" in out)
+        pkg_path = source_package.package_path_for(
+            controller.SOURCES_ROOT / "A id00001.txt")
+        pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
+        check("style_id in package", pkg["style_id"] == 3, str(pkg))
+        check("topic_id in package", pkg["topic_id"] == 7, str(pkg))
+        check("episode_number in package", pkg["episode_number"] == 5, str(pkg))
+        check("season_number in package", pkg["season_number"] == 2, str(pkg))
+        check("duration_seconds not set", pkg["duration_seconds"] is None, str(pkg))
+        check("pipeline ran once", run.call_count == 1)
+    finally:
+        restore(saved)
+
+
+@test("omitting all metadata flags works exactly as before")
+def _():
+    tmp, saved = setup()
+    try:
+        input_dir = tmp / "Beginner"
+        input_dir.mkdir()
+        (input_dir / "A id00001.html").write_text(
+            "<p>こんにちは。</p>", encoding="utf-8")
+
+        pipeline_ok = mock.Mock(returncode=0, stdout="", stderr="")
+        with mock.patch("batch_importer.subprocess.run",
+                        return_value=pipeline_ok):
+            code, out, _err = run_cli(
+                ["--folder", str(input_dir), "--creator", "test_creator"],
+                tmp, saved)
+
+        check("exit 0", code == 0)
+        check("imported", "[IMPORTED] A id00001.html" in out)
+        pkg_path = source_package.package_path_for(
+            controller.SOURCES_ROOT / "A id00001.txt")
+        pkg = json.loads(pkg_path.read_text(encoding="utf-8"))
+        check("style_id still None", pkg["style_id"] is None, str(pkg))
+        check("topic_id still None", pkg["topic_id"] is None, str(pkg))
+        check("episode_number still None", pkg["episode_number"] is None, str(pkg))
+        check("season_number still None", pkg["season_number"] is None, str(pkg))
     finally:
         restore(saved)
 
