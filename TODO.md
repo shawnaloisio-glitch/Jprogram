@@ -2,7 +2,7 @@
 
 Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
 
-**Note:** structure, section cross-references, and entry points below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs. **Frozen Components were retired 2026-08-13** (Owner override) — see `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section.
+**Note:** structure, section cross-references, and entry points below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs. **Frozen Components were retired 2026-08-13** (Owner override) — see `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section. **`Workspace/` was fully wiped and rebuilt from scratch in Session 19 (2026-08-13)** — see the "Corpus state as of Session 19 end" open item below for current corpus composition; any earlier file-count figures elsewhere in this doc predate that reset.
 
 **Small, concrete pending items** (things to check/decide/fix that aren't
 major scope) live in this file's **Open items** section below (folded from
@@ -139,20 +139,22 @@ numbered sections above hold architecture/state/major tasks only.
   This is Language Coach J's project, not Jprogram's, so no fix belongs
   here — flagging so it isn't lost, and because it directly affects how
   trustworthy any name shown for Jprogram-sourced content is downstream.
-- **`natural_japanese` re-import: parser fixes validated against real
-  production data AND the import path is now ~20x faster (Session 17+18,
-  2026-08-13).** Session 17: ran all 106 originally-failing sources plus 50
-  random unseen files through the fixed pipeline as a real import spanning
-  all 4 level folders — 156/156, 0 failures, no recurrence of prior bugs.
-  Session 18: measured the batch-import pipeline was ~79% process-launch
-  overhead (fresh interpreter + model reload per file per stage) and built
-  `Batch Importer/parallel_batch_import.py` (6 parallel `--batch-mode`
-  workers) to fix it — real 268-file run, 170s, 0 failures, ~0.63s/file
-  effective (was ~12.9s/file). Corpus now at 858 JSONL files. Remaining
-  unimported `complete-beginner` files would take roughly 24 minutes at this
-  rate; Owner has not yet decided whether/when to run the remaining files or
-  the other 3 level folders (`beginner`/`intermediate`/`advanced`), and this
-  only covers the `Subtitles` category.
+- **Corpus state as of Session 19 end (2026-08-13): 3,156 sources, 5
+  creators, `Workspace/` fully rebuilt from a clean wipe.** Superseded by a
+  full pipeline reset this session (Owner: "clean the program of all user
+  data and settings") — the 858-file corpus mentioned in earlier entries no
+  longer exists; everything since was reimported from scratch with the
+  Defender-exclusion speed fix in place. Breakdown: `nat_jap` (Natural
+  Japanese, 1,596: all 4 level folders), `nihongo_jikan` (876: all 4 level
+  folders), `kensan` (113, tagged `Ungraded` via a real fix to
+  `import_material.py`'s folder-name mapping), `lingq` (62, via
+  `LingQ Mini Stories Importer/import_lingq_mini_stories.py`, path fixed),
+  `conteppei` (337, via the new `Con-Teppei Importer/import_con_teppei.py`,
+  which resolves real episode numbers from `manifest.csv` rather than
+  trusting file order). All jsonl/Source Registry/Sources counts verified
+  matching (3,156 each) at session end. Full session detail in `DONE.md`
+  Session 19. No further `Subtitles`-category folders remain unimported;
+  next content would be a new source, not a backlog item.
 - **Environment gotcha for future process investigation (2026-08-13):** this
   machine's Python installations (both the project `.venv` and standalone
   installs) show every `python.exe` invocation as **two OS processes** —
@@ -212,7 +214,8 @@ Entry points today:
 - **Production Manager CLI** — `python "Production Manager\production_manager.py" --source/--run/--pipeline/--dry-run`. (Note: "Production Manager" here is the software component that launches pipeline-stage subprocesses — not the Advisor/OC workflow role discussed in the design spec, which uses the term "Advisor" instead to avoid this exact collision.) Gained an in-process execution path (Session 18, commit `584888f`): `pipeline(..., launcher=launch_stage_inprocess)` runs all 5 stages via direct function calls instead of a subprocess per stage; the existing subprocess-per-stage default (`launch_stage`) and every stage's own standalone CLI are unchanged.
 - **`Batch Importer\batch_importer.py`** — bulk-imports a folder of already-normalized source files (`.vtt`/`.srt`/`.html`) through the real pipeline as standalone sources. Non-recursive, idempotent, failure-isolated. Real production use confirmed 2026-08-13 (Session 17): 176 real Natural Japanese sources imported this way, 0 failures. Gained `--batch-mode` (Session 18, commit `39cd4c8`): runs every file's pipeline stage in the same long-lived process instead of a fresh subprocess per file per stage, so the parser model loads once per batch, not once per file (~1.97s/file vs ~12.9s/file baseline).
 - **`Batch Importer\parallel_batch_import.py`** (Session 18, commit `cb8a665`) — orchestration-only wrapper around `batch_importer.py --batch-mode`: splits a folder's still-unimported files across N (default 6) parallel worker processes. No changes to `batch_importer.py`/`production_manager.py` themselves. Real 268-file run: 170s, 0 failures, ~0.63s/file effective (~20x the original baseline).
-- **`Web UI\server.py`** (port 8001) — generic Advisor-served form channel, stdlib `http.server`, no framework. Currently serves the batch-import form (`Web UI\forms\batch_import.html`) plus a landing page (`Web UI\index.html`) linking to whatever forms exist. Submissions land in `Web UI\pending_submission.json`; Advisor watches for them during a live session (Monitor-based, archives to `Web UI\submission_archive\` rather than deleting). First real submission handled 2026-08-13 (Session 17). Also has a native OS folder-picker (`/api/browse-folder`, tkinter-in-subprocess) and a shared dark/light theme (`Web UI\theme.js`) any new form can pick up.
+- **`Web UI\server.py`** (port 8001) — generic Advisor-served form channel, stdlib `http.server`, no framework. Serves the batch-import form (`Web UI\forms\batch_import.html`) and, as of Session 19 (2026-08-13), `Web UI\forms\manage_config.html` (add creators/styles/topics), plus a landing page (`Web UI\index.html`) linking to whatever forms exist. Submissions land in `Web UI\pending_submission.json`; Advisor watches for them during a live session (Monitor-based, archives to `Web UI\submission_archive\` rather than deleting). Also has a native OS folder-picker (`/api/browse-folder`, tkinter-in-subprocess) and a shared dark/light theme (`Web UI\theme.js`) any new form can pick up. Both forms had real bugs found and fixed in real use Session 19: `batch_import.html`'s submit button not re-enabling after success, and `manage_config.html`'s creator-ID pattern hint not actually being enforced (now a live input mask).
+- **`LingQ Mini Stories Importer\import_lingq_mini_stories.py`** and **`Con-Teppei Importer\import_con_teppei.py`** — one-off importers (Session 19, 2026-08-13) for two source formats that don't fit the generic Batch Importer: LingQ Mini Stories needs A)/B)/quiz-label stripping, and Con-Teppei's `ep001.txt`-style filenames don't reflect real episode order (the real number lives in `manifest.csv` and each file's own header line — the importer parses and cross-validates it rather than trusting file order). Both real-run verified, 0 failures (62 and 337 files respectively). Neither is meant to generalize — same one-off pattern as the rest of the `*.py` scripts outside `Batch Importer/`.
 - Pipeline stage scripts: `job builder.py`, `request builder.py`, `deterministic_parser.py`, `deterministic_parser_client.py`, `corpus_builder.py`, `response_validator.py`, and the two cleaners. (The DeepSeek API path — `deepseek_client.py` — is retired; kept unused in case it's ever revived.)
 
 Source Intake (utilities, artifact writers, and coordinator) is implemented.
