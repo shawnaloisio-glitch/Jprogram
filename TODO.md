@@ -31,6 +31,13 @@ numbered sections above hold architecture/state/major tasks only.
 - **Analysis tab can't analyze multiple files at once** — single-file only.
 - **Import-from-subtitle workflow is clunky** — Owner flagged for design
   thought, not an immediate fix.
+- **Confirmation-gate presentation, corrected 2026-08-13:** before launching
+  a Coder task, present a manager-level plain-English description (what the
+  task does, why, its scope) — not the prompt-file mechanics, raw
+  `reasonix-cli` invocation, or `--allowed-tools` flags. Owner corrected this
+  after Advisor showed the raw command instead of a summary. The technical
+  detail still exists (prompt file, worktree, invocation) but stays
+  something Advisor can produce on request, not the default gate output.
 
 ---
 
