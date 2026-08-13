@@ -8,6 +8,53 @@ session wrap-up; never stack wrap-ups into the bootstrap.
 
 ---
 
+## Session 16 (2026-08-13) — Parser bugs closed out, reasonix headless troubleshooting, batch-import UI
+
+**Logged late, mid-session, after Owner flagged that per-task DONE.md entries weren't happening** — this session ran a long stretch of completed tasks (doc corrections, three parser fixes, a branch reconciliation, a two-part reasonix investigation, and a new Web UI feature) purely as git commits, with no DONE.md entries until now. Backfilled here in one entry rather than reconstructed as several after the fact.
+
+### Current phase
+
+`PARSERBUG.md`'s parser-layer investigation (open since Session 15) is now **closed**: all three root causes found, fixed, merged, and confirmed — a full re-run of the original 106 failing sources through the fixed pipeline passed **106/106**. Corpus is still clean (386 files, 46,421 sentences, zero contamination). A new Web UI mechanism (`Web UI/server.py`, port 8001) is scaffolded and confirmed working end-to-end; `batch_importer.py` now supports the metadata fields it needs.
+
+### What happened (chronological)
+
+1. **Doc review + corrections.** Swept all `.md` files; found and fixed stale DeepSeek-parser framing in `README.md`/`PARSER_OUTPUT_SPEC.md`/`parser_prompt.md` (still described the retired LLM parser as live).
+2. **Frozen Components retired** (Owner's explicit override, given plainly beforehand: the freeze was being removed at the exact moment a live bug was open in two of the files it protected). Audit-trigger is now judgment-call for every file.
+3. **Parser bug investigation, three root causes found and fixed** (see `PARSERBUG.md` for the original findings this closes out):
+   - Fix #1 (`d62eeec`): `canonical_sentence_texts()` counted an empty `\n\n`-block as a phantom sentence — the "canonical sentence count N does not match record count N-1" family of failures.
+   - Fix #2 (`380ecfc`): `MAX_JOB_CHARACTERS` raised 10,000 → 200,000 — the low limit was a leftover from the retired LLM parser's cost budget; the live GiNZA parser has no such constraint (confirmed its own `max_length` is 1,000,000).
+   - Fix #3 (`f400d2d`): `_merge_groups()` could fuse two words across a punctuation character stripped out before the adjacency check (`３（み）ですね` → corrupted `みです`).
+   - **Revalidation**: re-ran all 106 originally-failing sources through the fixed pipeline — **106/106 pass**, confirming the fixes resolve the real, full failure set, not just the hand-picked examples used to diagnose them.
+4. **`fix-source-intake-case-e` branch reconciled** (`2359687`) — a real WIP fix from 2026-08-10, 24 commits behind master, never merged: registry-path collision with a mismatched `source_id` now raises an error instead of silently overwriting. Branch deleted after merge.
+5. **Reasonix headless-write investigation — two root causes found and fixed, documented in `Shared\RX_WORKFLOW.md`** (not duplicated here, per C2):
+   - Missing `Edit`/`Write` rule in `reasonix.toml`'s `[permissions] allow` list — every headless write hard-failed with `constraint=no-mutation` regardless of `--permission-mode`, because no headless task had ever attempted a real write before this session (confirmed via `reasonix`'s own usage stats: virtually all real coding was `source:desktop`, never CLI).
+   - The stable header duplicated `AGENTS.md`'s "prefer read-only unless explicitly authorized" guardrail — sent as literal prompt text on every task, it self-triggered the same read-only lock even after the permission fix. Removed from the header (byte-identical block in `RX_WORKFLOW.md`), kept in `AGENTS.md` where it belongs.
+   - **Not fully resolved**: the `batch_importer.py` Coder task (step 6) still blocked with `constraint=no-mutation` despite both fixes. Likely cause (not yet confirmed): `AGENTS.md` itself still carries the same guardrail line and is auto-loaded for every real project task, re-introducing the trigger through a different path than the header. Untested; next session should confirm before spending more on this.
+6. **`batch_importer.py` extended** (`0e4cc06`) to accept `--style`/`--topic`/`--episode`/`--season`, closing the known null-metadata gap. Coder's read-only analysis (twice-blocked, per above) caught a real bug in Advisor's own task design before any code was written — `--style`/`--topic` needed int conversion (`load_styles()`/`load_topics()` return ints) that the original task spec, written as `str`, would have missed. Applied directly by Advisor per Coder's fully-specified design.
+7. **Web UI mechanism built** (`Web UI/server.py`, port 8001) — a generic Advisor-served-form channel, not a fixed app: stdlib `http.server`, no new dependencies, serves whatever's in `forms/` (currently `batch_import.html`), `/api/config` reads real creators/styles/topics for dropdowns, `/api/submit` writes to `pending_submission.json`. Confirmed working end-to-end (config load, form load, submit round-trip) via direct `curl` checks. Watcher-based pickup agreed (Advisor watches for the submission file, no "done" message needed) but not yet wired to an actual watch — no real submission has been made yet.
+
+### Last decisions and why
+
+- **Frozen Components removed** — Owner's call, made with the risk stated plainly first, per the standing override rule.
+- **Two of three parser fixes applied directly by Advisor, not through Coder** — reasonix was broken all day; Coder's diagnosis was correct and re-verified independently each time, so applying its already-correct, already-converged-on fix directly was faster and equally safe as waiting on a broken delivery mechanism. Same for the batch_importer extension.
+- **Revalidate against the full 106, not just examples** — Owner asked directly whether the pipeline was ready for production use; hand-verified examples weren't sufficient evidence for that question, a full re-run was.
+- **Reasonix fixes documented centrally in `RX_WORKFLOW.md`, not per-project** — this workspace's own C2 (no rule duplication) convention; every project already defers to that file for Coder-mechanism detail.
+
+### Open risks / unresolved questions
+
+1. **Reasonix headless writes are still not reliable for real multi-part tasks** — two root causes fixed, but the `batch_importer.py` task blocked again after both fixes. Suspected but unconfirmed: `AGENTS.md`'s own copy of the read-only guardrail line, auto-loaded per task. Needs a cheap isolated test (real project worktree WITH `AGENTS.md`, simple task) before spending more attempts on a real task.
+2. **Two Audit-trigger-Yes changes (fix #1, fix #3) have not had an independent Auditor pass** — applied directly by Advisor as authorized exceptions during the reasonix outage, correctly re-verified against tests each time, but never reviewed by a fresh session per the normal Auditor process. Worth doing before trusting them at full production volume.
+3. **`Language Coach J/DONE.md`** — found stale during the earlier doc survey (missing several sessions' wrap-ups); not yet fixed.
+4. **`Audits/OC_Reliability_Log.md`** — looks abandoned since 2026-08-06; not yet addressed.
+5. **Web UI watcher not yet wired** — the mechanism works, but Advisor hasn't yet set up the actual watch-for-submission step since no real form has been used yet. Next real use of the batch-import form needs this in place first.
+6. **This DONE.md logging gap itself** — per-task logging should resume going forward; this entry is a one-time backfill, not a new normal.
+
+### Next immediate task
+
+Confirm/fix the remaining reasonix headless-write blocker (AGENTS.md hypothesis) if more Coder tasks are needed soon; otherwise, wire up the Web UI watcher and hand the batch-import form to Owner for its first real use.
+
+---
+
 ## Session 15 (2026-08-12) — Natural Japanese import attempt, cleaner fix, batch removal
 
 **Read this section first, always.** Supersedes the Session 14 version

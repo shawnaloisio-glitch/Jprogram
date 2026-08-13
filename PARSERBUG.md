@@ -1,7 +1,15 @@
 # PARSERBUG — Corpus-builder reconstruction failures on Natural Japanese subtitles (2026-08-12)
 
-Status: **OPEN — root cause identified, fix NOT made (Frozen-Component
-territory, project locked; needs Owner authorization + audit).**
+Status: **CLOSED 2026-08-13.** Three root causes found and fixed (Session
+16, see `DONE.md`): `d62eeec` (canonicalizer trailing/internal empty-block
+miscounting), `380ecfc` (MAX_JOB_CHARACTERS 10,000 → 200,000, the retired
+LLM parser's leftover cost limit), `f400d2d` (word-merge across a stripped
+punctuation separator). **Revalidated against the full original 106-source
+failure set: 106/106 now pass.** Frozen Components no longer exists as a
+concept (retired 2026-08-13, Owner override) — the "project locked" note
+below is historical. Findings preserved below for the record; scope
+uncertainty called out in the original write-up is resolved (see
+`DONE.md` Session 16).
 
 Written 2026-08-12 from the Session 15 record (originally logged in
 WORKING_LIST.md / JPROGRAM_SESSION_BOOTSTRAP.md §15, which were retired in

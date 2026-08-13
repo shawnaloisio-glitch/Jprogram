@@ -38,6 +38,23 @@ numbered sections above hold architecture/state/major tasks only.
   after Advisor showed the raw command instead of a summary. The technical
   detail still exists (prompt file, worktree, invocation) but stays
   something Advisor can produce on request, not the default gate output.
+- **Reasonix headless Coder writes still not fully reliable, 2026-08-13.**
+  Two root causes found and fixed (missing `Edit`/`Write` rule in
+  `reasonix.toml`; stable header duplicating `AGENTS.md`'s read-only
+  guardrail — see `Shared\RX_WORKFLOW.md`), but a real multi-part task
+  (`batch_importer.py` extension) still blocked with `constraint=no-mutation`
+  after both fixes and had to be applied directly by Advisor. Suspected,
+  unconfirmed: `AGENTS.md`'s own copy of the same guardrail line, auto-loaded
+  per task. Needs a cheap isolated test before spending more on real tasks.
+- **Web UI watcher not yet wired.** `Web UI/server.py` (port 8001) is built
+  and confirmed working end-to-end (config API, form load, submit
+  round-trip), but no real submission has been made yet — the agreed
+  watch-for-submission mechanism (Advisor watches `pending_submission.json`,
+  no "done" message needed) needs setting up before the first real use.
+- **Two Audit-trigger-Yes parser fixes (d62eeec, f400d2d) have not had an
+  independent Auditor pass** — applied directly by Advisor during the
+  reasonix outage, re-verified against tests each time, but never reviewed
+  fresh per the normal process. Worth doing before full production volume.
 
 ---
 
