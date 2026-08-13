@@ -28,6 +28,31 @@ numbered sections above hold architecture/state/major tasks only.
   Owner's call) was made at
   `C:\AI Development Projects\JapaneseCorpus\Jprogram_backup_2026-08-13.zip`.
   Both commits pushed to `origin/master`.
+- **Standalone-import source_id collisions can silently overwrite each other
+  (found 2026-08-13, Session 19, during the first real post-reimport batch
+  import — 685-file `beginner` folder).** `Source Builder/controller.py`
+  has two source-id paths: `create_collection_source` uses a real
+  auto-incrementing sequence (`next_auto_sequence`, line 227) to guarantee
+  uniqueness; `create_standalone_source` (what `Batch Importer/
+  batch_importer.py` actually uses) derives `source_id` by slugifying the
+  filename/title alone (`derive_source_id`, `controller.py:164`), with no
+  sequence and no check against already-existing source_ids. The only
+  collision check that exists (`controller.py:269`, `path.exists()`)
+  operates on the *original filename*, not the *slugified* `source_id`
+  used as the Registry/corpus key — so two files whose titles differ only
+  in trailing punctuation (e.g. `Please do not enter.` vs
+  `_Please do not enter._`) collapse to the identical `source_id`, and the
+  second one silently overwrites the first's Source Registry entry and
+  corpus output. Confirmed real (not just theoretical): 3 such collisions
+  happened in the `beginner` import — all 3 pairs were true content
+  duplicates (identical sha256, same episode re-exported under a slightly
+  different filename), so no real data was lost this time, but the
+  mechanism has no protection against a genuine non-duplicate collision.
+  Orphaned sidecar pairs from these 3 cleaned up same session (see
+  `DONE.md`). **Fix not yet designed/implemented** — options: give
+  `derive_source_id` a real uniqueness check (reject or auto-sequence on
+  collision), or route standalone imports through the same
+  `next_auto_sequence` mechanism collections already use.
 - **Processor/analysis output metadata (possible future need)** — `origin`
   may shift to domain/topic as a *separate* tag (not a replacement);
   candidate tags: domain/topic, register, format/modality,
