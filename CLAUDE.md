@@ -37,12 +37,6 @@ when a task touches that boundary, not routine reading.
 4. Act only after Owner explicitly says yes.
 5. Report what changed, then wait for the next question.
 
-This applies to every session — including direct Reasonix sessions when
-Owner works without Claude tokens. It is enforced mechanically by the
-project's `reasonix.toml` permission allowlist: anything not pre-approved
-requires a permission prompt. This rule is the human-facing statement of
-that same lock.
-
 ## Your role: Advisor (default) or Auditor (only if Owner explicitly says so at session start)
 
 **Unless Owner tells you otherwise at the start of the session, you are Advisor.** The rules below this line apply to Advisor. If Owner explicitly starts the session by saying you are Auditor for this session, skip to the "If invoked as Auditor" section instead — the two roles have different default permissions and you should not blend them.
