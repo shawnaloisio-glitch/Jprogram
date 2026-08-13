@@ -298,7 +298,10 @@ def canonical_sentence_texts(expected_text):
     kept = [part for part in parts if not _is_section_marker_line(part)]
     if kept and kept[-1].endswith("\n"):
         kept[-1] = kept[-1][:-1]
-    return kept
+    # Drop empty blocks: split_line("") yields zero sentences in
+    # split_sentences(), most commonly for the trailing block left when
+    # Job Builder cuts a source at an internal "\n\n" boundary.
+    return [part for part in kept if part != ""]
 
 
 def restore_sentence_text(records, canonical_texts):

@@ -247,6 +247,33 @@ def _():
     check("input unchanged", parser_data["sentences"][0]["text"] == original_text)
 
 
+@test("REGRESSION: canonical_sentence_texts drops trailing empty block")
+def _():
+    # A trailing "\n\n" (e.g. left when Job Builder cuts a source at an
+    # internal "\n\n" boundary) must not become a phantom sentence.
+    source = "あ\n\nい\n\n"
+    texts = pn.canonical_sentence_texts(source)
+    check("no trailing empty string", texts == ["あ", "い"])
+    check("exact count", len(texts) == 2)
+
+
+@test("REGRESSION: canonical_sentence_texts drops internal empty block")
+def _():
+    source = "a\n\n\n\nb"
+    texts = pn.canonical_sentence_texts(source)
+    check("internal empty block not counted", texts == ["a", "b"])
+    check("exact count", len(texts) == 2)
+
+
+@test("REGRESSION: canonical_sentence_texts still strips single trailing newline")
+def _():
+    source = "あ\n\nい\n"
+    texts = pn.canonical_sentence_texts(source)
+    check("trailing newline stripped", texts == ["あ", "い"])
+    check("last sentence has no trailing newline",
+          texts[-1] == "い" and not texts[-1].endswith("\n"))
+
+
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
