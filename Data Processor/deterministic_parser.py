@@ -323,6 +323,10 @@ def _fix_sentence_initial_dewa(doc, bunsetu_spans):
     Output: a new list of Span with the leading で+は (+ any immediately
         following separator/punctuation tokens) fused into one span, or
         the original list unchanged if the pattern doesn't match exactly.
+        The second original span is fully absorbed when it consists only
+        of は (+ separators) with nothing left over -- e.g. "で"/"は" as
+        two single-token spans becomes one "では" span, not "では" plus a
+        stray empty span.
     """
     if len(bunsetu_spans) < 2:
         return bunsetu_spans
@@ -338,10 +342,9 @@ def _fix_sentence_initial_dewa(doc, bunsetu_spans):
     merge_end = second.start + 1
     while merge_end < second.end and _is_separator(doc[merge_end].text):
         merge_end += 1
-    if merge_end >= second.end:
-        # Nothing of substance would remain in the second span.
-        return bunsetu_spans
-    fixed = [doc[first.start:merge_end], doc[merge_end:second.end]]
+    fixed = [doc[first.start:merge_end]]
+    if merge_end < second.end:
+        fixed.append(doc[merge_end:second.end])
     fixed.extend(bunsetu_spans[2:])
     return fixed
 
