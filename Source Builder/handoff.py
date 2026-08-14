@@ -203,9 +203,25 @@ def handoff(package, force=False):
         "errors": [],
     }
 
-    # Registry.
-    existing_reg_sha = _load_existing_sha256(registry_path)
-    if existing_reg_sha is not None:
+    # Registry. write_registry_if_absent is an atomic OS-level exclusive
+    # create -- at most one of two callers racing on the same source_id
+    # can ever win it, closing the read-then-write gap the old
+    # check-then-write sequence had (confirmed real: two parallel workers
+    # could both pass an existence check before either wrote, and the
+    # second write would silently win with neither reporting a failure).
+    try:
+        created = registry.write_registry_if_absent(registry_path, registry_entry)
+    except registry.RegistryError as exc:
+        result["errors"].append(f"registry write failed: {exc}")
+        created = None
+    if created is True:
+        result["registry"]["action"] = "created"
+    elif created is False:
+        # Someone (this call, sequentially, or a racing worker) already
+        # created it first. Fall back to the same sha256-compare logic as
+        # before -- now race-safe, since the exclusive create above is
+        # what actually decided "first or not," not this read.
+        existing_reg_sha = _load_existing_sha256(registry_path)
         if existing_reg_sha == sha256:
             result["registry"]["action"] = "exists"
         else:
@@ -219,12 +235,6 @@ def handoff(package, force=False):
                     result["registry"]["action"] = "created"
                 except registry.RegistryError as exc:
                     result["errors"].append(f"registry write failed: {exc}")
-    else:
-        try:
-            registry.write_registry(registry_path, registry_entry)
-            result["registry"]["action"] = "created"
-        except registry.RegistryError as exc:
-            result["errors"].append(f"registry write failed: {exc}")
 
     # Cleaning Job.
     existing_job = Path(job_path).is_file()

@@ -22,6 +22,7 @@ Does NOT:
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 
 # Allow imports from the project root (project convention).
@@ -76,6 +77,63 @@ def write_registry(path, entry):
     _write_atomic(path, entry)
 
 
+def write_registry_if_absent(path, entry):
+    """
+    Validate and atomically create a Source Registry artifact ONLY if no
+    file already exists at path -- a true OS-level exclusive create, not a
+    check-then-write.
+
+    write_registry's normal callers (handoff.py) previously read the path
+    to check existence and only then called write_registry -- two parallel
+    workers racing on the same source_id could both pass that check before
+    either writes, and the second write silently wins with no error
+    (confirmed real, 2026-08-13: two different source files colliding on
+    the same slugified source_id, no failure reported by either worker,
+    only one survived in the Registry). This function closes that gap:
+    the create step itself is atomic (os.link fails with FileExistsError
+    if the target already exists, a single OS-level operation with no
+    check-then-write gap), so at most one of two racing callers can ever
+    win it.
+
+    Input:
+        path: destination file path (Source Registry\\<source_id>.json).
+        entry: the registry dict (see build_entry).
+
+    Output:
+        True if this call created the file, False if a file already
+        existed at path (caller should fall back to reading it and
+        comparing sha256, exactly as before).
+
+    Raises:
+        RegistryError if schema validation fails or the write fails for a
+        reason other than the target already existing.
+    """
+    errors = schemas.validate("registry", entry)
+    if errors:
+        raise RegistryError("; ".join(errors))
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = (
+        json.dumps(entry, ensure_ascii=False, sort_keys=True, indent=4)
+        + "\n"
+    )
+    # Unique temp name per call: two racing callers must never share one.
+    temp = path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}")
+    try:
+        with temp.open("w", encoding="utf-8", newline="\n") as file:
+            file.write(text)
+            file.flush()
+            os.fsync(file.fileno())
+        try:
+            os.link(temp, path)
+            return True
+        except FileExistsError:
+            return False
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def _write_atomic(path, data):
     """
     Write JSON deterministically to a temp file and rename it into place.
@@ -97,4 +155,4 @@ def _write_atomic(path, data):
     temp.replace(path)
 
 
-__all__ = ["build_entry", "write_registry", "RegistryError"]
+__all__ = ["build_entry", "write_registry", "write_registry_if_absent", "RegistryError"]

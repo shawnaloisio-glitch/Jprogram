@@ -119,6 +119,51 @@ def _():
     check("no file written", not path.exists())
 
 
+@test("write_registry_if_absent: first call creates, returns True")
+def _():
+    entry = registry.build_entry(**entry_args())
+    path = pathlib.Path(tempfile.mkdtemp()) / "pod_conteppei_ep051.json"
+    created = registry.write_registry_if_absent(path, entry)
+    check("returns True", created is True)
+    check("file exists", path.is_file())
+    check("round-trips", json.loads(path.read_text(encoding="utf-8")) == entry)
+    check("no temp leftover", not any(path.parent.glob("*.tmp-*")))
+
+
+@test("write_registry_if_absent: second call on same path returns False, leaves file untouched")
+def _():
+    args = entry_args()
+    entry_first = registry.build_entry(**args)
+    args["sha256"] = "b" * 64
+    args["original_filename"] = "different.txt"
+    entry_second = registry.build_entry(**args)
+
+    path = pathlib.Path(tempfile.mkdtemp()) / "pod_conteppei_ep051.json"
+    created_first = registry.write_registry_if_absent(path, entry_first)
+    created_second = registry.write_registry_if_absent(path, entry_second)
+
+    check("first call wins", created_first is True)
+    check("second call reports already-exists", created_second is False)
+    on_disk = json.loads(path.read_text(encoding="utf-8"))
+    check("first entry's content survives untouched", on_disk == entry_first)
+    check("no temp leftover", not any(path.parent.glob("*.tmp-*")))
+
+
+@test("write_registry_if_absent: invalid entry raises before any file is written")
+def _():
+    entry = registry.build_entry(**entry_args())
+    entry["sha256"] = "not-a-hash"
+    path = pathlib.Path(tempfile.mkdtemp()) / "x.json"
+    raised = False
+    try:
+        registry.write_registry_if_absent(path, entry)
+    except registry.RegistryError:
+        raised = True
+    check("invalid sha256 raises", raised)
+    check("no file written", not path.exists())
+    check("no temp leftover", not any(path.parent.glob("*.tmp-*")))
+
+
 @test("registry module boundary (no forbidden imports)")
 def _():
     source = pathlib.Path(SOURCE_INTAKE / "registry.py").read_text(encoding="utf-8")
