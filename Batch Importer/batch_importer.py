@@ -49,7 +49,6 @@ import handoff
 import import_material
 import paths
 import production_manager
-import source_package
 
 PRODUCTION_MANAGER_SCRIPT = PROJECT_ROOT / "Production Manager" / "production_manager.py"
 
@@ -204,35 +203,33 @@ def _create_and_handoff(path, creator, style_id=None, topic_id=None,
     # suggested_material_level may be None for an unmatched folder; that is a
     # valid "no suggestion" outcome and is passed through unchanged (matching
     # the GUI import flow for an unmatched folder). A None level makes
-    # create_standalone_source report a package_error, which is caught below.
+    # register_standalone_source report a package_error, which is caught
+    # below.
     material_level = import_material.suggested_material_level(path)
-    created = controller.create_standalone_source(
-        source_name, SOURCE_TYPE, creator, source_text,
-        material_level=material_level,
-        style_id=style_id, topic_id=topic_id,
-        episode_number=episode_number, season_number=season_number)
-    if not created["success"]:
-        return None, ("create", "; ".join(created["errors"]))
-    if created.get("package_error"):
-        # The canonical file was written but the Source Package was not, so
-        # the source cannot be handed off. Treat this as a create failure.
-        return None, ("create",
-                      f"source package was not written: {created['package_error']}")
-
-    package_path = source_package.package_path_for(created["path"])
     try:
-        package = handoff.load_source_package(package_path)
+        result = handoff.register_standalone_source(
+            source_name, SOURCE_TYPE, creator, source_text,
+            material_level=material_level,
+            style_id=style_id, topic_id=topic_id,
+            episode_number=episode_number, season_number=season_number)
     except handoff.HandoffError as exc:
-        return None, ("create", f"cannot read source package: {exc}")
+        return None, ("create", str(exc))
 
-    try:
-        handoff_result = handoff.handoff(package)
-    except handoff.HandoffError as exc:
-        return None, ("handoff", str(exc))
-    if handoff_result.get("errors"):
-        return None, ("handoff", "; ".join(handoff_result["errors"]))
+    # register_standalone_source returns two shapes: controller's own
+    # create-result dict (no "registry" key) when it stopped before ever
+    # reaching handoff, or handoff()'s result dict (has "registry") on
+    # success/non-collision failure.
+    if "registry" not in result:
+        if result.get("package_error"):
+            # The canonical file was written but the Source Package was
+            # not, so the source cannot be handed off.
+            return None, ("create",
+                          f"source package was not written: {result['package_error']}")
+        return None, ("create", "; ".join(result["errors"]))
+    if result.get("errors"):
+        return None, ("handoff", "; ".join(result["errors"]))
 
-    return package["source_id"], None
+    return result["source_id"], None
 
 
 def import_one(path, creator, stage_timeout=None, style_id=None, topic_id=None,

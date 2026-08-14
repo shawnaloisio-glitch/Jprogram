@@ -45,10 +45,17 @@ sys.path.append(str(PROJECT_ROOT / "Source Builder"))
 sys.path.append(str(PROJECT_ROOT / "Source Intake"))
 
 import cleaning_job
+import controller
 import registry
 import resolver
+import source_id
 import source_package
 from paths import CLEANING_JOBS, SOURCE_REGISTRY
+
+# Global-counter identity scheme (DECIDED 2026-08-14: replaces title-slug
+# identity project-wide -- see source_id.generate_counter_id's docstring).
+ID_PREFIX = "ja"
+MAX_ID_RETRIES = 25
 
 
 class HandoffError(Exception):
@@ -236,7 +243,20 @@ def handoff(package, force=False):
                 except registry.RegistryError as exc:
                     result["errors"].append(f"registry write failed: {exc}")
 
-    # Cleaning Job.
+    # Cleaning Job. Only attempted when the Registry step actually
+    # succeeded (created or exists) -- if it's still "failed" here, this
+    # source_id was never really ours: skipping avoids two racing workers
+    # BOTH writing to the exact same Cleaning Job path when they collide on
+    # the same source_id (cleaning_job.write_job's temp filename is not
+    # per-process-unique, unlike registry.py's atomic exclusive create --
+    # confirmed real 2026-08-14 during global-counter concurrency testing,
+    # WinError 5 access-denied when two processes raced the same shared
+    # ".tmp" path). Under the global-counter scheme every source_id has at
+    # most one legitimate winner, so this can never skip a Cleaning Job a
+    # caller actually needed.
+    if result["registry"]["action"] == "failed":
+        return result
+
     existing_job = Path(job_path).is_file()
     if existing_job:
         if not force:
@@ -263,6 +283,147 @@ def handoff_for_package_path(package_path, force=False):
     return handoff(package, force=force)
 
 
+def _next_candidate_id():
+    """Return a fresh global-counter candidate source_id."""
+    counter = source_id.next_counter(SOURCE_REGISTRY, ID_PREFIX)
+    return source_id.generate_counter_id(ID_PREFIX, counter)
+
+
+def _is_id_collision(handoff_result):
+    """
+    True when a handoff() failure means "another process already claimed
+    this exact counter value," not a genuine validation/IO failure.
+
+    Under the global-counter scheme every source_id is content-independent,
+    so a sha256 mismatch at an already-occupied registry path can only mean
+    a different, unrelated source won this exact id concurrently -- always
+    safe to retry with a fresh counter (unlike the old slug-derived scheme,
+    where the same mismatch could also mean a genuine two-different-titles
+    naming collision requiring manual resolution).
+    """
+    return any("different sha256" in e for e in handoff_result.get("errors", []))
+
+
+def _cleanup_failed_attempt(canonical_path, package_path):
+    """
+    Remove the artifacts written for a losing id-assignment attempt so the
+    next retry starts clean: the canonical source file and its Source
+    Package sidecar. These two are always exclusively ours (their paths
+    are keyed by source_name/collection+episode, not by the contested
+    candidate source_id), so deleting them can never touch another
+    process's artifacts.
+
+    Deliberately does NOT touch anything under the losing candidate's
+    source_id (e.g. a Cleaning Job path) -- handoff() only ever writes a
+    Cleaning Job once its Registry step actually succeeds, so on a
+    collision the candidate's id belongs entirely to whichever process
+    won it; a losing process reaching into that path (even to "clean up")
+    would be deleting or racing a different, legitimate process's
+    in-progress or completed write. Confirmed real 2026-08-14: an earlier
+    version of this cleanup unlinked cleaning_job_path_for(candidate_id)
+    unconditionally and hit WinError 5 (access denied) under genuine
+    multi-process concurrency, because the path it was deleting belonged
+    to the concurrently-writing winner, not to this losing attempt.
+    """
+    Path(canonical_path).unlink(missing_ok=True)
+    Path(package_path).unlink(missing_ok=True)
+
+
+def register_standalone_source(source_name, source_type, creator, source_text,
+                               overwrite=False, material_level=0,
+                               style_id=None, topic_id=None,
+                               duration_seconds=None, episode_number=None,
+                               season_number=None):
+    """
+    Create and fully register (Source Package + Registry + Cleaning Job) a
+    standalone source under a fresh global-counter source_id, retrying with
+    a new counter value whenever a concurrent process wins the same one
+    first (the counter scan-then-write is not atomic across processes --
+    see source_id.next_counter's docstring). Bounded by MAX_ID_RETRIES.
+
+    Safe to call from multiple parallel worker processes (e.g. Batch
+    Importer workers) racing on the same registry directory: at most one
+    attempt per counter value can ever win, and every losing attempt's
+    artifacts are cleaned up before the next retry.
+
+    Output: same shape as handoff(), with an added "create" key holding
+    controller.create_standalone_source's own result dict. On a
+    non-collision create failure, returns controller's result unchanged
+    (no "registry"/"cleaning_job" keys).
+    Raises: HandoffError if MAX_ID_RETRIES is exhausted on persistent
+    collisions.
+    """
+    last_result = None
+    for _attempt in range(MAX_ID_RETRIES):
+        candidate_id = _next_candidate_id()
+        created = controller.create_standalone_source(
+            source_name, source_type, creator, source_text,
+            overwrite=overwrite, material_level=material_level,
+            style_id=style_id, topic_id=topic_id,
+            duration_seconds=duration_seconds,
+            episode_number=episode_number, season_number=season_number,
+            source_id=candidate_id,
+        )
+        if not created["success"] or created.get("package_error"):
+            return created
+
+        package_path = source_package.package_path_for(created["path"])
+        package = load_source_package(package_path)
+        result = handoff(package)
+        if not _is_id_collision(result):
+            result["create"] = created
+            return result
+
+        _cleanup_failed_attempt(created["path"], package_path)
+        last_result = result
+    raise HandoffError(
+        f"failed to register {source_name!r} after {MAX_ID_RETRIES} "
+        f"attempts (persistent counter collision): {last_result['errors']}")
+
+
+def register_collection_source(collection_id, source_type, creator,
+                                source_text, overwrite=False,
+                                material_level=0, style_id=None,
+                                topic_id=None, duration_seconds=None,
+                                episode_number=None, season_number=None):
+    """
+    Collection-mode counterpart to register_standalone_source. The
+    collection filename's episode number still comes from
+    controller.next_auto_sequence (file ordering, unaffected); only the
+    pipeline source_id is now a retried global-counter value instead of
+    being derived from collection_id/episode.
+
+    Output / Raises: see register_standalone_source.
+    """
+    last_result = None
+    for _attempt in range(MAX_ID_RETRIES):
+        candidate_id = _next_candidate_id()
+        created = controller.create_collection_source(
+            collection_id, None, source_type, creator, source_text,
+            overwrite=overwrite, material_level=material_level,
+            style_id=style_id, topic_id=topic_id,
+            duration_seconds=duration_seconds,
+            episode_number=episode_number, season_number=season_number,
+            source_id=candidate_id,
+        )
+        if not created["success"] or created.get("package_error"):
+            return created
+
+        package_path = source_package.package_path_for(created["path"])
+        package = load_source_package(package_path)
+        result = handoff(package)
+        if not _is_id_collision(result):
+            result["create"] = created
+            return result
+
+        _cleanup_failed_attempt(created["path"], package_path)
+        last_result = result
+    raise HandoffError(
+        f"failed to register a {collection_id!r} source after "
+        f"{MAX_ID_RETRIES} attempts (persistent counter collision): "
+        f"{last_result['errors']}")
+
+
 __all__ = [
     "HandoffError",
     "load_source_package",
@@ -272,4 +433,6 @@ __all__ = [
     "cleaning_job_for",
     "handoff",
     "handoff_for_package_path",
+    "register_standalone_source",
+    "register_collection_source",
 ]

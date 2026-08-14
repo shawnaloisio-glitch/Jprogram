@@ -25,6 +25,7 @@ import json
 import pathlib
 import sys
 import tempfile
+from unittest import mock
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_BUILDER = PROJECT_ROOT / "Source Builder"
@@ -288,6 +289,109 @@ def _():
             check("handoff rejected", False)
         except handoff.HandoffError as exc:
             check("rejection message", "cleaning_profile" in str(exc))
+    finally:
+        restore(saved)
+
+
+@test("register_standalone_source assigns a global-counter source_id")
+def _():
+    saved = setup()
+    try:
+        result = handoff.register_standalone_source(
+            "nhk_weather", "clean_text", "nhk_news", "天気です。\n",
+            material_level=1)
+        check("no errors", result["errors"] == [])
+        check("registry created", result["registry"]["action"] == "created")
+        check("counter-style id",
+              result["source_id"].startswith("ja_"), result["source_id"])
+        check("create result attached", result["create"]["success"] is True)
+    finally:
+        restore(saved)
+
+
+@test("register_collection_source assigns a global-counter source_id")
+def _():
+    saved = setup()
+    try:
+        result = handoff.register_collection_source(
+            "teppei_beginner", "clean_text", "con_teppei_podcast",
+            "こんにちは。\n", material_level=1)
+        check("no errors", result["errors"] == [])
+        check("registry created", result["registry"]["action"] == "created")
+        check("counter-style id",
+              result["source_id"].startswith("ja_"), result["source_id"])
+        # Filename still uses the collection/episode convention, unaffected
+        # by the counter-based identity.
+        check("filename uses collection episode convention",
+              "teppei_beginner_ep0001.txt" in result["create"]["filename"])
+    finally:
+        restore(saved)
+
+
+@test("register_standalone_source: two calls get two distinct ids")
+def _():
+    saved = setup()
+    try:
+        first = handoff.register_standalone_source(
+            "source_one", "clean_text", "nhk_news", "一。\n",
+            material_level=1)
+        second = handoff.register_standalone_source(
+            "source_two", "clean_text", "nhk_news", "二。\n",
+            material_level=1)
+        check("distinct ids", first["source_id"] != second["source_id"])
+        check("sequential counters",
+              second["source_id"] == "ja_000002",
+              f"{first['source_id']} -> {second['source_id']}")
+    finally:
+        restore(saved)
+
+
+@test("register_standalone_source: retries past a counter collision")
+def _():
+    saved = setup()
+    try:
+        # Simulate another process having already won counter value 1
+        # (registered under an unrelated source_name) between our scan and
+        # our write -- the exact race next_counter's docstring describes.
+        handoff.SOURCE_REGISTRY.mkdir(parents=True, exist_ok=True)
+        (handoff.SOURCE_REGISTRY / "ja_000001.json").write_text(
+            "{}", encoding="utf-8")
+
+        with mock.patch.object(
+                handoff, "_next_candidate_id",
+                side_effect=["ja_000001", "ja_000002"]) as spy:
+            result = handoff.register_standalone_source(
+                "source_three", "clean_text", "nhk_news", "三。\n",
+                material_level=1)
+        check("retried exactly once", spy.call_count == 2)
+        check("won the second candidate", result["source_id"] == "ja_000002")
+        check("no errors", result["errors"] == [])
+        check("canonical file exists under the winning attempt",
+              (controller.SOURCES_ROOT / "source_three.txt").is_file())
+        package_path = source_package.package_path_for(
+            controller.SOURCES_ROOT / "source_three.txt")
+        package = json.loads(package_path.read_text(encoding="utf-8"))
+        check("package carries the winning id",
+              package["source_id"] == "ja_000002")
+        check("no leftover cleaning job for the losing id",
+              not handoff.cleaning_job_path_for("ja_000001").is_file())
+    finally:
+        restore(saved)
+
+
+@test("register_standalone_source: non-collision create failure is not retried")
+def _():
+    saved = setup()
+    try:
+        with mock.patch.object(handoff, "_next_candidate_id",
+                               return_value="ja_000001") as spy:
+            result = handoff.register_standalone_source(
+                "", "clean_text", "nhk_news", "空。\n", material_level=1)
+        check("called once, no retry on validation failure",
+              spy.call_count == 1)
+        check("failure reported", result["success"] is False)
+        check("no registry key on a create-level failure",
+              "registry" not in result)
     finally:
         restore(saved)
 

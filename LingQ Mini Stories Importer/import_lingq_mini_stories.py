@@ -52,7 +52,6 @@ import config_loader
 import controller
 import handoff
 import paths
-import source_package
 
 # ---------------------------------------------------------------------------
 # Fixed import parameters (Owner-confirmed; this is a one-off import).
@@ -266,30 +265,25 @@ def import_one(path, episode, stage_timeout=None):
     except LingQImportError as exc:
         return "clean", str(exc)
 
-    created = controller.create_standalone_source(
-        source_name, SOURCE_TYPE, CREATOR, source_text,
-        material_level=MATERIAL_LEVEL)
-    if not created["success"]:
-        return "create", "; ".join(created["errors"])
-    if created.get("package_error"):
-        # The canonical file was written but the Source Package was not, so
-        # the source cannot be handed off. Treat this as a create failure.
-        return "create", f"source package was not written: {created['package_error']}"
-
-    package_path = source_package.package_path_for(created["path"])
     try:
-        package = handoff.load_source_package(package_path)
+        result = handoff.register_standalone_source(
+            source_name, SOURCE_TYPE, CREATOR, source_text,
+            material_level=MATERIAL_LEVEL)
     except handoff.HandoffError as exc:
-        return "create", f"cannot read source package: {exc}"
+        return "create", str(exc)
 
-    try:
-        handoff_result = handoff.handoff(package)
-    except handoff.HandoffError as exc:
-        return "handoff", str(exc)
-    if handoff_result.get("errors"):
-        return "handoff", "; ".join(handoff_result["errors"])
+    # register_standalone_source returns two shapes: controller's own
+    # create-result dict (no "registry" key) when it stopped before ever
+    # reaching handoff, or handoff()'s result dict (has "registry") on
+    # success/non-collision failure.
+    if "registry" not in result:
+        if result.get("package_error"):
+            return "create", f"source package was not written: {result['package_error']}"
+        return "create", "; ".join(result["errors"])
+    if result.get("errors"):
+        return "handoff", "; ".join(result["errors"])
 
-    source_id = package["source_id"]
+    source_id = result["source_id"]
     argv = build_pipeline_command(source_id, stage_timeout)
     try:
         completed = subprocess.run(

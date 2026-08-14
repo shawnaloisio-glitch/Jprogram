@@ -110,7 +110,7 @@ def _():
               source_package.package_path_for(
                   controller.SOURCES_ROOT / "A id00001.txt").is_file())
         check("registry created",
-              (handoff.SOURCE_REGISTRY / "clean_text_a-id00001.json").is_file())
+              any(handoff.SOURCE_REGISTRY.glob("ja_*.json")))
         check("pipeline() called once", pipeline.call_count == 1)
         check("launcher passed was launch_stage_inprocess",
               pipeline.call_args.kwargs.get("launcher")

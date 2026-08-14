@@ -10,6 +10,7 @@ Run:
 
 import pathlib
 import sys
+import tempfile
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 SOURCE_INTAKE = PROJECT_ROOT / "Source Intake"
@@ -79,6 +80,41 @@ def _():
     args = ("pod", "conteppei", "ep051")
     check("identical", source_id.generate(*args) == source_id.generate(*args))
     check("slugify identical", source_id.slugify("Con Teppei") == source_id.slugify("Con Teppei"))
+
+
+@test("generate_counter_id formats a zero-padded global id")
+def _():
+    check("ja_000001", source_id.generate_counter_id("ja", 1) == "ja_000001")
+    check("ja_003156", source_id.generate_counter_id("ja", 3156) == "ja_003156")
+    check("custom width",
+          source_id.generate_counter_id("ja", 1, width=3) == "ja_001")
+
+
+@test("next_counter: empty/missing registry dir starts at 1")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    check("missing dir", source_id.next_counter(tmp / "nope", "ja") == 1)
+    tmp.mkdir(exist_ok=True)
+    check("empty dir", source_id.next_counter(tmp, "ja") == 1)
+
+
+@test("next_counter: returns max + 1, gaps never filled")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    for n in (1, 2, 5):
+        (tmp / f"ja_{n:06d}.json").write_text("{}", encoding="utf-8")
+    check("max+1", source_id.next_counter(tmp, "ja") == 6)
+
+
+@test("next_counter: ignores other prefixes and non-matching filenames")
+def _():
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    (tmp / "ja_000001.json").write_text("{}", encoding="utf-8")
+    (tmp / "zh_000099.json").write_text("{}", encoding="utf-8")
+    (tmp / "pod_conteppei_ep051.json").write_text("{}", encoding="utf-8")
+    (tmp / "not_json.txt").write_text("x", encoding="utf-8")
+    check("only ja_ counted", source_id.next_counter(tmp, "ja") == 2)
+    check("zh prefix independent", source_id.next_counter(tmp, "zh") == 100)
 
 
 def main():

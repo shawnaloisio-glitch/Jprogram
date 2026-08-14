@@ -64,7 +64,6 @@ import config_loader
 import controller
 import handoff
 import paths
-import source_package
 
 # ---------------------------------------------------------------------------
 # Fixed import parameters (Owner-confirmed 2026-08-13; this is a one-off
@@ -301,29 +300,26 @@ def import_one(path, manifest_row, stage_timeout=None):
 
     source_name = f"{SOURCE_NAME_PREFIX}-{manifest_row.episode_number}"
 
-    created = controller.create_standalone_source(
-        source_name, SOURCE_TYPE, CREATOR, result.source_text,
-        material_level=MATERIAL_LEVEL, style_id=STYLE_ID, topic_id=TOPIC_ID,
-        episode_number=manifest_row.episode_number)
-    if not created["success"]:
-        return "create", "; ".join(created["errors"])
-    if created.get("package_error"):
-        return "create", f"source package was not written: {created['package_error']}"
-
-    package_path = source_package.package_path_for(created["path"])
     try:
-        package = handoff.load_source_package(package_path)
+        reg_result = handoff.register_standalone_source(
+            source_name, SOURCE_TYPE, CREATOR, result.source_text,
+            material_level=MATERIAL_LEVEL, style_id=STYLE_ID, topic_id=TOPIC_ID,
+            episode_number=manifest_row.episode_number)
     except handoff.HandoffError as exc:
-        return "create", f"cannot read source package: {exc}"
+        return "create", str(exc)
 
-    try:
-        handoff_result = handoff.handoff(package)
-    except handoff.HandoffError as exc:
-        return "handoff", str(exc)
-    if handoff_result.get("errors"):
-        return "handoff", "; ".join(handoff_result["errors"])
+    # register_standalone_source returns two shapes: controller's own
+    # create-result dict (no "registry" key) when it stopped before ever
+    # reaching handoff, or handoff()'s result dict (has "registry") on
+    # success/non-collision failure.
+    if "registry" not in reg_result:
+        if reg_result.get("package_error"):
+            return "create", f"source package was not written: {reg_result['package_error']}"
+        return "create", "; ".join(reg_result["errors"])
+    if reg_result.get("errors"):
+        return "handoff", "; ".join(reg_result["errors"])
 
-    source_id = package["source_id"]
+    source_id = reg_result["source_id"]
     argv = build_pipeline_command(source_id, stage_timeout)
     try:
         completed = subprocess.run(

@@ -169,13 +169,21 @@ def _try_write_source_package(source_type, creator, canonical_path,
                               source_name=None, material_level=None,
                               style_id=None, topic_id=None,
                               duration_seconds=None,
-                              episode_number=None, season_number=None):
+                              episode_number=None, season_number=None,
+                              source_id=None):
     """
     Build and atomically write the sidecar Source Package for a saved source.
 
     Package creation must never corrupt the canonical text file. On failure
     the error string is returned (the canonical file is left intact);
     on success None is returned.
+
+    source_id (str|None): explicit pipeline identity (e.g. a global-counter
+    id assigned by the caller, see Source Builder/handoff.py's
+    register_standalone_source / register_collection_source). When None,
+    source_package.build_package falls back to its own slug-derived
+    default -- retained only for callers that don't need collision-safe
+    global identity (e.g. throwaway/manual GUI use).
     """
     try:
         cleaning_profile = source_package.cleaning_profile_for(source_type)
@@ -187,6 +195,7 @@ def _try_write_source_package(source_type, creator, canonical_path,
             canonical_path=canonical_path,
             cleaning_profile=cleaning_profile,
             cleaner_version=cleaner_version,
+            source_id=source_id,
             collection_id=collection_id,
             episode=episode,
             source_name=source_name,
@@ -207,7 +216,8 @@ def create_collection_source(collection_id, episode, source_type, creator,
                              source_text, overwrite=False, material_level=0,
                              style_id=None, topic_id=None,
                              duration_seconds=None,
-                             episode_number=None, season_number=None):
+                             episode_number=None, season_number=None,
+                             source_id=None):
     """Validate and create a canonical collection source file.
 
     episode is a hidden auto-incrementing system identifier: the value is
@@ -217,6 +227,10 @@ def create_collection_source(collection_id, episode, source_type, creator,
 
     episode_number / season_number are optional user-entered metadata with no
     identity or uniqueness role; they are forwarded unchanged to the package.
+
+    source_id (str|None): explicit pipeline identity (see
+    _try_write_source_package). collection_id/episode still drive the
+    canonical filename regardless of source_id.
     """
     errors = validate_collection_fields(collection_id, episode, source_type,
                                         creator, source_text)
@@ -244,6 +258,7 @@ def create_collection_source(collection_id, episode, source_type, creator,
         duration_seconds=duration_seconds,
         episode_number=episode_number,
         season_number=season_number,
+        source_id=source_id,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
@@ -256,8 +271,14 @@ def create_standalone_source(source_name, source_type, creator, source_text,
                              overwrite=False, material_level=0,
                              style_id=None, topic_id=None,
                              duration_seconds=None,
-                             episode_number=None, season_number=None):
-    """Validate and create a canonical standalone source file."""
+                             episode_number=None, season_number=None,
+                             source_id=None):
+    """Validate and create a canonical standalone source file.
+
+    source_id (str|None): explicit pipeline identity (see
+    _try_write_source_package). source_name still drives the canonical
+    filename regardless of source_id.
+    """
     errors = validate_standalone_fields(source_name, source_type, creator,
                                         source_text)
     if errors:
@@ -282,6 +303,7 @@ def create_standalone_source(source_name, source_type, creator, source_text,
         duration_seconds=duration_seconds,
         episode_number=episode_number,
         season_number=season_number,
+        source_id=source_id,
     )
     result = {"success": True, "filename": path.name, "path": str(path),
               "errors": []}
