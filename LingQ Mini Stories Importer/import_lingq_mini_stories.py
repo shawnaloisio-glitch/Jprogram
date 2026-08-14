@@ -75,6 +75,14 @@ CREATOR = "lingq"
 # (confirmed by reading that constant; 1 is still correct).
 MATERIAL_LEVEL = 1
 
+# style_id 2 ("Structured Course") / topic_id 2 ("Mini Story"). Owner-
+# confirmed 2026-08-13; the original run had no style_id/topic_id
+# parameters here at all and both came back null on all 62 sources,
+# requiring a post-hoc sidecar patch -- fixed properly this time by
+# passing them through at import time instead.
+STYLE_ID = 2
+TOPIC_ID = 2
+
 # Collision-safe source-name prefix: keeps every source traceable to its
 # LingQ folder and safe against any future LingQ folder that also happens to
 # have its own ep001.txt. Per-file source_name = f"{PREFIX}-{episode}".
@@ -268,7 +276,8 @@ def import_one(path, episode, stage_timeout=None):
     try:
         result = handoff.register_standalone_source(
             source_name, SOURCE_TYPE, CREATOR, source_text,
-            material_level=MATERIAL_LEVEL)
+            material_level=MATERIAL_LEVEL,
+            style_id=STYLE_ID, topic_id=TOPIC_ID)
     except handoff.HandoffError as exc:
         return "create", str(exc)
 
