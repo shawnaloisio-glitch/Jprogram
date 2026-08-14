@@ -28,6 +28,35 @@ numbered sections above hold architecture/state/major tasks only.
   Owner's call) was made at
   `C:\AI Development Projects\JapaneseCorpus\Jprogram_backup_2026-08-13.zip`.
   Both commits pushed to `origin/master`.
+- **Standalone-import source_id RACE CONDITION fixed 2026-08-14 (Session 19).**
+  The check-then-write race described below is closed: `Source Intake/
+  registry.py` gained `write_registry_if_absent()`, a true OS-level atomic
+  exclusive create (unique temp file + `os.link()`, which fails atomically
+  with `FileExistsError` if the target already exists — a single syscall,
+  no check-then-write gap). `Source Builder/handoff.py` now tries this
+  first; only on a loss does it fall back to the existing sha256-compare
+  logic (unchanged, was already correct for the non-race case). Verified
+  under genuine multi-process concurrency (20 real OS processes racing the
+  same registry path) — exactly 1 winner, 0 leftover temp files, every
+  time. 3 new permanent regression tests added; all 23 existing registry/
+  handoff tests still pass. Commit `fe22dae`.
+  **What this fixes:** the silent-overwrite race (confirmed real via the
+  "Nodame Cantabile" case below) can no longer happen — one of two racing
+  workers will now always correctly detect the collision via the existing
+  sha256-compare path instead of both silently succeeding.
+  **What this does NOT fix:** two *different* titles still slugify to the
+  same `source_id` in the first place (the underlying naming-collision
+  risk is unchanged) — genuine content conflicts (like "Guess the Movie")
+  still fail loudly and need manual disambiguation, same as before; this
+  fix only guarantees that failure gets *reported* instead of silently
+  losing data, in every case, including races.
+  **Considered and rejected:** adopting MandarinCorpus's global-counter
+  `source_id` scheme instead — it doesn't cover the race either (their own
+  design notes say so explicitly, they avoid it by restructuring their
+  batch importer into sequential-then-parallel phases) and would require
+  migrating 3,156 existing human-readable source_ids. See `DONE.md` for
+  the full comparison.
+
 - **Standalone-import source_id collisions can silently overwrite each other
   (found 2026-08-13, Session 19, during the first real post-reimport batch
   import — 685-file `beginner` folder).** `Source Builder/controller.py`
