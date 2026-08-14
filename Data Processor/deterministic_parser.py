@@ -295,6 +295,57 @@ def _lexical_for_unit(surface):
     return groups[0][0].lemma_
 
 
+def _fix_sentence_initial_dewa(doc, bunsetu_spans):
+    """
+    Correct a confirmed GiNZA bunsetu-segmentation gap for sentence-initial
+    では (the discourse connective, "well then...").
+
+    GiNZA's bunsetu_spans() correctly fuses で+は into one bunsetu when a
+    preceding noun/pronoun gives its statistical model a disambiguation
+    signal (e.g. "日本語では、" or "それでは、" both segment correctly).
+    But when では opens the sentence with nothing before it, GiNZA instead
+    treats で and the following は as two independent particles attached
+    directly to the next content word, splitting them into a lone
+    single-token "で" bunsetu followed by a second bunsetu that starts
+    with "は" (confirmed by direct inspection 2026-08-14, e.g.
+    "では、漢字は" -> ["で", "は、漢字は"] instead of ["では、", "漢字は"]).
+
+    This is GiNZA's own linguistic judgment, not a bug in this module's
+    merge/chunk logic (_build_chunks faithfully re-expresses whatever
+    bunsetu_spans() returns) -- but the sentence-initial case is narrow,
+    unambiguous, and identifiable purely from tag_/adjacency, so it is
+    corrected here the same way other tag-driven merge exceptions
+    (_merge_groups's suru-continuation rule) are: a small, deterministic,
+    rule-based fix, not a statistical override.
+
+    Input: doc (spaCy Doc), bunsetu_spans (list of Span, GiNZA's raw
+        output).
+    Output: a new list of Span with the leading で+は (+ any immediately
+        following separator/punctuation tokens) fused into one span, or
+        the original list unchanged if the pattern doesn't match exactly.
+    """
+    if len(bunsetu_spans) < 2:
+        return bunsetu_spans
+    first, second = bunsetu_spans[0], bunsetu_spans[1]
+    if first.start != 0 or first.end - first.start != 1:
+        return bunsetu_spans
+    if doc[first.start].text != "で" or doc[first.start].tag_ != "助詞-格助詞":
+        return bunsetu_spans
+    if second.start != first.end:
+        return bunsetu_spans
+    if doc[second.start].text != "は" or doc[second.start].tag_ != "助詞-係助詞":
+        return bunsetu_spans
+    merge_end = second.start + 1
+    while merge_end < second.end and _is_separator(doc[merge_end].text):
+        merge_end += 1
+    if merge_end >= second.end:
+        # Nothing of substance would remain in the second span.
+        return bunsetu_spans
+    fixed = [doc[first.start:merge_end], doc[merge_end:second.end]]
+    fixed.extend(bunsetu_spans[2:])
+    return fixed
+
+
 def _build_chunks(text, words, token_to_word, bunsetu_spans):
     """Re-express bunsetu spans over merged word indices.
 
@@ -333,7 +384,7 @@ def _segment_continuous(text):
     """Word/chunk segmentation for standard continuous Japanese."""
     nlp = _get_nlp()
     doc = nlp(text)
-    bunsetu_spans = list(ginza.bunsetu_spans(doc))
+    bunsetu_spans = _fix_sentence_initial_dewa(doc, list(ginza.bunsetu_spans(doc)))
     token_bunsetu = [None] * len(doc)
     for bi, b in enumerate(bunsetu_spans):
         for i in range(b.start, b.end):
@@ -353,7 +404,7 @@ def _segment_whitespace(text):
     """Word/chunk segmentation preserving the source's space-delimited units."""
     nlp = _get_nlp()
     doc = nlp(text)
-    bunsetu_spans = list(ginza.bunsetu_spans(doc))
+    bunsetu_spans = _fix_sentence_initial_dewa(doc, list(ginza.bunsetu_spans(doc)))
     words = []
     token_to_word = [None] * len(doc)
     for m in _WHITESPACE_RUN.finditer(text):
