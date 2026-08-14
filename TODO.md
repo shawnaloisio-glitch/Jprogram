@@ -2,7 +2,7 @@
 
 Companion to `CLAUDE.md`. `CLAUDE.md` is auto-loaded and holds Advisor's standing behavior rules (role, permission mode, evidence hierarchy, report format) — read it first if you haven't already. This file holds current project state: what's built, what's next, what to know before touching anything. Unlike `CLAUDE.md`, this file is expected to go stale between sessions and gets refreshed as part of each handoff.
 
-**Note:** structure, section cross-references, and entry points below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs. **Frozen Components were retired 2026-08-13** (Owner override) — see `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section. **`Workspace/` was fully wiped and rebuilt from scratch in Session 19 (2026-08-13)** — see the "Corpus state as of Session 19 end" open item below for current corpus composition; any earlier file-count figures elsewhere in this doc predate that reset.
+**Note:** structure, section cross-references, and entry points below were re-verified 2026-08-13 against current disk state and git after the de-bloat. §6's test counts remain as last measured by the 2026-08-05 deep audit (see §10); re-verify them whenever the Source Intake suite next runs. **Frozen Components were retired 2026-08-13** (Owner override) — see `CLAUDE.md`'s "Frozen Components (retired 2026-08-13)" section. **`Workspace/` was fully wiped and rebuilt from scratch twice: Session 19 (2026-08-13, initial production run) and Session 20 (2026-08-14, global-counter `source_id` migration)** — see the "Corpus state as of Session 20 end" open item below for current corpus composition; any earlier file-count or `source_id` figures elsewhere in this doc predate that reset.
 
 **Small, concrete pending items** (things to check/decide/fix that aren't
 major scope) live in this file's **Open items** section below (folded from
@@ -28,75 +28,55 @@ numbered sections above hold architecture/state/major tasks only.
   Owner's call) was made at
   `C:\AI Development Projects\JapaneseCorpus\Jprogram_backup_2026-08-13.zip`.
   Both commits pushed to `origin/master`.
-- **Standalone-import source_id RACE CONDITION fixed 2026-08-14 (Session 19).**
-  The check-then-write race described below is closed: `Source Intake/
-  registry.py` gained `write_registry_if_absent()`, a true OS-level atomic
-  exclusive create (unique temp file + `os.link()`, which fails atomically
-  with `FileExistsError` if the target already exists — a single syscall,
-  no check-then-write gap). `Source Builder/handoff.py` now tries this
-  first; only on a loss does it fall back to the existing sha256-compare
-  logic (unchanged, was already correct for the non-race case). Verified
-  under genuine multi-process concurrency (20 real OS processes racing the
-  same registry path) — exactly 1 winner, 0 leftover temp files, every
-  time. 3 new permanent regression tests added; all 23 existing registry/
-  handoff tests still pass. Commit `fe22dae`.
-  **What this fixes:** the silent-overwrite race (confirmed real via the
-  "Nodame Cantabile" case below) can no longer happen — one of two racing
-  workers will now always correctly detect the collision via the existing
-  sha256-compare path instead of both silently succeeding.
-  **What this does NOT fix:** two *different* titles still slugify to the
-  same `source_id` in the first place (the underlying naming-collision
-  risk is unchanged) — genuine content conflicts (like "Guess the Movie")
-  still fail loudly and need manual disambiguation, same as before; this
-  fix only guarantees that failure gets *reported* instead of silently
-  losing data, in every case, including races.
-  **Considered and rejected:** adopting MandarinCorpus's global-counter
-  `source_id` scheme instead — it doesn't cover the race either (their own
-  design notes say so explicitly, they avoid it by restructuring their
-  batch importer into sequential-then-parallel phases) and would require
-  migrating 3,156 existing human-readable source_ids. See `DONE.md` for
-  the full comparison.
-
-- **Standalone-import source_id collisions can silently overwrite each other
-  (found 2026-08-13, Session 19, during the first real post-reimport batch
-  import — 685-file `beginner` folder).** `Source Builder/controller.py`
-  has two source-id paths: `create_collection_source` uses a real
-  auto-incrementing sequence (`next_auto_sequence`, line 227) to guarantee
-  uniqueness; `create_standalone_source` (what `Batch Importer/
-  batch_importer.py` actually uses) derives `source_id` by slugifying the
-  filename/title alone (`derive_source_id`, `controller.py:164`), with no
-  sequence and no check against already-existing source_ids. The only
-  collision check that exists (`controller.py:269`, `path.exists()`)
-  operates on the *original filename*, not the *slugified* `source_id`
-  used as the Registry/corpus key — so two files whose titles differ only
-  in trailing punctuation (e.g. `Please do not enter.` vs
-  `_Please do not enter._`) collapse to the identical `source_id`, and the
-  second one silently overwrites the first's Source Registry entry and
-  corpus output. Confirmed real (not just theoretical): 3 such collisions
-  happened in the `beginner` import — all 3 pairs were true content
-  duplicates (identical sha256, same episode re-exported under a slightly
-  different filename), so no real data was lost this time, but the
-  mechanism has no protection against a genuine non-duplicate collision.
-  Orphaned sidecar pairs from these 3 cleaned up same session (see
-  `DONE.md`). **Confirmed worse in the follow-up `intermediate` import
-  (556 files, same session):** one collision was a genuine content
-  conflict (different sha256 — two real, distinct "Guess the Movie" quiz
-  episodes from different creators/hosts colliding on the same slug) and
-  was correctly caught and reported as `[FAIL handoff]`, requiring manual
-  resolution (re-staged and re-imported under a disambiguated filename to
-  recover it). But a second collision in the *same run* (two filename
-  variants of "Nodame Cantabile") produced **no failure output at all** —
-  both workers reported `[IMPORTED]` successfully even though only one
-  survived in the Registry/corpus. Content happened to be identical
-  (harmless this time), but the silent case proves the sha256-mismatch
-  check is not safe against two parallel workers racing on the same
-  derived `source_id` for *different* files simultaneously — a
-  same-content collision and a genuinely-different-content collision can
-  both pass through undetected depending on timing, not just content.
-  **Fix not yet designed/implemented** — options: give `derive_source_id`
-  a real uniqueness check (reject or auto-sequence on collision) with
-  cross-worker locking/atomicity, or route standalone imports through the
-  same `next_auto_sequence` mechanism collections already use.
+- **Standalone-import source_id collisions — FULLY RESOLVED 2026-08-14
+  (Session 20): global-counter identity adopted project-wide, superseding
+  both the earlier race-condition fix and the naming-collision item that
+  followed it below.** The concurrent-write race was already closed
+  earlier this session (`write_registry_if_absent`, commit `fe22dae`), but
+  a real gap remained: two *different* titles could still slugify to the
+  same `source_id` in the first place, and a genuine non-duplicate
+  collision had no clean automatic resolution. Owner: "I want to implement
+  the unique ID counter the same as mandarincorpus... if we have to redo
+  our imports that is fine." Adopted `source_id`s of the form `ja_NNNNNN`
+  (global counter, content-independent — see `source_id.generate_counter_id`
+  / `next_counter`), replacing the slug-derived scheme everywhere
+  (collection mode included, per Owner's explicit "everywhere" scope
+  choice, even though collection mode's own `next_auto_sequence` was
+  already collision-safe). `Source Builder/handoff.py` gained
+  `register_standalone_source`/`register_collection_source`: reserve a
+  counter value, attempt create+registry-write, retry with a fresh counter
+  on a concurrent collision (bounded, `MAX_ID_RETRIES = 25`).
+  **A real bug was found and fixed along the way, not just theorized:**
+  the first version of the retry cleanup deleted
+  `cleaning_job_path_for(candidate_id)` unconditionally on a collision —
+  under genuine multi-process concurrency this sometimes deleted the
+  *winning* process's in-progress Cleaning Job file (WinError 5, access
+  denied), because ownership of that path isn't decided until the
+  Registry write resolves. Root-caused to `handoff()` writing the Cleaning
+  Job even when the Registry step failed; fixed by gating Cleaning Job
+  creation on Registry success, and the cleanup helper no longer touches
+  anything keyed by the contested id at all. Verified with a real 20-
+  process concurrency run (not just mocked), repeated 3x clean — 20/20
+  distinct ids, 0 errors, 0 leftover artifacts. Full test suite passes
+  (2 hardcoded old-format filename assertions updated). Commits `d9e45b1`,
+  `d94a119`.
+  **Corpus fully rebuilt same session** (Owner: "wipe and remake") — see
+  the corpus-state item below for the new totals. `Config/` (creators/
+  styles/topics) was restored from the pre-wipe values rather than
+  reconstructed from memory. Found and fixed two real issues during the
+  rebuild, not code bugs: (1) Kensan's material-level detection reads the
+  *immediate parent folder name* (`import_material.suggested_material_level`),
+  so pointing the importer straight at the real `kensan` folder fails
+  every file with "material_level is required" — the original run must
+  have staged files into a folder literally named `ungraded`; reproduced
+  by staging the same way this time. (2) the failed first Kensan attempt
+  left 113 orphaned canonical `.txt` files with no package/registry
+  (`create_standalone_source` writes the canonical file before the
+  package), which made the retry's idempotency check think those files
+  were already imported (0 to import) until the orphans were deleted.
+  Also fixed the LingQ importer's missing `style_id`/`topic_id` at the
+  source this time (`d94a119`) instead of the post-hoc sidecar patch the
+  original run needed.
 - **Processor/analysis output metadata (possible future need)** — `origin`
   may shift to domain/topic as a *separate* tag (not a replacement);
   candidate tags: domain/topic, register, format/modality,
@@ -196,22 +176,20 @@ numbered sections above hold architecture/state/major tasks only.
   This is Language Coach J's project, not Jprogram's, so no fix belongs
   here — flagging so it isn't lost, and because it directly affects how
   trustworthy any name shown for Jprogram-sourced content is downstream.
-- **Corpus state as of Session 19 end (2026-08-13): 3,156 sources, 5
-  creators, `Workspace/` fully rebuilt from a clean wipe.** Superseded by a
-  full pipeline reset this session (Owner: "clean the program of all user
-  data and settings") — the 858-file corpus mentioned in earlier entries no
-  longer exists; everything since was reimported from scratch with the
-  Defender-exclusion speed fix in place. Breakdown: `nat_jap` (Natural
-  Japanese, 1,596: all 4 level folders), `nihongo_jikan` (876: all 4 level
-  folders), `kensan` (113, tagged `Ungraded` via a real fix to
-  `import_material.py`'s folder-name mapping), `lingq` (62, via
-  `LingQ Mini Stories Importer/import_lingq_mini_stories.py`, path fixed),
-  `conteppei` (337, via the new `Con-Teppei Importer/import_con_teppei.py`,
-  which resolves real episode numbers from `manifest.csv` rather than
-  trusting file order). All jsonl/Source Registry/Sources counts verified
-  matching (3,156 each) at session end. Full session detail in `DONE.md`
-  Session 19. No further `Subtitles`-category folders remain unimported;
-  next content would be a new source, not a backlog item.
+- **Corpus state as of Session 20 end (2026-08-14): 3,161 sources, 5
+  creators, `Workspace/` fully wiped and rebuilt again to pick up the new
+  global-counter `source_id` scheme (`ja_NNNNNN`).** Every `source_id` from
+  Session 19's rebuild is gone and replaced; nothing carries over.
+  Breakdown: `nat_jap` (Natural Japanese, 1,773: all 4 level folders —
+  1,780 real files minus 7 cross-level filename duplicates the importer's
+  existing idempotency check correctly caught and skipped),
+  `nihongo_jikan` (876: all 4 level folders, matches Session 19 exactly),
+  `kensan` (113, staged into a folder literally named `ungraded` — see the
+  resolved item above for why), `lingq` (62, `style_id`/`topic_id` now
+  correct at import time instead of a post-hoc patch), `conteppei` (337).
+  1,773+876+113+62+337 = 3,161, matching Registry/Sources/Cleaning Jobs/
+  jsonl counts exactly, and every Registry filename matches `ja_\d{6}\.json`.
+  Full session detail in `DONE.md` Session 20.
 - **Environment gotcha for future process investigation (2026-08-13):** this
   machine's Python installations (both the project `.venv` and standalone
   installs) show every `python.exe` invocation as **two OS processes** —

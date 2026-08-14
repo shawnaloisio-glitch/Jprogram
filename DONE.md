@@ -8,6 +8,150 @@ session wrap-up; never stack wrap-ups into the bootstrap.
 
 ---
 
+## Session 20 (2026-08-14) — Global-counter source_id migration, real bug found via multi-process testing, full corpus rebuild (3,161 sources)
+
+Reasonix headless Coder is still broken (a regression, confirmed by Owner —
+"coder still isn't working, it is a reasonix regression issue"), so this
+entire session was direct Advisor implementation, same as the collision-race
+fix at the end of Session 19.
+
+### What happened this session (chronological)
+
+1. **Owner asked to implement MandarinCorpus's global-counter `source_id`
+   scheme, explicitly overriding Session 19's "Considered and rejected"
+   note** ("I want to implement the unique ID counter the same as
+   mandarincorpus. If we have to redo our imports that is fine."). The
+   earlier rejection was specifically about the concurrent-write race
+   (already fixed by then); the naming-collision gap it didn't cover was
+   still real and open, so this wasn't wasted-effort revisiting — it closes
+   the one thing Session 19's fix explicitly said it didn't fix.
+2. **Scoped with Owner: global counter applies everywhere**, not just
+   standalone mode (collection mode's own `next_auto_sequence` was already
+   collision-safe, but Owner chose the full, simpler-going-forward
+   replacement over a narrower patch).
+3. **Ported and adapted** `source_id.generate_counter_id`/`next_counter`
+   from MandarinCorpus (prefix `ja`, not `zh`). Jprogram's architecture
+   differs from MandarinCorpus's (source creation and Registry
+   registration are separate stages here, not one atomic step), so the
+   port wasn't 1:1: added `Source Builder/handoff.py`'s
+   `register_standalone_source`/`register_collection_source` — reserve a
+   counter value, attempt create+registry-write, retry with a fresh
+   counter on collision, bounded (`MAX_ID_RETRIES = 25`).
+4. **Found a real bug via genuine multi-process testing, not just mocks.**
+   The mocked single-process retry test passed clean. A real 20-OS-process
+   concurrency script (mirroring Session 19's registry-race verification)
+   failed with `WinError 5` (access denied) inside the retry cleanup. Root
+   cause: the losing process's cleanup was unconditionally deleting
+   `cleaning_job_path_for(candidate_id)` — but under real concurrency that
+   path sometimes belonged to the *winning* process's still-in-progress
+   write, not the loser's own artifact (ownership of a contested id isn't
+   decided until the Registry write resolves). Traced further to
+   `handoff()` itself: it wrote the Cleaning Job unconditionally, even when
+   the Registry step had just failed. Fixed at the actual source — Cleaning
+   Job creation now only happens once the Registry step succeeds — which
+   also made the cleanup fix trivial (it no longer needs to touch anything
+   keyed by the contested id at all). Reran the 20-process verification 4x
+   clean after the fix.
+5. **Full existing test suite reviewed and rerun** (not just the new
+   tests) — all green except two tests with hardcoded old-scheme registry
+   filenames, updated to check the new `ja_*.json` pattern instead. New
+   unit tests added for `generate_counter_id`/`next_counter`, the retry/
+   collision logic (mocked), and the create-failure-is-not-retried case.
+   Committed `d9e45b1`.
+6. **Owner: "wipe and remake."** Backed up `Workspace/Config/{creators,
+   styles,topics}.json` outside `Workspace/` first (these are user data
+   the wipe would otherwise destroy with no other source of truth), then
+   deleted `Workspace/` entirely and restored Config from the backup
+   rather than reconstructing it from memory/prose.
+7. **Reran all 5 creators' real production imports**, using the exact
+   original parameters recovered from `Web UI/submission_archive/`'s
+   archived JSON submissions (folder paths, creator/style/topic) rather
+   than reconstructing them from session notes — the archive is the
+   authoritative source of truth for what was actually submitted.
+   `nat_jap` (4 levels, 1,773 imported, 0 failures — 7 fewer than the
+   1,780 real files because of cross-level filename duplicates the
+   importer's existing idempotency check correctly caught), `nihongo_jikan`
+   (4 levels, 876, 0 failures, exact match to Session 19), `conteppei`
+   (337, 0 failures).
+8. **Kensan hit the exact same "material_level is required" failure as
+   Session 19, on the first attempt (18→113 failures).** Root cause:
+   `import_material.suggested_material_level` keys off the file's
+   *immediate parent folder name*, and the real Kensan folder is named
+   `kensan`, not `ungraded` — Session 19's fix (adding `"ungraded":
+   "Ungraded"` to the folder-name map) only works if the files are staged
+   into a folder actually named that, which the current source folder
+   isn't. Staged the 113 `.vtt` files into `Workspace/Raw Imports/ungraded/`
+   and reran — 113/113, 0 failures.
+9. **The failed first Kensan attempt left 113 orphaned canonical `.txt`
+   files** (`create_standalone_source` writes the canonical file before
+   the Source Package, so a package-stage failure leaves the file behind —
+   the same failure mode documented in Session 16). These made the retry's
+   idempotency check report "0 files to import" until identified (no
+   matching `.source.json`) and deleted.
+10. **Fixed the LingQ importer's missing `style_id`/`topic_id` at the
+    source** (`2` = Structured Course, `2` = Mini Story, recovered from
+    the still-live pre-wipe sidecar files before they were wiped) instead
+    of repeating Session 19's post-hoc sidecar patch. Committed `d94a119`.
+11. **Owner asked about processing speed mid-run**; measured real per-
+    batch rates from Registry mtimes (0.64s/file → 1.71s/file climbing
+    across `nat_jap`'s 4 levels, echoing Session 19's pre-Defender-fix
+    pattern). Since `Workspace/` was deleted and recreated, the path-based
+    Defender exclusion needed reconfirming — gave Owner the
+    `Add-MpPreference`/`Get-MpPreference` commands directly (no admin
+    rights available to check/set this from the agent side), Owner
+    confirmed it was active.
+12. **Final verification: every count reconciles exactly.** Source
+    Registry / Sources (`.source.json` and `.txt`) / Cleaning Jobs / jsonl
+    all read 3,161. Every Registry filename matches `ja_\d{6}\.json` (0
+    exceptions). Per-creator breakdown from Source Package `creator`
+    fields sums to exactly 3,161 (1,773 + 876 + 113 + 62 + 337).
+
+### Last decisions and why
+
+- **Adopt the global-counter scheme everywhere, redo the whole corpus** —
+  Owner's explicit call, made knowing the cost (a full multi-hour rebuild)
+  because it closes a real, previously-open naming-collision gap rather
+  than papering over it.
+- **No backup before this wipe either** — same standing call as Session
+  19 (reprocessing is fast enough to make a backup not worth the overhead),
+  but Config was backed up separately this time since Config isn't
+  reproducible from the raw source folders the way canonical text is.
+- **Recover exact original import parameters from `Web UI/
+  submission_archive/` rather than reconstructing from session notes** —
+  the archive is ground truth (literal submitted JSON); prose summaries
+  in `DONE.md`/`TODO.md` are secondary and were shown to be slightly
+  imprecise (e.g. the historical "3,156" total didn't cleanly break down
+  by the creator counts also recorded).
+- **Fix Cleaning Job creation at its actual source (gate on Registry
+  success) rather than patching around the WinError 5 symptom** — a
+  retry-with-backoff on the unlink would have hidden a genuine
+  unsynchronized-write race instead of removing it, and "verify over
+  trust" is this project's standing principle for exactly this kind of
+  self-reported-success-that-turns-out-wrong situation.
+
+### Open risks / unresolved questions
+
+- **Reasonix headless Coder writes remain broken — now confirmed by Owner
+  as "a reasonix regression issue"**, not further diagnosed this session
+  (no new evidence). Work-around unchanged: direct Advisor implementation.
+- **The Tkinter GUI's manual single-add path was deliberately left
+  untouched by the global-counter migration** — it doesn't call
+  `handoff()` at all today, so it's not part of the real production import
+  path, but it also means a source created that way still won't get a
+  proper `ja_NNNNNN` id or ever reach the Registry. Not a regression (same
+  gap existed before, just under the old scheme), but worth closing if the
+  GUI's manual path is ever actually used for real production.
+- **Two Audit-trigger-Yes parser fixes (`d62eeec`, `f400d2d`) still lack an
+  independent Auditor pass** (carried since Session 16, unchanged this
+  session).
+
+### Next task
+
+None assigned. Corpus is in a clean, fully-verified, self-consistent state
+under the new identity scheme.
+
+---
+
 ## Session 19 (2026-08-13) — Repo cleanup, full Workspace wipe, Web UI config-management form, and a real ~3,156-source production corpus run across 5 creators
 
 ### Current phase
