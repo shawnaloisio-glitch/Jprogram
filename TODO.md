@@ -152,6 +152,33 @@ numbered sections above hold architecture/state/major tasks only.
   host-level constraint for this session"* — i.e. something `reasonix-cli`
   applies to headless/`-p` sessions itself, not a config value. This is the
   update Session 18 said to wait for; it did not fix the issue.
+  **Narrowed precisely 2026-08-15 (Session 20) after another Owner-installed
+  patch, `reasonix v1.25.2` — the block is real but narrower than it
+  looked.** `Write` now works cleanly in both `-p` and `run` mode: file
+  creation, and full-file overwrite of an existing file, both actually
+  persisted to disk (verified by reading the file back after the process
+  exited, not trusting the JSON self-report). But `Edit` (diff-style
+  modification of an existing file) is still hard-blocked with the exact
+  same `constraint=no-mutation` message, identically in both `-p` and `run`
+  — confirmed with a real edit task (change one line in a Python file), not
+  just a file-creation probe. `reasonix doctor` shows nothing locally that
+  would explain it (`permissions: mode allow, rules allow:68 ask:0 deny:0`,
+  no no-mutation flag anywhere in `reasonix.toml` or the roaming config) —
+  this is baked into the binary/prompt layer for this build, not a local
+  setting. Owner's read, plausible but unconfirmed (no way to check
+  Reasonix's own issue tracker/changelog, and a vendor wouldn't announce a
+  security-relevant fix like this until it's actually closed anyway): this
+  looks like a deliberate, still-incomplete lockdown — `Edit` specifically
+  disabled while `Write` stays open — rather than a random crash regression.
+  **Practical workaround available now, not yet adopted:** scope a Coder
+  task's `--allowed-tools` to `Write` only and have it emit complete file
+  contents for anything it touches, instead of `Edit`. Costs more tokens
+  per touched file (full content vs. a diff) but is genuinely functional.
+  **Owner's call: still not reinstating Coder yet** — this is progress
+  (something is actively being worked on vendor-side, `Write` alone
+  already unblocks a meaningful subset of tasks), not a green light. Revisit
+  the `Write`-only workaround, or full reinstatement, after `Edit` itself
+  is confirmed fixed or Owner decides the workaround is worth adopting now.
 - **Two Audit-trigger-Yes parser fixes (d62eeec, f400d2d) have not had an
   independent Auditor pass** — applied directly by Advisor during the
   reasonix outage, re-verified against tests each time, but never reviewed
