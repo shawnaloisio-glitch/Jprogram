@@ -129,11 +129,32 @@ fix at the end of Session 19.
   trust" is this project's standing principle for exactly this kind of
   self-reported-success-that-turns-out-wrong situation.
 
+13. **Owner installed a fresh Reasonix patch (`v1.25.2`) mid-session and
+    asked for a quick `-p` retest.** Result narrowed the regression rather
+    than closing it: `Write` now works cleanly (file creation *and*
+    full-file overwrite of an existing file, verified on disk) in both
+    `-p` and `run` mode, but `Edit` is still hard-blocked with the
+    identical `constraint=no-mutation` error in both — confirmed with a
+    real one-line-change edit task, not just a file-creation probe, and
+    with `--permission-mode acceptEdits` explicitly set (ruled out as a
+    permission-mode issue). `reasonix doctor` shows nothing locally that
+    would explain it. Owner's read: this looks like a deliberate,
+    still-incomplete lockdown (`Edit` specifically disabled, `Write` left
+    open) rather than a random crash, plausibly a security fix in
+    progress — reasonable given the evidence, but unconfirmed (no access
+    to Reasonix's own issue tracker, and a vendor wouldn't announce a
+    security fix before it's closed anyway). Full detail in `TODO.md`'s
+    Reasonix investigation note. **Owner's call: still not reinstating
+    Coder** — a `Write`-only, full-file-rewrite workaround is available
+    and documented but not adopted this session.
+
 ### Open risks / unresolved questions
 
-- **Reasonix headless Coder writes remain broken — now confirmed by Owner
-  as "a reasonix regression issue"**, not further diagnosed this session
-  (no new evidence). Work-around unchanged: direct Advisor implementation.
+- **Reasonix headless Coder: `Edit` still blocked, `Write` now works
+  (v1.25.2, item 13 above).** A real, usable workaround exists (scope
+  `--allowed-tools` to `Write` only, have Coder emit full file contents
+  instead of diffs) but Owner has not adopted it yet. Work-around for now
+  remains direct Advisor implementation.
 - **The Tkinter GUI's manual single-add path was deliberately left
   untouched by the global-counter migration** — it doesn't call
   `handoff()` at all today, so it's not part of the real production import
@@ -148,7 +169,9 @@ fix at the end of Session 19.
 ### Next task
 
 None assigned. Corpus is in a clean, fully-verified, self-consistent state
-under the new identity scheme.
+under the new identity scheme. Reasonix's `Edit` block is worth revisiting
+if Owner decides to adopt the `Write`-only workaround, or after a further
+patch lands.
 
 ---
 
